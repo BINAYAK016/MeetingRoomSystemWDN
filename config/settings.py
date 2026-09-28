@@ -35,8 +35,10 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "booking.middleware.LocalNullOriginMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -87,6 +89,9 @@ USE_I18N = True
 USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 HTTPS_ENABLED = os.environ.get("DJANGO_HTTPS", "false").lower() == "true"
@@ -97,6 +102,8 @@ CSRF_COOKIE_SECURE = HTTPS_ENABLED
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
+CSRF_USE_SESSIONS = True
+CSRF_FAILURE_VIEW = "booking.views.csrf_failure"
 SECURE_HSTS_SECONDS = 0
 X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = "no-referrer"

@@ -1,10 +1,5 @@
 {% extends "booking/base.html" %}
+{% block title %}Employee sign-in{% endblock %}
 {% block content %}
-<h1>Sign in</h1>
-<p>Enter your <strong>wdn.com.np</strong> email address. We will send a one-time link.</p>
-<form method="post">{% csrf_token %}
-  <label for="email">Company email</label>
-  <input id="email" name="email" type="email" autocomplete="email" required maxlength="254">
-  <button type="submit">Send sign-in link</button>
-</form>
+<div class="auth-page page-container"><div class="auth-card"><div class="auth-aside"><p class="eyebrow eyebrow-light"><span class="eyebrow-line"></span> SECURE ACCESS</p><h1>A better meeting starts here.</h1><p>One workspace for the rooms and conversations that move our work forward.</p><div class="auth-aside-foot"><span class="aside-monogram" aria-hidden="true">T</span><span>Transgate<br><small>Tech Beyond Boundaries</small></span></div></div><div class="auth-form-panel"><a class="back-link" href="{% url 'home' %}">← Back to overview</a><div class="auth-form-content"><span class="section-index">01 / SIGN IN</span><h2>Welcome to WDN<br>Meeting Rooms.</h2><p class="form-intro">Enter your company email. We’ll send a secure one-time sign-in link.</p><form method="post" class="sign-in-form">{% csrf_token %}<label for="email">Work email address</label><div class="field-wrap"><span aria-hidden="true">✉</span><input id="email" name="email" type="email" autocomplete="email" placeholder="you@wdn.com.np" required maxlength="254" inputmode="email"></div><p class="field-help">Only <strong>@wdn.com.np</strong> addresses are eligible.</p><button class="button button-primary button-wide" type="submit">Send secure link <span aria-hidden="true">→</span></button></form><div class="auth-security"><span aria-hidden="true">◇</span><p>No password to remember. Your link expires in 15 minutes and works once.</p></div></div></div></div></div>
 {% endblock %}

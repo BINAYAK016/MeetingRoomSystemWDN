@@ -1,0 +1,3 @@
+{% extends "booking/base.html" %}
+{% block title %}Session expired{% endblock %}
+{% block content %}<div class="message-page page-container"><div class="message-card"><div class="message-icon message-icon-error" aria-hidden="true">!</div><p class="eyebrow">SESSION CHECK</p><h1>Let’s start fresh.</h1><p class="message-lead">Your browser could not confirm this sign-in request. Open the form again and use the same local address throughout. If it keeps happening, try Chrome or Edge with cookies enabled for this site.</p><a class="button button-primary" href="{% url 'sign-in' %}">Return to sign-in <span aria-hidden="true">→</span></a></div></div>{% endblock %}

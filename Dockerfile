@@ -11,6 +11,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
+RUN DJANGO_SECRET_KEY=build-only DJANGO_ALLOWED_HOSTS=localhost \
+    POSTGRES_DB=build-only POSTGRES_USER=build-only \
+    POSTGRES_PASSWORD=build-only POSTGRES_HOST=db \
+    python manage.py collectstatic --noinput
+
 RUN useradd --create-home appuser && chown -R appuser:appuser /app
 USER appuser
 

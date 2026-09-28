@@ -1,12 +1,3 @@
 {% extends "booking/base.html" %}
-{% block content %}
-{% if invalid %}
-  <h1>Link unavailable</h1>
-  <p>This link has expired or has already been used. Request a new one.</p>
-  <a class="button" href="{% url 'sign-in' %}">Request another link</a>
-{% else %}
-  <h1>Confirm sign-in</h1>
-  <p>Continue to sign in to WDN Meeting Rooms.</p>
-  <form method="post">{% csrf_token %}<button type="submit">Continue</button></form>
-{% endif %}
-{% endblock %}
+{% block title %}Confirm sign-in{% endblock %}
+{% block content %}<div class="message-page page-container"><div class="message-card"><div class="message-icon {% if invalid %}message-icon-error{% endif %}" aria-hidden="true">{% if invalid %}!{% else %}✓{% endif %}</div>{% if invalid %}<p class="eyebrow">LINK UNAVAILABLE</p><h1>Let’s try a new link.</h1><p class="message-lead">This sign-in link has expired or has already been used. Request a new one to continue securely.</p><a class="button button-primary" href="{% url 'sign-in' %}">Request another link <span aria-hidden="true">→</span></a>{% else %}<p class="eyebrow">FINAL STEP</p><h1>Confirm your sign-in.</h1><p class="message-lead">You’re about to enter the WDN meeting room workspace. Press Continue to complete your sign-in.</p><form method="post">{% csrf_token %}<button class="button button-primary" type="submit">Continue to workspace <span aria-hidden="true">→</span></button></form>{% endif %}</div></div>{% endblock %}

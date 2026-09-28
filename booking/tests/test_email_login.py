@@ -1,4 +1,6 @@
 import re
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from datetime import timedelta
 from unittest.mock import patch
 
@@ -86,3 +88,56 @@ class EmployeeEmailLoginTests(TestCase):
         protected.get(link)
         self.assertEqual(protected.post(reverse("login-confirm")).status_code, 403)
         self.assertIsNone(EmailToken.objects.get().consumed_at)
+
+    def test_sign_in_uses_session_csrf_protection(self):
+        protected = Client(enforce_csrf_checks=True)
+        page = protected.get(reverse("sign-in"))
+        self.assertEqual(page.status_code, 200)
+        self.assertIn("sessionid", protected.cookies)
+        self.assertNotIn("csrftoken", protected.cookies)
+        rejected = protected.post(reverse("sign-in"), {"email": "employee@wdn.com.np"})
+        self.assertEqual(rejected.status_code, 403)
+        self.assertContains(rejected, "Let’s start fresh", status_code=403)
+        self.assertFalse(EmailToken.objects.exists())
+
+    def test_local_opaque_browser_origin_requires_valid_session_token(self):
+        protected = Client(enforce_csrf_checks=True)
+        page = protected.get(reverse("sign-in"), HTTP_HOST="127.0.0.1:8000")
+        token = re.search(r'name="csrfmiddlewaretoken" value="([^"]+)"', page.content.decode()).group(1)
+        rejected = protected.post(
+            reverse("sign-in"),
+            {"email": "employee@wdn.com.np"},
+            HTTP_HOST="127.0.0.1:8000",
+            HTTP_ORIGIN="null",
+        )
+        self.assertEqual(rejected.status_code, 403)
+        accepted = protected.post(
+            reverse("sign-in"),
+            {"email": "employee@wdn.com.np", "csrfmiddlewaretoken": token},
+            HTTP_HOST="127.0.0.1:8000",
+            HTTP_ORIGIN="null",
+        )
+        self.assertEqual(accepted.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+
+        with override_settings(HTTPS_ENABLED=True):
+            blocked = protected.post(
+                reverse("sign-in"),
+                {"email": "employee@wdn.com.np", "csrfmiddlewaretoken": token},
+                HTTP_HOST="127.0.0.1:8000",
+                HTTP_ORIGIN="null",
+            )
+            self.assertEqual(blocked.status_code, 403)
+
+    def test_local_mailbox_is_only_available_in_local_mail_mode(self):
+        with TemporaryDirectory() as directory:
+            Path(directory, "sample.log").write_text(
+                "To: employee@wdn.com.np\n\nhttp://localhost:8000/sign-in/link/sample-token\n",
+                encoding="utf-8",
+            )
+            with override_settings(MAIL_MODE="file", EMAIL_FILE_PATH=directory, HTTPS_ENABLED=False):
+                response = self.client.get(reverse("dev-mail"), HTTP_HOST="localhost")
+                self.assertContains(response, "employee@wdn.com.np")
+                self.assertContains(response, "sample-token")
+            with override_settings(MAIL_MODE="smtp", HTTPS_ENABLED=True):
+                self.assertEqual(self.client.get(reverse("dev-mail"), HTTP_HOST="localhost").status_code, 404)

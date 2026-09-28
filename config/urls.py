@@ -21,5 +21,6 @@ urlpatterns = [
     path("sign-in/link/<str:token>/", views.login_link, name="login-link"),
     path("sign-in/confirm/", views.login_confirm, name="login-confirm"),
     path("sign-out/", views.sign_out, name="sign-out"),
+    path("dev/mail/", views.dev_mail, name="dev-mail"),
     path("healthz/", healthcheck, name="healthcheck"),
 ]
