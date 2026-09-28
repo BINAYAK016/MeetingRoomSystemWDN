@@ -1,0 +1,77 @@
+[
+  {
+    "model": "booking.room",
+    "pk": 1,
+    "fields": {
+      "name": "Demo Room 1",
+      "location": "Demo Office",
+      "floor": "1",
+      "capacity": 6,
+      "description": "Sample data for local development only.",
+      "instructions": "",
+      "is_active": true,
+      "created_at": "2026-09-28T00:00:00Z",
+      "updated_at": "2026-09-28T00:00:00Z"
+    }
+  },
+  {
+    "model": "booking.room",
+    "pk": 2,
+    "fields": {
+      "name": "Demo Room 2",
+      "location": "Demo Office",
+      "floor": "1",
+      "capacity": 8,
+      "description": "Sample data for local development only.",
+      "instructions": "",
+      "is_active": true,
+      "created_at": "2026-09-28T00:00:00Z",
+      "updated_at": "2026-09-28T00:00:00Z"
+    }
+  },
+  {
+    "model": "booking.room",
+    "pk": 3,
+    "fields": {
+      "name": "Demo Room 3",
+      "location": "Demo Office",
+      "floor": "2",
+      "capacity": 10,
+      "description": "Sample data for local development only.",
+      "instructions": "",
+      "is_active": true,
+      "created_at": "2026-09-28T00:00:00Z",
+      "updated_at": "2026-09-28T00:00:00Z"
+    }
+  },
+  {
+    "model": "booking.room",
+    "pk": 4,
+    "fields": {
+      "name": "Demo Room 4",
+      "location": "Demo Office",
+      "floor": "2",
+      "capacity": 12,
+      "description": "Sample data for local development only.",
+      "instructions": "",
+      "is_active": true,
+      "created_at": "2026-09-28T00:00:00Z",
+      "updated_at": "2026-09-28T00:00:00Z"
+    }
+  },
+  {
+    "model": "booking.room",
+    "pk": 5,
+    "fields": {
+      "name": "Demo Room 5",
+      "location": "Demo Office",
+      "floor": "3",
+      "capacity": 16,
+      "description": "Sample data for local development only.",
+      "instructions": "",
+      "is_active": true,
+      "created_at": "2026-09-28T00:00:00Z",
+      "updated_at": "2026-09-28T00:00:00Z"
+    }
+  }
+]
