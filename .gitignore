@@ -8,3 +8,5 @@ htmlcov/
 .idea/
 .vscode/
 staticfiles/
+deploy/certs/*.pem
+deploy/backups/

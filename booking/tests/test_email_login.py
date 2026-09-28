@@ -139,5 +139,6 @@ class EmployeeEmailLoginTests(TestCase):
                 response = self.client.get(reverse("dev-mail"), HTTP_HOST="localhost")
                 self.assertContains(response, "employee@wdn.com.np")
                 self.assertContains(response, "sample-token")
+                self.assertNotIn("flash-stack", response.content.decode())
             with override_settings(MAIL_MODE="smtp", HTTPS_ENABLED=True):
                 self.assertEqual(self.client.get(reverse("dev-mail"), HTTP_HOST="localhost").status_code, 404)

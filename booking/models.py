@@ -225,6 +225,7 @@ class EmailToken(models.Model):
     class Purpose(models.TextChoices):
         LOGIN = "login", "Login"
         CHECK_IN = "check_in", "Check-in"
+        STAFF = "staff", "Staff sign-in code"
 
     user = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT)
     reservation = models.ForeignKey(Reservation, null=True, blank=True, on_delete=models.PROTECT)
@@ -243,7 +244,7 @@ class EmailToken(models.Model):
         ]
         constraints = [
             models.CheckConstraint(
-                condition=Q(purpose="login", reservation__isnull=True)
+                condition=Q(purpose__in=["login", "staff"], reservation__isnull=True)
                 | Q(purpose="check_in", reservation__isnull=False),
                 name="email_token_purpose_target_valid",
             ),

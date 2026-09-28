@@ -81,15 +81,16 @@ def local_mail_available(request):
 def dev_mail(request):
     if not local_mail_available(request):
         raise Http404
-    messages = []
+    mail_items = []
     mail_dir = Path(settings.EMAIL_FILE_PATH)
     for mail_file in sorted(mail_dir.glob("*.log"), key=lambda item: item.stat().st_mtime, reverse=True)[:10]:
         body = mail_file.read_text(encoding="utf-8", errors="replace")
         recipient = re.search(r"^To: (.+)$", body, re.MULTILINE)
-        link = re.search(r"^https?://\S+/sign-in/link/\S+", body, re.MULTILINE)
-        if link:
-            messages.append({"recipient": recipient.group(1) if recipient else "WDN employee", "link": link.group(0)})
-    return render(request, "booking/dev_mail.html", {"messages": messages})
+        link = re.search(r"^https?://\S+/(?:sign-in/link|check-in/link|staff/set-password)/\S+", body, re.MULTILINE)
+        code = re.search(r"one-time staff sign-in code is (\d{8})", body)
+        if link or code:
+            mail_items.append({"recipient": recipient.group(1) if recipient else "WDN employee", "link": link.group(0) if link else "", "code": code.group(1) if code else ""})
+    return render(request, "booking/dev_mail.html", {"mail_items": mail_items})
 
 
 @never_cache

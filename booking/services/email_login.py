@@ -102,7 +102,6 @@ def consume_login_link(raw_token, request):
     token.consumed_at = now
     token.user = user
     token.save(update_fields=["consumed_at", "user"])
-    # Staff administration will require its own verification gate in a later module.
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     request.session["staff_verified"] = False
     AuditEvent.objects.create(actor=user, action="employee_login", outcome="success")

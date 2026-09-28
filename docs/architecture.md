@@ -1,6 +1,6 @@
-# Meeting Room Booking System — architecture draft
+# Meeting Room Booking System — architecture
 
-**Status:** Architecture baseline for incremental development. The database and Docker foundation are implemented; employee workflows and production deployment remain to be built and tested. The detailed schema is in [database design](database-design.md).
+**Status:** Application implemented and tested locally. Private-network production rollout awaits the IT server, TLS certificate, SMTP relay, real room records, and pilot acceptance. The detailed schema is in [database design](database-design.md).
 
 **Sources:** Meeting Room Booking System Requirements Questionnaire (23 September 2026) and the project owner's answers in this conversation (28 September 2026). The questionnaire supplies stakeholder requirements; the owner's answers resolve or amend them.
 
@@ -18,20 +18,20 @@ flowchart LR
     subgraph V[Company server or VM]
         H[HTTPS reverse proxy] --> A[Django web process]
         A --> P[(PostgreSQL)]
-        J[Scheduled Django commands] --> P
+    J[Django worker] --> P
     end
     J --> M[Company SMTP relay]
     M --> I[Organizer, attendee and Front Desk inboxes]
     P --> B[Backup storage on another system]
 ```
 
-**Single application.** A Django/Python application will render the employee and staff screens, enforce permissions and booking rules, and provide the endpoints needed by the calendar. The interface uses server-rendered pages with focused JavaScript. One code repository contains the web application and scheduled commands, with modules for identity, rooms, bookings, notifications, and reporting. PostgreSQL holds application records, sessions, and pending notification jobs. This is an appropriate starting architecture for five rooms and approximately 95 employees; capacity will be verified during pilot testing.
+**Single application.** Django renders employee and staff screens and enforces permissions and booking rules. One repository contains the web app and worker. PostgreSQL holds application records, sessions, and pending notification jobs. This is an appropriate starting architecture for five rooms and approximately 95 employees; capacity still needs pilot verification.
 
 **One conflict model.** PostgreSQL is confirmed. Both meeting occurrences and maintenance closures reserve time through the same database relation so that one exclusion constraint protects against conflicts between either type. The shared write path locks the room row, checks availability, and writes in a transaction; a conflicting concurrent write returns an availability error. Later staff workflows must use that same write path. PostgreSQL documents exclusion constraints specifically for non-overlapping room reservations. [PostgreSQL range constraints](https://www.postgresql.org/docs/current/rangetypes.html#RANGETYPES-CONSTRAINT)
 
-**Time and buffers.** Store timezone-aware timestamps as UTC instants and apply working hours and recurrence rules in `Asia/Kathmandu`. Store meeting times separately from the occupied interval. Count the 15-minute gap once: a meeting from 10:00 to 11:00 reserves the room until 11:15, so another meeting may start at 11:15. Explicit additional setup/cleanup must also be included in the occupied interval. A rule change must not silently alter existing occupied intervals and introduce conflicts.
+**Time and buffers.** Store timezone-aware timestamps as UTC instants and apply working hours and recurrence rules in `Asia/Kathmandu`. Store meeting times separately from the occupied interval. Count the 15-minute gap once: a meeting from 10:00 to 11:00 reserves the room until 11:15, so another meeting may start at 11:15. Front Desk can add a room closure for extra preparation time. A rule change does not rewrite existing occupied intervals.
 
-**Finite recurring bookings.** Expand a recurring request into actual occurrences inside the two-week horizon, with a shared series identifier. Initial series creation is one transaction: either all requested occurrences are saved or the user receives the conflict list. Later monthly dates are booked manually, as agreed. The preview must show which dates will actually be reserved; a monthly pattern within two weeks ordinarily produces only one occurrence. Recurrence does not require an ongoing process to reserve future dates.
+**Finite recurring bookings.** Expand a recurring request into actual occurrences inside the two-week horizon, with a shared series identifier. Initial series creation is one transaction: either all requested occurrences are saved or the user receives an availability error. Later monthly dates are booked manually, as agreed. A monthly pattern within two weeks ordinarily produces only one occurrence. Recurrence does not require an ongoing process to reserve future dates.
 
 **Manual priority.** Front Desk will decide when senior management receives priority for the WDN third-floor room. If staff must move or cancel an existing booking, that change must be audited and the affected organizer notified. Staff cannot bypass the database conflict constraint and leave two active bookings for the same room and time.
 
@@ -39,13 +39,13 @@ flowchart LR
 
 **Safe use of email links.** Opening a link displays a confirmation page; a deliberate button press performs login or check-in using a protected POST request. Merely fetching or previewing a URL must not consume the token or check in a meeting. This also reduces accidental actions from email link inspection. Django requires safe HTTP methods such as GET to be free of state-changing actions. [Django CSRF guidance](https://docs.djangoproject.com/en/5.2/ref/csrf/)
 
-**Staff privileges.** Front Desk and Administrators have identical permissions through one staff role, with individual named accounts for auditability. Passwords with TOTP MFA remain the proposed staff login method, subject to IT's identity policy. If a staff member uses an employee email login, that session receives employee capabilities only; staff operations must additionally require the approved staff authentication strength. Otherwise, the employee login route could bypass staff MFA.
+**Staff privileges.** Front Desk and Administrators have identical permissions through one staff role, with individual named accounts for auditability. Staff sign-in requires a password and an eight-digit one-time code sent to the company mailbox. If a staff member uses the employee email-link route, that session has employee capabilities only; staff endpoints check the stronger session flag.
 
 **Email delivery.** Save a booking change, its audit event, and its pending notification records in the same database transaction. Scheduled commands from the same application send organizer, attendee, and Front Desk emails and one-hour reminders. A failed send is logged and retried without reversing the booking. Jobs need bounded SMTP timeouts, retry limits, and visible failure status. Before sending a reminder, recheck the current booking status and time. SMTP retries can occasionally produce duplicate emails after an ambiguous delivery result; delivery is not promised to be exactly once. SMTP configuration and secrets are supplied later through environment configuration.
 
 **Check-in and automatic cancellation.** Check-in and no-show cancellation must use the same transactional locking and status checks. Re-read the current start time, deadline, and status after locking the booking so that a concurrent edit or check-in cannot be overwritten. At or after the deadline, an unchecked booking is cancelled with reason `no_show`, its room reservation is released, and the audit event and cancellation emails are saved atomically. The history remains available for reports. Check-in after the deadline is rejected even if the scheduled job has not yet run.
 
-**Small scheduled jobs.** Use operating-system-managed Django commands for due bookings/reminders and for SMTP delivery. Run them independently so slow email delivery cannot hold up cancellation. A proposed initial schedule checks due bookings every minute; under normal operation, stored cancellation and notifications follow within the next pass, rather than being guaranteed at the exact second. Availability and booking operations also reconcile relevant overdue bookings so an expired reservation cannot block a new booking while waiting for that pass. Commands must be safe to repeat, prevent duplicate job claims, and record their last successful run for monitoring. Service restart and overdue-work recovery are required.
+**Worker.** One Docker-managed Django worker loops every 30 seconds. Each cycle releases overdue no-shows, marks finished meetings, queues reminders, and sends due notifications with a bounded SMTP timeout and retry limit. Booking writes also reconcile overdue no-shows; calendar reads hide overdue unconfirmed meetings without writing on GET. Release happens on the next successful worker cycle, rather than at the exact second of the deadline. Staff see failed email counts on their dashboard; IT should monitor the worker process and logs.
 
 **Deployment and recovery.** One company server or VM can initially host the HTTPS reverse proxy, production Django web process, scheduled commands, and PostgreSQL. The chosen OS will determine the service configuration; on Linux, a conventional option is Nginx, Gunicorn, and systemd. Database access is limited to the application and approved administration paths. Internal URLs and email links are reachable only from the company network or an approved VPN. SMTP failure affects new email sign-ins and check-in-link delivery; Front Desk needs visibility of failed messages and its manual check-in capability. Use HTTPS and production settings even on the private network. [Django deployment checklist](https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/)
 
@@ -62,7 +62,7 @@ The single server is a shared point of failure. IT must agree acceptable downtim
 ## Operational inputs still needed
 
 1. Employee name/department source, official holiday calendar, five room records, and exact WDN third-floor priority procedure. Only `wdn.com.np` employee email addresses are allowed for now. Front Desk will handle room priority manually; the workflow still needs definition.
-2. Server OS and deployment permissions, internal domain/certificate, SMTP relay details, backup policy, and IT's staff sign-in/MFA policy.
+2. Server access, internal hostname and certificate, SMTP relay details, and backup policy. Staff password plus email code has been approved.
 
 ## Acceptance checks before rollout
 

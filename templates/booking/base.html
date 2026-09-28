@@ -19,7 +19,6 @@
       </a>
       <nav class="header-actions" aria-label="Main navigation">
         {% if request.user.is_authenticated %}
-          <a class="nav-link" href="{% url 'home' %}" aria-current="page">Overview</a>
           <span class="user-pill" title="{{ request.user.email }}">{{ request.user.email }}</span>
           <form method="post" action="{% url 'sign-out' %}">{% csrf_token %}<button class="button button-quiet button-small" type="submit">Sign out</button></form>
         {% else %}
@@ -29,6 +28,8 @@
       </nav>
     </div>
   </header>
+  {% if request.user.is_authenticated %}<nav class="app-nav" aria-label="Workspace"><div class="app-nav-inner"><a href="{% url 'home' %}">Overview</a><a href="{% url 'rooms' %}">Rooms</a><a href="{% url 'calendar' %}">Calendar</a><a href="{% url 'my-bookings' %}">My bookings</a><a href="{% url 'booking-new' %}">New booking</a>{% if request.user.is_staff and request.session.staff_verified %}<a href="{% url 'staff-dashboard' %}">Staff desk</a>{% elif request.user.is_staff %}<a href="{% url 'staff-login' %}">Staff sign-in</a>{% endif %}</div></nav>{% endif %}
+  {% if messages %}<div class="flash-stack" role="status">{% for message in messages %}<div class="flash flash-{{ message.tags }}">{{ message }}</div>{% endfor %}</div>{% endif %}
   <main id="main">{% block content %}{% endblock %}</main>
   <footer class="site-footer"><div class="footer-inner"><span>© {% now "Y" %} Transgate Tech</span><span>WDN Meeting Rooms · Internal use</span></div></footer>
 </body>

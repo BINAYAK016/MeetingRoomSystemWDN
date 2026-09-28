@@ -22,6 +22,7 @@ EMPLOYEE_EMAIL_DOMAINS = tuple(
 )
 if not EMPLOYEE_EMAIL_DOMAINS:
     raise RuntimeError("At least one employee email domain is required")
+PUBLIC_BASE_URL = os.environ.get("DJANGO_PUBLIC_BASE_URL", "http://127.0.0.1:8000")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -82,6 +83,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
+PASSWORD_RESET_TIMEOUT = 3600
 
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Kathmandu"
@@ -104,7 +106,7 @@ SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
 CSRF_USE_SESSIONS = True
 CSRF_FAILURE_VIEW = "booking.views.csrf_failure"
-SECURE_HSTS_SECONDS = 0
+SECURE_HSTS_SECONDS = 3600 if HTTPS_ENABLED else 0
 X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = "no-referrer"
 

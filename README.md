@@ -1,14 +1,24 @@
-# Meeting Room Booking System
+# WDN Meeting Rooms
 
-An internal office application under development. The completed modules provide the PostgreSQL schema, Docker Compose setup, a shared reservation write path, and employee sign-in using one-time links sent to `wdn.com.np` addresses. Employees cannot book through a screen yet. See [database design](docs/database-design.md) for the ERD and constraints.
+An internal meeting room application for `wdn.com.np` employees. Django, PostgreSQL, and Docker Compose power the application. The interface uses the Transgate palette and logo, with Times New Roman until a licensed web font is available.
 
-## Why this structure
+## Features
 
-One Django application runs the web process and, in later modules, scheduled commands. PostgreSQL stores rooms, bookings, email jobs, and audit data. A shared `reservations` table and PostgreSQL exclusion constraint prevent bookings and room closures from occupying the same room at overlapping times. The application also locks the room row before writing, so concurrent requests return a clear conflict. The database remains the final guard.
+- Employee sign-in by one-time company email link.
+- Front Desk and Administrator access with a password and one-time email code. Both staff roles have the same permissions.
+- Room directory, day/week availability, and staff month view.
+- Booking, editing, and cancellation, with 15-minute time slots and a configurable gap. PostgreSQL prevents overlapping reservations, including room closures.
+- Daily, weekly, and monthly recurrence within the two-week booking window. Later monthly meetings are booked manually.
+- Email confirmation, change, cancellation, one-hour reminder, check-in, and no-show notices.
+- Organizer email check-in link after meeting start; a worker releases missed check-ins at the 15-minute deadline.
+- Staff management of rooms, closures, holidays, booking rules, employees, and access. Booking on behalf of an employee and policy override with a recorded reason are supported.
+- Audit history and room/department reports with Excel download.
 
-## Local setup on Windows PowerShell
+Direct HCL/Outlook calendar integration is planned after the first launch, as agreed. WDN third-floor senior-management priority is handled by Front Desk manually.
 
-Docker Desktop with its Linux engine must be running. Run these commands inside this repository folder:
+## Run locally
+
+Install Docker Desktop and use its Linux engine. In PowerShell, from this repository:
 
 ```powershell
 Copy-Item .env.example .env
@@ -16,53 +26,26 @@ python -c 'import secrets; from pathlib import Path; p=Path(".env"); t=p.read_te
 docker compose build
 docker compose up -d db
 docker compose run --rm migrate
-docker compose up -d web
+docker compose up -d web worker
 Invoke-WebRequest http://127.0.0.1:8000/healthz/
 ```
 
-`Copy-Item` creates a local configuration file. The Python command generates random local passwords and keys in that file; `.env` is ignored by Git. `docker compose build` packages the Django application. `up -d db` starts PostgreSQL and keeps its data in a Docker volume. `run --rm migrate` applies committed database migrations. `up -d web` starts the web process. The last command checks that the application can reach PostgreSQL and should return `ok`.
+Open <http://127.0.0.1:8000/>. Enter a `wdn.com.np` address; the local test inbox at <http://127.0.0.1:8000/dev/mail/> shows its one-time link. This inbox is a developer convenience and does not prove mailbox ownership. Live use requires the company's SMTP relay.
 
-To run the database and concurrency tests:
+Optional sample data: `docker compose run --rm web python manage.py loaddata demo_rooms`. These five rooms are labelled demos; replace them with real room details before a pilot.
 
-```powershell
-docker compose run --rm test
-```
+For a local staff account, run `docker compose exec web python manage.py create_staff_account your.name@wdn.com.np`, then open the password setup link in the local test inbox. Staff sign-in at `/staff/sign-in/` emails an eight-digit code to the same inbox. In production, IT should run this command for the two named Administrators and Front Desk accounts after SMTP is configured.
 
-To load five clearly labelled **demo rooms** into a local database only:
+Tests: `docker compose run --rm test`. To stop containers while keeping PostgreSQL data: `docker compose down`.
 
-```powershell
-docker compose run --rm web python manage.py loaddata demo_rooms
-```
+## Production deployment
 
-To stop local containers while preserving database data:
+See [deployment guide](docs/deployment.md). The production Compose file serves HTTPS through Nginx, keeps PostgreSQL off host ports, runs the booking worker, and requires SMTP. IT must supply the private Linux server, internal hostname and DNS, TLS certificate/key, SMTP relay details, and approved initial staff email addresses. These have not yet been supplied, so this repository has not been deployed on the company network.
 
-```powershell
-docker compose down
-```
+Guides: [employee use](docs/user-guide.md), [Front Desk and Administrator use](docs/staff-guide.md), [troubleshooting and pilot checks](docs/troubleshooting.md), [architecture](docs/architecture.md), and [database design](docs/database-design.md).
 
-The `web` port is bound to `127.0.0.1` for local use. Production deployment will add the company hostname, HTTPS reverse proxy, server-specific settings, backups, email relay, staff authentication, and operational monitoring. Do not publish the current foundation as a finished booking service.
+## Operations
 
-## Employee sign-in module
+The worker checks every 30 seconds for due reminders, email delivery, meeting completion, and missed check-ins. Pending emails are stored in PostgreSQL and retried after transient failures. Staff can see the count of failed messages on the staff dashboard. Run `docker compose -f compose.prod.yaml logs -f web worker proxy` for service logs.
 
-Open `http://127.0.0.1:8000/`, then enter a `wdn.com.np` address. A link is valid for 15 minutes and can be used once. Opening it leads to a confirmation button; the account is created and signed in only after that button is pressed. Other domains, inactive accounts, and repeated requests receive the same public response. The current limit is three links per address in 15 minutes. Sign-in tokens are stored as hashes.
-
-For local testing, the default email backend writes messages inside the running web container. After entering an address, select **Open local test inbox** on the result page and open the newest link there. No SMTP details are needed for this local test. This test inbox does **not** verify mailbox ownership. The inbox is available only with the local file-mail configuration and HTTP loopback host; real employee verification requires SMTP delivery to the company mailbox.
-
-If you prefer the terminal, list and read the newest local message with:
-
-```powershell
-docker compose exec web sh -c 'ls -t /tmp/meeting-room-mail | head -1'
-docker compose exec web sh -c 'cat /tmp/meeting-room-mail/$(ls -t /tmp/meeting-room-mail | head -1)'
-```
-
-These messages are development data and disappear if the web container is replaced. When IT supplies the SMTP relay, set `DJANGO_EMAIL_BACKEND=smtp`, `DJANGO_FROM_EMAIL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, and `SMTP_USE_TLS` in the server's `.env`. Production HTTPS mode requires SMTP. Configure the HTTPS proxy to omit `/sign-in/link/` paths from access logs because they contain one-time secrets. Employee email login does not authorize staff operations; the staff MFA gate is a later module.
-
-The interface uses the Transgate logo and its navy `#104068`, red `#e01f26`, white, and near-black colours from the supplied brand booklet. Interface text uses Times New Roman as requested. The overview, sign-in, confirmation, and local test inbox are responsive; calendar and booking actions shown as previews are still being built. Static assets are collected during the Docker image build and served by WhiteNoise. CSRF tokens are tied to the application session. The local HTTP loopback setup accepts the desktop in-app browser's `Origin: null` while still requiring a valid session CSRF token; HTTPS deployment does not allow that exception. If a browser rejects the session, the sign-in page gives a recovery path; keep the same `127.0.0.1` or `localhost` address throughout the flow and allow cookies for that address.
-
-## Development order
-
-1. Database schema and Docker foundation (done).
-2. Employee email sign-in (done).
-3. Staff authentication and room management.
-4. Booking and availability calendar, including recurrence and check-in.
-5. Notifications, reports, audit views, pilot tests, and production deployment.
+The production backup script is [deploy/backup.sh](deploy/backup.sh). Schedule it from the Linux host, keep backup files outside the server as required by company policy, and test restore before launch.

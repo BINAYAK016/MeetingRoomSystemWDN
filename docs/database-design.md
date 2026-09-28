@@ -1,6 +1,6 @@
-# Database design — first implementation module
+# Database design
 
-The application uses PostgreSQL. Each meeting occurrence and room closure reserves time in the same `reservations` table, allowing one database constraint to reject overlapping occupied periods for a room. All displayed booking times use `Asia/Kathmandu`; timestamps are stored as timezone-aware instants. The first implementation module establishes this schema and tests its central constraints. Booking screens, email delivery, check-in jobs, and staff workflows are later modules.
+The application uses PostgreSQL. Each meeting occurrence and room closure reserves time in the same `reservations` table, allowing one database constraint to reject overlapping occupied periods for a room. All displayed booking times use `Asia/Kathmandu`; timestamps are stored as timezone-aware instants. Booking screens, email delivery, check-in jobs, and staff workflows use this schema.
 
 ## ERD
 
@@ -29,7 +29,7 @@ erDiagram
 | `booking_series` | `id` PK; `room_id`, `organizer_id`, `created_by_id` FKs; frequency, first/last dates | Groups the actual occurrences of a daily, weekly, or monthly request within the two-week advance window. It is not a promise to reserve later dates. |
 | `reservations` | `id` PK; `room_id` FK; optional `series_id`, `organizer_id`, `created_by_id` FKs; kind, status, actual start/end, occupied start/end | Shared schedule for meetings and staff room closures. A meeting has organizer and title; a closure has a reason. Cancelled and no-show meetings remain in history but release occupancy. |
 | `booking_attendees` | `id` PK; `reservation_id` FK; unique `(reservation_id, email)` | Email recipients and attendee count. Only meeting reservations may have attendees. |
-| `email_tokens` | `id` PK; optional `user_id`, `reservation_id` FKs; token hash unique, purpose, expiry, consumed time | Short-lived employee login or per-occurrence check-in. Raw tokens are never stored. |
+| `email_tokens` | `id` PK; optional `user_id`, `reservation_id` FKs; token hash unique, purpose, expiry, consumed time | Short-lived employee login, staff email code, or per-occurrence check-in. Raw tokens and codes are never stored. |
 | `notifications` | `id` PK; optional `reservation_id` FK; recipient, event type, content snapshot, status, attempts, next attempt | Database outbox for email delivery and retries. A reservation change and its notifications commit together. |
 | `audit_events` | `id` PK; optional `actor_id` FK; action, target, outcome, timestamp, safe details | Append-only application history, including system actions. No passwords, raw tokens, or SMTP secrets. |
 | `booking_policy` | Singleton `id=1` PK; working hours, limits, slot size, gap, check-in deadline; optional `updated_by_id` FK | Configurable company-wide booking rules. Application logic validates rules on every write and records staff changes. |

@@ -1,4 +1,10 @@
 services:
+  mail_init:
+    image: busybox:1.37
+    command: chown 1000:1000 /mail
+    volumes:
+      - local_mail:/mail
+
   db:
     image: postgres:17-alpine
     environment:
@@ -24,6 +30,7 @@ services:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
       DJANGO_HTTPS: ${DJANGO_HTTPS:-false}
+      DJANGO_PUBLIC_BASE_URL: ${DJANGO_PUBLIC_BASE_URL:-http://127.0.0.1:8000}
       EMPLOYEE_EMAIL_DOMAINS: ${EMPLOYEE_EMAIL_DOMAINS:-wdn.com.np}
       DJANGO_EMAIL_BACKEND: ${DJANGO_EMAIL_BACKEND:-file}
       DJANGO_FROM_EMAIL: ${DJANGO_FROM_EMAIL:-}
@@ -35,8 +42,25 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      mail_init:
+        condition: service_completed_successfully
     ports:
       - "127.0.0.1:8000:8000"
+    volumes:
+      - local_mail:/tmp/meeting-room-mail
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: python manage.py run_booking_worker
+    environment: *app_environment
+    volumes:
+      - local_mail:/tmp/meeting-room-mail
+    depends_on:
+      db:
+        condition: service_healthy
+      mail_init:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   migrate:
@@ -59,3 +83,4 @@ services:
 
 volumes:
   postgres_data:
+  local_mail:
