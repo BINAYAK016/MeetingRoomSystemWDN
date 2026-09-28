@@ -237,7 +237,10 @@ class EmailToken(models.Model):
 
     class Meta:
         db_table = "email_tokens"
-        indexes = [models.Index(fields=["purpose", "expires_at"], name="email_token_expiry_idx")]
+        indexes = [
+            models.Index(fields=["purpose", "expires_at"], name="email_token_expiry_idx"),
+            models.Index(fields=["purpose", "email", "-created_at"], name="email_token_request_idx"),
+        ]
         constraints = [
             models.CheckConstraint(
                 condition=Q(purpose="login", reservation__isnull=True)

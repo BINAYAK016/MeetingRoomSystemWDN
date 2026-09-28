@@ -15,6 +15,13 @@ def required_env(name):
 SECRET_KEY = required_env("DJANGO_SECRET_KEY")
 DEBUG = False
 ALLOWED_HOSTS = [host.strip() for host in required_env("DJANGO_ALLOWED_HOSTS").split(",") if host.strip()]
+EMPLOYEE_EMAIL_DOMAINS = tuple(
+    domain.strip().lower().lstrip("@")
+    for domain in os.environ.get("EMPLOYEE_EMAIL_DOMAINS", "wdn.com.np").split(",")
+    if domain.strip()
+)
+if not EMPLOYEE_EMAIL_DOMAINS:
+    raise RuntimeError("At least one employee email domain is required")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -84,7 +91,29 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 HTTPS_ENABLED = os.environ.get("DJANGO_HTTPS", "false").lower() == "true"
 SECURE_SSL_REDIRECT = HTTPS_ENABLED
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https") if HTTPS_ENABLED else None
 SESSION_COOKIE_SECURE = HTTPS_ENABLED
 CSRF_COOKIE_SECURE = HTTPS_ENABLED
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
 SECURE_HSTS_SECONDS = 0
 X_FRAME_OPTIONS = "DENY"
+SECURE_REFERRER_POLICY = "no-referrer"
+
+MAIL_MODE = os.environ.get("DJANGO_EMAIL_BACKEND", "file").lower()
+if MAIL_MODE == "smtp":
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = required_env("SMTP_HOST")
+    EMAIL_PORT = int(os.environ.get("SMTP_PORT", "587"))
+    EMAIL_HOST_USER = os.environ.get("SMTP_USER", "")
+    EMAIL_HOST_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+    EMAIL_USE_TLS = os.environ.get("SMTP_USE_TLS", "true").lower() == "true"
+    EMAIL_TIMEOUT = 10
+    DEFAULT_FROM_EMAIL = required_env("DJANGO_FROM_EMAIL")
+elif MAIL_MODE == "file" and not HTTPS_ENABLED:
+    EMAIL_BACKEND = "django.core.mail.backends.filebased.EmailBackend"
+    EMAIL_FILE_PATH = "/tmp/meeting-room-mail"
+    DEFAULT_FROM_EMAIL = "Meeting Rooms <noreply@local.invalid>"
+else:
+    raise RuntimeError("Use the approved SMTP relay when enabling HTTPS deployment")

@@ -1,6 +1,6 @@
 # Meeting Room Booking System
 
-An internal office application under development. This first module provides the PostgreSQL schema, Django project, Docker Compose setup, and a shared reservation write path. Employees cannot book through a screen yet. The next module will add email identity, followed by room management and booking workflows. See [database design](docs/database-design.md) for the ERD and constraints.
+An internal office application under development. The completed modules provide the PostgreSQL schema, Docker Compose setup, a shared reservation write path, and employee sign-in using one-time links sent to `wdn.com.np` addresses. Employees cannot book through a screen yet. See [database design](docs/database-design.md) for the ERD and constraints.
 
 ## Why this structure
 
@@ -42,10 +42,23 @@ docker compose down
 
 The `web` port is bound to `127.0.0.1` for local use. Production deployment will add the company hostname, HTTPS reverse proxy, server-specific settings, backups, email relay, staff authentication, and operational monitoring. Do not publish the current foundation as a finished booking service.
 
+## Employee sign-in module
+
+Open `http://127.0.0.1:8000/`, then enter a `wdn.com.np` address. A link is valid for 15 minutes and can be used once. Opening it leads to a confirmation button; the account is created and signed in only after that button is pressed. Other domains, inactive accounts, and repeated requests receive the same public response. The current limit is three links per address in 15 minutes. Sign-in tokens are stored as hashes.
+
+For local testing, the default email backend writes messages inside the running web container. To list and read the newest local message:
+
+```powershell
+docker compose exec web sh -c 'ls -t /tmp/meeting-room-mail | head -1'
+docker compose exec web sh -c 'cat /tmp/meeting-room-mail/$(ls -t /tmp/meeting-room-mail | head -1)'
+```
+
+These messages are development data and disappear if the web container is replaced. When IT supplies the SMTP relay, set `DJANGO_EMAIL_BACKEND=smtp`, `DJANGO_FROM_EMAIL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, and `SMTP_USE_TLS` in the server's `.env`. Production HTTPS mode requires SMTP. Configure the HTTPS proxy to omit `/sign-in/link/` paths from access logs because they contain one-time secrets. Employee email login does not authorize staff operations; the staff MFA gate is a later module.
+
 ## Development order
 
-1. Database schema and Docker foundation (this module).
-2. Employee email sign-in and staff authentication.
-3. Room management.
+1. Database schema and Docker foundation (done).
+2. Employee email sign-in (done).
+3. Staff authentication and room management.
 4. Booking and availability calendar, including recurrence and check-in.
 5. Notifications, reports, audit views, pilot tests, and production deployment.

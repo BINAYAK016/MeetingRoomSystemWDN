@@ -1,0 +1,12 @@
+{% extends "booking/base.html" %}
+{% block content %}
+{% if invalid %}
+  <h1>Link unavailable</h1>
+  <p>This link has expired or has already been used. Request a new one.</p>
+  <a class="button" href="{% url 'sign-in' %}">Request another link</a>
+{% else %}
+  <h1>Confirm sign-in</h1>
+  <p>Continue to sign in to WDN Meeting Rooms.</p>
+  <form method="post">{% csrf_token %}<button type="submit">Continue</button></form>
+{% endif %}
+{% endblock %}

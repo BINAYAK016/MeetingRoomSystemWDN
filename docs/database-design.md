@@ -51,4 +51,4 @@ The exclusion constraint supplies the room/time search index. Add indexes for re
 
 ## Migration and verification strategy
 
-Numbered Django migrations are committed with the code and applied by a separate deployment step after a database backup. They are never generated on the production server. Schema changes must preserve existing history; destructive changes require a reviewed data migration and restore plan. Tests run against PostgreSQL, including overlap, adjacency, room closure conflict, cancellation release, and concurrent booking attempts. Email and authentication tests follow in their own modules.
+Numbered Django migrations are committed with the code and applied by a separate deployment step after a database backup. They are never generated on the production server. Schema changes must preserve existing history; destructive changes require a reviewed data migration and restore plan. Tests run against PostgreSQL, including overlap, adjacency, room closure conflict, cancellation release, concurrent booking attempts, and the employee email-link flow.

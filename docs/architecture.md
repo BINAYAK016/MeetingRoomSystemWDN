@@ -61,7 +61,7 @@ The single server is a shared point of failure. IT must agree acceptable downtim
 
 ## Operational inputs still needed
 
-1. The company's allowed email domains, employee name/department source, official holiday calendar, five room records, and exact WDN third-floor priority procedure. Front Desk will handle that priority manually; the workflow still needs definition.
+1. Employee name/department source, official holiday calendar, five room records, and exact WDN third-floor priority procedure. Only `wdn.com.np` employee email addresses are allowed for now. Front Desk will handle room priority manually; the workflow still needs definition.
 2. Server OS and deployment permissions, internal domain/certificate, SMTP relay details, backup policy, and IT's staff sign-in/MFA policy.
 
 ## Acceptance checks before rollout

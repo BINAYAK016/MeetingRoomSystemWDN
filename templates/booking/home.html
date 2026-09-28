@@ -1,0 +1,12 @@
+{% extends "booking/base.html" %}
+{% block content %}
+<h1>WDN Meeting Rooms</h1>
+{% if request.user.is_authenticated %}
+  <p>Signed in as <strong>{{ request.user.email }}</strong>.</p>
+  <p class="muted">Room booking is being built. This module enables verified employee sign-in.</p>
+  <form method="post" action="{% url 'sign-out' %}">{% csrf_token %}<button type="submit">Sign out</button></form>
+{% else %}
+  <p>Sign in with your WDN company email to use the meeting room system.</p>
+  <a class="button" href="{% url 'sign-in' %}">Sign in</a>
+{% endif %}
+{% endblock %}
