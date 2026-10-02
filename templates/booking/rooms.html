@@ -1,1 +1,21 @@
-{% extends "booking/base.html" %}{% block title %}Rooms{% endblock %}{% block content %}<div class="page-container app-page"><div class="page-heading"><div><p class="eyebrow">WDN WORKSPACE</p><h1>Meeting rooms</h1><p class="lead">Find a space that fits your team.</p></div><a class="button button-primary" href="{% url 'calendar' %}">View availability →</a></div><form method="get" class="filter-bar"><label for="capacity">Minimum seats</label><input id="capacity" name="capacity" type="number" min="1" value="{{ capacity }}" placeholder="Any capacity"><button class="button button-quiet button-small">Filter rooms</button></form><div class="room-grid">{% for room in rooms %}<article class="panel room-card"><div class="room-card-top"><span class="room-card-mark" aria-hidden="true">▦</span><span class="capacity-chip">{{ room.capacity }} seats</span></div><h2>{{ room.name }}</h2><p class="muted">{{ room.location }} · Floor {{ room.floor }}</p><p>{{ room.description|default:"Meeting room" }}</p><div class="facility-list">{% for facility in room.facilities.all %}<span>{{ facility.name }}</span>{% empty %}<span>Facilities to be confirmed</span>{% endfor %}</div><a class="text-link" href="{% url 'room-detail' room.pk %}">Room details →</a></article>{% empty %}<div class="panel empty-state"><h2>No active rooms yet</h2><p>Front Desk will add the room directory.</p></div>{% endfor %}</div></div>{% endblock %}
+{% extends "booking/base.html" %}
+{% block title %}Rooms{% endblock %}
+{% block content %}
+<div class="page-container app-page">
+  <div class="page-heading"><div><p class="eyebrow">WDN WORKSPACE</p><h1>Meeting rooms</h1><p class="lead">Find a space that fits your team.</p></div><a class="button button-primary" href="{% url 'calendar' %}">View availability →</a></div>
+  <form method="get" class="filter-bar">
+    <label>Search rooms<input name="q" value="{{ search }}" maxlength="100" placeholder="Name, floor or description"></label>
+    <label>Minimum seats<input name="capacity" type="number" min="1" max="65535" value="{{ capacity }}" placeholder="Any capacity"></label>
+    <label>Location<select name="location"><option value="">All locations</option>{% for value in locations %}<option {% if location == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
+    <label>Facility<select name="facility"><option value="">Any facility</option>{% for value in facilities %}<option {% if facility == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
+    <button class="button button-primary">Find rooms</button><a class="button button-quiet" href="{% url 'rooms' %}">Reset</a>
+  </form>
+  <div class="room-grid">{% for room in rooms %}<article class="panel room-card">
+    <div class="room-card-top"><span class="room-card-mark" aria-hidden="true">▦</span><span class="capacity-chip">{{ room.capacity }} seats</span></div>
+    <h2>{{ room.name }}</h2><p class="muted">{{ room.location }} · Floor {{ room.floor }}</p>
+    {% if room.description %}<p>{{ room.description|truncatechars:200 }}</p>{% endif %}
+    <div class="facility-list">{% for facility in room.facilities.all %}<span>{{ facility.name }}</span>{% empty %}<span>No equipment listed</span>{% endfor %}</div>
+    <a class="text-link" href="{% url 'room-detail' room.pk %}">Room details →</a>
+  </article>{% empty %}<div class="panel empty-state"><h2>No rooms found</h2><p>Try changing the filters or contact Front Desk for help.</p></div>{% endfor %}</div>
+  {% include "booking/pagination.html" %}
+</div>{% endblock %}

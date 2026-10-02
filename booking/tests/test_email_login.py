@@ -1,9 +1,11 @@
+import hashlib
 import re
+from datetime import timedelta
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from datetime import timedelta
 from unittest.mock import patch
 
+from django.contrib.sessions.models import Session
 from django.core import mail
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
@@ -51,9 +53,34 @@ class EmployeeEmailLoginTests(TestCase):
         for email in ("person@example.com", "person@tgt.com.np", "bad@@wdn.com.np"):
             response = self.request_link(email)
             self.assertEqual(response.status_code, 200)
-            self.assertContains(response, "If this is an eligible WDN address")
+        self.assertContains(response, "If the address is eligible and delivery is available")
         self.assertEqual(len(mail.outbox), 0)
         self.assertEqual(EmailToken.objects.count(), 0)
+
+    def test_link_stages_only_digest_in_database_session(self):
+        self.request_link()
+        link = self.emailed_link()
+        raw = link.rstrip("/").rsplit("/", 1)[-1]
+        self.client.get(link)
+        decoded = Session.objects.get(session_key=self.client.session.session_key).get_decoded()
+        self.assertEqual(decoded["pending_login_token"], hashlib.sha256(raw.encode()).hexdigest())
+        self.assertNotIn(raw, str(decoded))
+        self.assertIsNone(EmailToken.objects.get().consumed_at)
+        self.assertFalse(User.objects.exists())
+        self.assertEqual(self.client.post(reverse("login-confirm")).status_code, 302)
+        self.assertIn("_auth_user_id", self.client.session)
+
+    def test_digest_is_not_accepted_as_an_external_bearer_link(self):
+        self.request_link()
+        link = self.emailed_link()
+        token = EmailToken.objects.get()
+        self.client.get(reverse("login-link", args=[token.token_hash]))
+        self.assertEqual(self.client.post(reverse("login-confirm")).status_code, 400)
+        token.refresh_from_db()
+        self.assertIsNone(token.consumed_at)
+        self.assertFalse(User.objects.exists())
+        self.client.get(link)
+        self.assertEqual(self.client.post(reverse("login-confirm")).status_code, 302)
 
     def test_expired_link_does_not_create_account(self):
         self.request_link()
@@ -76,7 +103,7 @@ class EmployeeEmailLoginTests(TestCase):
         self.assertEqual(EmailToken.objects.count(), 3)
 
     def test_email_delivery_failure_invalidates_link(self):
-        with patch("booking.services.email_login.send_mail", side_effect=OSError("relay unavailable")):
+        with patch("booking.services.email_login.deliver_mail", side_effect=OSError("relay unavailable")):
             self.request_link()
         self.assertEqual(len(mail.outbox), 0)
         self.assertIsNotNone(EmailToken.objects.get().consumed_at)

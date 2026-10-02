@@ -1,4 +1,6 @@
-.env
+.env*
+!.env.example
+!.env.production.example
 .venv/
 __pycache__/
 *.py[cod]
@@ -8,5 +10,12 @@ htmlcov/
 .idea/
 .vscode/
 staticfiles/
-deploy/certs/*.pem
+deploy/certs/*
+!deploy/certs/.gitkeep
 deploy/backups/
+*.dump
+*.partial
+*.pem
+*.key
+*.p12
+*.pfx

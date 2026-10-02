@@ -327,3 +327,27 @@ td a, .panel a:not(.button) { color: var(--navy); }
 .slot-own { color: var(--navy); background: #e9f1f8; }
 .slot-booked { color: #9c4751; background: #fff0f1; }
 @media (max-width: 800px) { .form-grid, .detail-grid, .room-cards, .room-grid { grid-template-columns: 1fr; } .app-nav-inner, .flash-stack { width: min(100% - 32px, 1240px); } .form-wide { grid-column: auto; } }
+
+/* Complete workspace states and accessible controls. */
+.app-nav a[aria-current=page], .staff-nav a[aria-current=page] { border-color: var(--red); font-weight: 700; background: #f2f6f9; }
+.profile-panel { max-width: 800px; }
+.pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 20px 0; color: var(--muted); }
+.pagination > div { display: flex; gap: 10px; }
+.slot-closed { color: #596774; background: #edf0f3; white-space: normal; }
+.calendar-key .key-closed { background: #cdd3da; }
+.app-page > .panel + .panel { margin-top: 24px; }
+.detail-grid > *, .dashboard-grid > *, .panel { min-width: 0; }
+.room-card h2, .detail-list dd, td, .user-pill { overflow-wrap: anywhere; }
+.errorlist { color: #b31325; padding-left: 20px; margin: 4px 0; }
+button:disabled { cursor: wait; opacity: .7; }
+:focus-visible { outline: 3px solid #789ab5; outline-offset: 3px; }
+.filter-bar label { flex: 1 1 180px; }
+.filter-bar label input, .filter-bar label select { min-width: 0; }
+.form-field input[type=checkbox] { width: 22px; height: 22px; accent-color: var(--navy); }
+.table-scroll:focus-visible { outline-offset: 4px; }
+@media (max-width: 600px) {
+  .filter-bar label { width: 100%; flex-basis: 100%; }
+  .form-actions > .button { flex: 1; }
+  .detail-list div { grid-template-columns: 1fr; gap: 5px; }
+  .pagination { align-items: flex-start; }
+}

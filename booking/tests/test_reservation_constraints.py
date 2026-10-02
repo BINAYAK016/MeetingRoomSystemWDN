@@ -2,12 +2,11 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from threading import Barrier
 
-from django.db import IntegrityError, close_old_connections
+from django.db import IntegrityError, close_old_connections, connections
 from django.test import TestCase, TransactionTestCase
 
 from booking.models import BookingPolicy, Reservation, Room, User
 from booking.services.reservations import ReservationConflict, RoomUnavailable, reserve_time
-
 
 START = datetime(2030, 1, 7, 4, 15, tzinfo=timezone.utc)
 
@@ -101,7 +100,7 @@ class ReservationConstraintTests(TransactionTestCase):
             except ReservationConflict:
                 return "conflict"
             finally:
-                close_old_connections()
+                connections.close_all()
 
         with ThreadPoolExecutor(max_workers=2) as pool:
             results = list(pool.map(lambda _: attempt(), range(2)))

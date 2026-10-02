@@ -1,0 +1,16 @@
+{% extends "booking/base.html" %}
+{% block title %}My profile{% endblock %}
+{% block content %}
+<div class="page-container app-page">
+  <div class="page-heading"><div><p class="eyebrow">YOUR ACCOUNT</p><h1>My profile</h1><p class="lead">Keep your name and department up to date.</p></div></div>
+  <section class="panel profile-panel">
+    <dl class="detail-list"><div><dt>Company email</dt><dd>{{ request.user.email }}</dd></div><div><dt>Access</dt><dd>{% if request.user.is_staff %}Front Desk / Administrator{% else %}Employee{% endif %}</dd></div></dl>
+    <p class="muted">Contact Front Desk to change your email address or access.</p>
+    <form method="post" class="app-form">{% csrf_token %}
+      {{ form.non_field_errors }}
+      <div class="form-grid">{% for field in form %}<div class="form-field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endfor %}</div>
+      <div class="form-actions"><button class="button button-primary" type="submit">Save profile</button></div>
+    </form>
+  </section>
+</div>
+{% endblock %}

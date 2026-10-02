@@ -21,6 +21,7 @@ services:
 
   web:
     build: .
+    image: wdn-meeting-rooms:local
     environment: &app_environment
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
@@ -39,6 +40,8 @@ services:
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      SMTP_USE_SSL: ${SMTP_USE_SSL:-false}
+      AUTH_TRUSTED_PROXY_CIDRS: ${AUTH_TRUSTED_PROXY_CIDRS:-}
     depends_on:
       db:
         condition: service_healthy
@@ -49,9 +52,17 @@ services:
     volumes:
       - local_mail:/tmp/meeting-room-mail
     restart: unless-stopped
+    init: true
+    healthcheck:
+      test: ["CMD", "python", "deploy/check-web-health.py"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   worker:
     build: .
+    image: wdn-meeting-rooms:local
     command: python manage.py run_booking_worker
     environment: *app_environment
     volumes:
@@ -62,9 +73,17 @@ services:
       mail_init:
         condition: service_completed_successfully
     restart: unless-stopped
+    init: true
+    healthcheck:
+      test: ["CMD", "python", "manage.py", "check_worker_health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   migrate:
     build: .
+    image: wdn-meeting-rooms:local
     command: python manage.py migrate --noinput
     environment: *app_environment
     depends_on:
@@ -74,6 +93,7 @@ services:
 
   test:
     build: .
+    image: wdn-meeting-rooms:local
     command: python manage.py test -v 2
     environment: *app_environment
     depends_on:

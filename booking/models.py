@@ -7,7 +7,7 @@ from django.contrib.postgres.fields import DateTimeRangeField, RangeBoundary, Ra
 from django.db import models
 from django.db.models import F, Func, Q
 from django.db.models.functions import Lower
-
+from django.utils.crypto import salted_hmac
 
 ACTIVE_RESERVATION_STATUSES = ("confirmed", "checked_in", "completed", "blocked")
 
@@ -41,10 +41,19 @@ class User(AbstractUser):
     username = None
     email = models.EmailField(unique=True)
     department = models.CharField(max_length=120, blank=True)
+    auth_version = models.PositiveIntegerField(default=1)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
     objects = UserManager()
+
+    def _get_session_auth_hash(self, secret=None):
+        return salted_hmac(
+            "booking.User.get_session_auth_hash",
+            f"{self.password}:{self.auth_version}",
+            secret=secret,
+            algorithm="sha256",
+        ).hexdigest()
 
     class Meta:
         db_table = "users"
@@ -71,7 +80,9 @@ class Room(models.Model):
         db_table = "rooms"
         ordering = ["location", "floor", "name"]
         constraints = [
-            models.UniqueConstraint(fields=["location", "floor", "name"], name="room_location_floor_name_unique"),
+            models.UniqueConstraint(
+                fields=["location", "floor", "name"], name="room_location_floor_name_unique"
+            ),
             models.CheckConstraint(condition=Q(capacity__gt=0), name="room_capacity_positive"),
         ]
 
@@ -135,8 +146,12 @@ class Reservation(models.Model):
         EXTERNAL = "external", "External"
 
     room = models.ForeignKey(Room, on_delete=models.PROTECT, related_name="reservations")
-    series = models.ForeignKey(BookingSeries, null=True, blank=True, on_delete=models.PROTECT, related_name="occurrences")
-    organizer = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT, related_name="organized_reservations")
+    series = models.ForeignKey(
+        BookingSeries, null=True, blank=True, on_delete=models.PROTECT, related_name="occurrences"
+    )
+    organizer = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.PROTECT, related_name="organized_reservations"
+    )
     created_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="created_reservations")
     kind = models.CharField(max_length=7, choices=Kind.choices)
     status = models.CharField(max_length=16, choices=Status.choices)
@@ -234,6 +249,7 @@ class EmailToken(models.Model):
     token_hash = models.CharField(max_length=64, unique=True)
     expires_at = models.DateTimeField()
     consumed_at = models.DateTimeField(null=True, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -251,12 +267,27 @@ class EmailToken(models.Model):
         ]
 
 
+class AuthenticationThrottle(models.Model):
+    purpose = models.CharField(max_length=40)
+    key = models.CharField(max_length=64)
+    window_started_at = models.DateTimeField()
+    attempts = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = "authentication_throttles"
+        constraints = [
+            models.UniqueConstraint(fields=["purpose", "key"], name="auth_throttle_purpose_key_unique"),
+        ]
+        indexes = [models.Index(fields=["window_started_at"], name="auth_throttle_window_idx")]
+
+
 class Notification(models.Model):
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
         SENDING = "sending", "Sending"
         SENT = "sent", "Sent"
         FAILED = "failed", "Failed"
+        SKIPPED = "skipped", "Superseded"
 
     reservation = models.ForeignKey(Reservation, null=True, blank=True, on_delete=models.PROTECT)
     recipient_email = models.EmailField()
@@ -268,6 +299,8 @@ class Notification(models.Model):
     next_attempt_at = models.DateTimeField()
     sent_at = models.DateTimeField(null=True, blank=True)
     last_error = models.CharField(max_length=240, blank=True)
+    lease_token = models.UUIDField(null=True, blank=True)
+    lease_expires_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -309,9 +342,27 @@ class BookingPolicy(models.Model):
         db_table = "booking_policy"
         constraints = [
             models.CheckConstraint(condition=Q(id=1), name="booking_policy_singleton"),
-            models.CheckConstraint(condition=Q(opens_at__lt=F("closes_at")), name="booking_policy_hours_ordered"),
-            models.CheckConstraint(condition=Q(minimum_minutes__lte=F("maximum_minutes")), name="booking_policy_duration_ordered"),
-            models.CheckConstraint(condition=Q(slot_minutes__gt=0, advance_days__gt=0), name="booking_policy_steps_positive"),
+            models.CheckConstraint(
+                condition=Q(opens_at__lt=F("closes_at")), name="booking_policy_hours_ordered"
+            ),
+            models.CheckConstraint(
+                condition=Q(minimum_minutes__lte=F("maximum_minutes")), name="booking_policy_duration_ordered"
+            ),
+            models.CheckConstraint(
+                condition=Q(slot_minutes__gt=0, advance_days__gt=0), name="booking_policy_steps_positive"
+            ),
+            models.CheckConstraint(
+                condition=Q(
+                    minimum_minutes__gt=0,
+                    maximum_minutes__lte=1440,
+                    slot_minutes__lte=60,
+                    gap_minutes__lte=120,
+                    advance_days__lte=366,
+                    check_in_minutes__gt=0,
+                    check_in_minutes__lte=F("minimum_minutes"),
+                ),
+                name="booking_policy_valid_limits",
+            ),
         ]
 
 
@@ -322,3 +373,13 @@ class CompanyHoliday(models.Model):
     class Meta:
         db_table = "company_holidays"
         ordering = ["date"]
+
+
+class WorkerHeartbeat(models.Model):
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    last_success_at = models.DateTimeField(null=True, blank=True)
+    last_error_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "worker_heartbeat"
+        constraints = [models.CheckConstraint(condition=Q(id=1), name="worker_heartbeat_singleton")]

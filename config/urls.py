@@ -1,18 +1,12 @@
-from django.db import connection
-from django.http import HttpResponse
 from django.urls import path
 
-from booking import booking_views, staff_views, views
+from booking import booking_views, error_views, profile_views, staff_views, views
+from booking.health import liveness, readiness
 
-
-def healthcheck(request):
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-            cursor.fetchone()
-    except Exception:
-        return HttpResponse("unavailable", status=503, content_type="text/plain")
-    return HttpResponse("ok", content_type="text/plain")
+handler400 = error_views.bad_request
+handler403 = error_views.permission_denied
+handler404 = error_views.not_found
+handler500 = error_views.server_error
 
 
 urlpatterns = [
@@ -21,6 +15,7 @@ urlpatterns = [
     path("sign-in/link/<str:token>/", views.login_link, name="login-link"),
     path("sign-in/confirm/", views.login_confirm, name="login-confirm"),
     path("sign-out/", views.sign_out, name="sign-out"),
+    path("profile/", profile_views.profile, name="profile"),
     path("dev/mail/", views.dev_mail, name="dev-mail"),
     path("rooms/", booking_views.room_list, name="rooms"),
     path("rooms/<int:room_id>/", booking_views.room_detail, name="room-detail"),
@@ -34,7 +29,9 @@ urlpatterns = [
     path("check-in/confirm/", booking_views.checkin_confirm, name="checkin-confirm"),
     path("staff/sign-in/", staff_views.staff_login, name="staff-login"),
     path("staff/code/", staff_views.staff_code, name="staff-code"),
-    path("staff/set-password/<str:uid>/<str:token>/", staff_views.set_staff_password, name="staff-set-password"),
+    path(
+        "staff/set-password/<str:uid>/<str:token>/", staff_views.set_staff_password, name="staff-set-password"
+    ),
     path("staff/", staff_views.dashboard, name="staff-dashboard"),
     path("staff/rooms/", staff_views.rooms, name="staff-rooms"),
     path("staff/rooms/new/", staff_views.room_form, name="staff-room-new"),
@@ -53,5 +50,6 @@ urlpatterns = [
     path("staff/reports/", staff_views.reports, name="staff-reports"),
     path("staff/reports.xlsx", staff_views.report_excel, name="staff-report-excel"),
     path("staff/audit/", staff_views.audit, name="staff-audit"),
-    path("healthz/", healthcheck, name="healthcheck"),
+    path("healthz/", readiness, name="healthcheck"),
+    path("livez/", liveness, name="liveness"),
 ]
