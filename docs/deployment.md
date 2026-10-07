@@ -1,5 +1,7 @@
 # Private-network deployment
 
+**Transgate Tech | Binayak Bhandari**
+
 Use the IT-provided Linux server, an internal DNS name, and a certificate trusted by company devices. Restrict inbound HTTPS to the approved company network/VPN. The application can start with email disabled; employee/staff mailbox verification requires IT's SMTP configuration before rollout.
 
 ## Prepare configuration
@@ -7,7 +9,7 @@ Use the IT-provided Linux server, an internal DNS name, and a certificate truste
 Install Docker Engine, the Docker Compose plugin, and Git. Give the deployment operator repository access. Create internal DNS and permit outbound access to the approved SMTP relay when configured. Place the certificate chain and key at `deploy/certs/fullchain.pem` and `deploy/certs/privkey.pem`; protect the key and never commit it. The certificate directory and backups are excluded from image builds.
 
 ```sh
-git clone https://github.com/BINAYAK016/MeetingRoomSystemWDN.git
+git clone --branch mbs-prod https://github.com/BINAYAK016/MeetingRoomSystemWDN.git
 cd MeetingRoomSystemWDN
 docker run --rm -v "$PWD:/workspace" -w /workspace python:3.12-slim python deploy/create-env.py --production
 ```
@@ -66,9 +68,9 @@ After fixing an outage that exhausted five attempts, requeue eligible failures w
 
 ## Pilot verification
 
-Check HTTPS certificate trust from a company laptop and employee company-email sign-in/logout. Verify staff password/code sign-in, profile, room creation/edit/deactivation/reactivation, real facilities and capacities, booking creation/change/cancellation, recurring dates, holiday/business rules, and calendar privacy. A simultaneous same-slot attempt must produce one booking and an availability error for the other user. Employees must receive no staff access by changing URLs.
+Check HTTPS certificate trust from a company laptop and employee company-email sign-in/logout. Verify staff password/code sign-in, profile, room creation/edit/deactivation/reactivation, real facilities and capacities, pending requests, approval/rejection/reason, booking change/cancellation, recurring dates, holiday/business rules, and calendar privacy. A simultaneous same-slot attempt must produce one booking and an availability error for the other user. Employees must receive no staff access by changing URLs.
 
-Verify organizer/attendee/staff confirmation and change/cancellation notices, one-hour reminder, email check-in before the 15-minute deadline, automatic no-show release, manual staff check-in, closures, audit history, and Excel export. Verify failed mail remains visible and retries without losing the booking. Utilization reports use configured business hours and holidays for the selected range; historical policy/holiday changes can change the denominator, so treat utilization as an operational estimate rather than a payroll/accounting measurement.
+Verify organizer/staff request and rejection notices, organizer/attendee/staff approval confirmation and change/cancellation notices, one-hour reminder, email check-in before the 15-minute deadline, automatic no-show release, manual staff check-in, closures, audit history, and Excel export. Verify failed mail remains visible and retries without losing the booking. Utilization reports use configured business hours and holidays for the selected range; historical policy/holiday changes can change the denominator, so treat utilization as an operational estimate rather than a payroll/accounting measurement.
 
 The repository's automated tests and isolated deployment verification do not replace company-server checks for actual mail delivery, DNS, certificate trust, firewall/VPN access, backup storage, and representative load.
 
@@ -86,6 +88,8 @@ docker compose -f compose.prod.yaml run --rm db_setup
 docker compose -f compose.prod.yaml up -d web worker proxy
 curl --fail https://YOUR-INTERNAL-HOST/healthz/
 ```
+
+Migration 0008 preserves existing confirmed meetings as approved and adds pending request occupancy. Reversing it cancels pending/rejected requests; use a reviewed rollback/restore plan. Stop all writers during migration, then reapply runtime grants.
 
 Preserve the Django secret, database administrator credentials, and PostgreSQL volume across updates. Review migrations before applying them; restore planning is required for schema rollback. Stop with `docker compose -f compose.prod.yaml down` to preserve database storage. Never use `down --volumes` on production unless intentionally destroying its data.
 

@@ -1,4 +1,6 @@
-# WDN Meeting Rooms
+# Meeting Booking System
+
+**Transgate Tech | Binayak Bhandari**
 
 An internal meeting room application for employees with `wdn.com.np` or `transgate.com.np` email addresses. Django renders the employee and staff interface; PostgreSQL stores records, sessions, notification jobs, and audit history. A worker sends email and reconciles reminders, completed meetings, and missed check-ins. Docker Compose runs the application, worker, and persistent PostgreSQL database; production adds an HTTPS Nginx proxy on the company network.
 
@@ -7,10 +9,11 @@ The interface uses the Transgate navy/red palette and logo, with Times New Roman
 ## Features
 
 - Room search, details, capacity/facilities, and availability calendar.
-- Own bookings and profile; meeting creation, modification, and cancellation.
+- Own bookings and profile; booking requests, modification, and cancellation.
+- Employee requests require staff approval. Pending requests reserve the slot; approval confirms the meeting, rejection records a reason and releases the slot.
 - Daily, weekly, and monthly recurrence within the two-week advance window. Later monthly dates are reserved manually.
 - Business hours, holidays, meeting duration, time slots, and room gap enforced on the server. PostgreSQL exclusion constraints prevent conflicting concurrent reservations, including room closures.
-- Confirmation, modification, cancellation, reminder, check-in, and no-show notifications for the organizer, attendees, and staff.
+- Request, approval, rejection, modification, cancellation, reminder, check-in, and no-show notifications for the organizer, attendees, and staff.
 - Organizer check-in links in confirmation, change, and reminder emails. Check-in opens at the start; the worker releases missed check-ins after 15 minutes.
 - Staff room management, closures, employee/access management, booking on behalf of employees, reasoned rule overrides, audit history, statistics, and Excel export.
 
@@ -34,6 +37,21 @@ Invoke-WebRequest http://127.0.0.1:8000/healthz/
 ```
 
 The environment generator refuses to replace an existing `.env`. For an existing installation, preserve its database password and Django secret, review `.env.example` for new variables, then build and migrate. A fresh worker heartbeat may take a few seconds before readiness returns HTTP 200.
+
+For an existing demo, back up its database first and stop both writers before migrating to `mbs-prod`. Do not run old demo code against the approval schema:
+
+```powershell
+git switch mbs-prod
+git pull --ff-only
+docker compose stop web worker
+docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc -f /tmp/pre-mbs-prod.dump'
+docker compose cp db:/tmp/pre-mbs-prod.dump ./pre-mbs-prod.dump
+docker compose build
+docker compose run --rm migrate
+docker compose up -d web worker
+```
+
+Protect the dump; backup archives are Git-ignored. Preserve `.env`, its database password, Django secret, and database volume. Existing confirmed meetings become approved; future employee requests require review.
 
 Open <http://127.0.0.1:8000/>. Local `.env.example` explicitly selects `DJANGO_EMAIL_BACKEND=file`; messages are written to a Docker volume and appear in the development inbox at <http://127.0.0.1:8000/dev/mail/>. This local convenience does not verify mailbox ownership. It is unavailable over HTTPS and must never be used for company rollout.
 
@@ -93,7 +111,13 @@ Development tools in `requirements-dev.txt` provide `ruff check .` and `ruff for
 
 Builds collect and fingerprint static assets, then run Gunicorn as a dedicated non-root account. The production web/worker containers use a read-only filesystem and temporary `/tmp`. The [deployment guide](docs/deployment.md) includes clean setup, restricted runtime database permissions, migrations, initial staff creation, TLS, verification, backups, and restore.
 
-The [verification report](docs/verification-report.md) records the 132-test final suite, browser checks, isolated HTTPS deployment and backup/restore rehearsal, security fixes, and deployment-time limitations.
+The [verification report](docs/verification-report.md) records the production-branch test results, browser checks, deployment rehearsal, security fixes, and remaining deployment checks.
+
+## Approval and booking lifecycle
+
+Employees submit **Pending** requests. Pending requests hold the room and time, including the configured gap. Front Desk or Administrators open **Pending requests**, review details, and approve or reject. Rejection requires a reason visible to the requester. Approval is enforced by the backend and requires a verified staff session.
+
+Staff-created bookings are **Approved** immediately. Editing an approved booking through an employee session returns it to **Pending**; staff edits to approved meetings retain approval; edits to pending requests keep them pending. Each recurring occurrence is reviewed separately. Owners and staff may cancel eligible bookings; cancelled and rejected records remain in history but release occupancy. Pending requests that have not been approved by the meeting start are cancelled automatically. Approval cannot revive rejected, cancelled, or expired records. Approved meetings proceed through **Checked in**, **Completed**, or **No show** after a missed check-in deadline.
 
 ## Operations and limits
 
