@@ -147,7 +147,10 @@ CSRF_FAILURE_VIEW = "booking.views.csrf_failure"
 SECURE_HSTS_SECONDS = 3600 if HTTPS_ENABLED else 0
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
-SECURE_REFERRER_POLICY = "no-referrer"
+# Native form POSTs need a real same-site Origin for CSRF verification.
+# no-referrer makes browsers send Origin: null; same-origin also keeps
+# referrer URLs private when navigating to another site.
+SECURE_REFERRER_POLICY = "same-origin"
 
 MAIL_MODE = os.environ.get("DJANGO_EMAIL_BACKEND", "disabled").lower()
 SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()

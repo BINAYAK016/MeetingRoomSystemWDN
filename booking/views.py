@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import re
 from pathlib import Path
 
@@ -13,6 +14,26 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 
 from booking.models import BookingPolicy, Reservation, Room
 from booking.services.email_login import consume_login_hash, request_login_link
+
+logger = logging.getLogger(__name__)
+
+
+def _csrf_failure_category(reason):
+    """Classify Django's rejection without retaining request-bearing reasons."""
+    if not isinstance(reason, str):
+        return "other"
+    if reason == "CSRF cookie not set.":
+        # CSRF secrets are stored in the session, rather than a separate cookie.
+        return "missing_session"
+    if reason == "CSRF token missing.":
+        return "missing_token"
+    if reason.startswith("Origin checking failed - "):
+        return "origin_mismatch"
+    if reason.startswith("Referer checking failed - "):
+        return "referer_rejected"
+    if reason.startswith("CSRF token "):
+        return "invalid_token"
+    return "other"
 
 
 @never_cache
@@ -115,4 +136,22 @@ def dev_mail(request):
 
 @never_cache
 def csrf_failure(request, reason=""):
-    return render(request, "booking/csrf_failure.html", status=403)
+    reference = getattr(request, "request_id", "")
+    reference = (
+        reference
+        if isinstance(reference, str) and re.fullmatch(r"[a-f0-9]{32}", reference)
+        else "unavailable"
+    )
+    logger.warning(
+        "CSRF request rejected category=%s request_id=%s", _csrf_failure_category(reason), reference
+    )
+    staff_form = request.path_info.startswith("/staff/")
+    return render(
+        request,
+        "booking/csrf_failure.html",
+        {
+            "signin_route": "staff-login" if staff_form else "sign-in",
+            "signin_label": "Return to staff sign-in" if staff_form else "Return to sign-in",
+        },
+        status=403,
+    )

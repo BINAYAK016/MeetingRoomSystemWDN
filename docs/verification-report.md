@@ -25,6 +25,7 @@ Inspection covered every URL pattern, templates/static assets, forms, identity a
 | Malformed URL input | Unicode numeric filters previously reached `int()` and raised ValueError; invalid UTF-8 password UID raised UnicodeDecodeError. Bounded ASCII checks and decoding guards now return safe pages/errors. |
 | Calendar room activation race | A room activated between the room and reservation queries could cause a KeyError. Reservations now use the same room-ID snapshot; a regression reproduces activation between the queries and verifies load and refresh. |
 | HTTPS public-port CSRF failure | Actual HTTPS POSTs on port 9444 failed because proxy Host omitted the public port. Django now trusts exactly the validated HTTPS public origin. Valid origin/referer/token POSTs pass; wrong/null origins and missing tokens remain rejected. Final real HTTPS approval/rejection passed. |
+| Native browser form CSRF failure | Company GET returned `Referrer-Policy: no-referrer`; Chrome native employee submission reproduced 403 while a scripted request with explicit correct Origin passed 200. `no-referrer` causes native form POSTs to serialize Origin as null. The application now uses `same-origin`; native Chrome employee and staff submissions passed against an isolated production HTTP instance. Null/wrong origins and missing/invalid tokens remain denied. |
 | Approval/access and stale mail races | Sorted user locks precede room/reservation locks and revalidate current role/activity. Concurrent decisions commit one outcome; organizer deactivation prevents waiting approval. Reservation revisions supersede stale mail, and same-time reapproval can queue a fresh reminder. |
 
 The user reported intermittent staff sign-in/rooms errors that cleared after refresh, without a timestamp or screenshot. Available demo logs contained startup lines only. The defects above were reproduced and fixed; **the exact cause of those earlier individual incidents remains unconfirmed**. Future 500/503 responses display a support reference matching safe server logs and the X-Request-ID header.
@@ -41,12 +42,12 @@ Migration `0008_booking_approval` atomically maps existing confirmed records to 
 
 | Gate | Final result |
 | --- | --- |
-| Full PostgreSQL suite | **202 passed**, 33.125 seconds on the final HTTP-support image; separate test DB created and removed. The earlier HTTPS-support suite passed 186 tests. |
+| Full PostgreSQL suite | **210 passed**, 31.580 seconds on the final browser-CSRF fix image; separate test DB created and removed. Earlier HTTPS/HTTP support suites passed 186/202 tests. |
 | Fresh migration chain | All Django migrations and booking 0001–0008 passed |
 | Forward/reverse migration tests | Legacy data, new guards, rollback mail and re-upgrade passed |
 | Concurrency/transactions | Conflicting pending creates/edits, buffer/closure conflicts, atomic recurrence, competing decisions, access changes, login/code and check-in races passed |
 | Email | Disabled/configured backend, failures/zero delivery, retry/lease, request/rejection/approval/cancellation, revision/reminder checks and local fake SMTP relay passed; no company mail sent |
-| Ruff lint/format | Passed; 64 Python files formatted |
+| Ruff lint/format | Passed; 65 Python files formatted |
 | Syntax/system checks | Python compilation, JavaScript syntax, Django system checks passed |
 | Migration drift | No changes detected |
 | Docker build | Passed; 130 static files copied, 388 post-processing outputs |
@@ -98,6 +99,16 @@ Verified on the final HTTP-support image:
 7. Actual `deploy/backup.sh`, selected with `COMPOSE_FILE=compose.prod.http.yaml`, produced a verified **89,358-byte** custom-format dump. Restore into a separate database succeeded and matched room/user/reservation/audit counts of **1/2/2/6**.
 
 All rehearsal containers/networks were stopped and removed without deleting volumes. Synthetic SMTP evidence, secrets and backups stayed outside Git. This verifies the local HTTP profile; company-server DNS, network access, SMTP authorization and mailbox delivery still require the operator checks in [the HTTP deployment guide](deployment-http.md).
+
+## Native-browser CSRF correction
+
+The new company-server screenshot was reproduced in a separate Chrome tab. Effective running HTTP settings were correct, and a fresh scripted session with an explicit correct Origin passed. The real response still used `Referrer-Policy: no-referrer`. Per the [Fetch standard's Origin-header algorithm](https://fetch.spec.whatwg.org/#append-a-request-origin-header), this policy makes native form submissions send `Origin: null`, which Django rejects. Earlier scripted production rehearsals explicitly supplied Origin and did not exercise this browser-generated header.
+
+The setting is now `SECURE_REFERRER_POLICY="same-origin"`, retaining same-origin referrers while withholding them from other sites. Actual native Chrome employee submission reached the normal request-received page, and staff submission reached normal credential validation, on a separate production-mode HTTP instance at `mbs-csrf.localhost:9120`. Both used dummy invalid credentials; no company email or successful sign-in is claimed for these probes. The company server still requires pulling and rebuilding the update.
+
+The final image passed **210 PostgreSQL tests** in **31.580 seconds**, Django check, migration drift, Ruff lint/format and the Docker build. New regression coverage checks employee/staff response policy plus safe CSRF rejection diagnostics. Failures log only fixed categories and a validated request reference, never raw reasons, Origin/Referer values, cookies, credentials or tokens. The error page now gives site-neutral guidance and returns staff forms to staff sign-in. CSRF enforcement is unchanged.
+
+Browser screenshot evidence is retained outside Git as `outputs/mbs-csrf-fixed.jpg`. Isolated review containers/networks were removed without deleting volumes; the existing demo was preserved. Company booking/staff records were not changed; company probes used only anonymous form sessions.
 
 ## Deployment handover
 

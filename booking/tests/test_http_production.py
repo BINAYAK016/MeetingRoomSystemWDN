@@ -39,6 +39,7 @@ class ProductionTransportConfigurationTests(SimpleTestCase):
             "PRODUCTION_ENABLED",
             "HTTPS_ENABLED",
             "SECURE_SSL_REDIRECT",
+            "SECURE_REFERRER_POLICY",
             "SESSION_COOKIE_SECURE",
             "CSRF_COOKIE_SECURE",
             "SESSION_COOKIE_HTTPONLY",
@@ -86,6 +87,7 @@ class ProductionTransportConfigurationTests(SimpleTestCase):
         self.assertEqual(configured["SECURE_HSTS_SECONDS"], 0)
         self.assertIsNone(configured["SECURE_PROXY_SSL_HEADER"])
         self.assertEqual(configured["CSRF_TRUSTED_ORIGINS"], ["http://mbs.wdn.com.np:8080"])
+        self.assertEqual(configured["SECURE_REFERRER_POLICY"], "same-origin")
 
     def test_https_retains_production_protections_for_existing_deployments(self):
         configured = self.loaded(
@@ -180,6 +182,14 @@ class ProductionHttpAuthenticationTests(TestCase):
         if token is not None:
             data = {**data, "csrfmiddlewaretoken": token}
         return self.client.post(reverse(name), data, HTTP_HOST=self.host, HTTP_ORIGIN=origin or self.origin)
+
+    def test_employee_and_staff_forms_preserve_same_origin_browser_post_headers(self):
+        for route in ("sign-in", "staff-login"):
+            with self.subTest(route=route):
+                response = self.client.get(reverse(route), HTTP_HOST=self.host)
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response["Referrer-Policy"], "same-origin")
+                self.assertContains(response, 'name="csrfmiddlewaretoken"')
 
     def test_public_http_port_passes_csrf_and_cookie_remains_httponly(self):
         token = self.page_token("staff-login")

@@ -191,6 +191,7 @@ docker compose -f compose.prod.http.yaml logs --tail=100 web worker proxy db
 - Permission denied on a bind mount with SELinux enforcing: check the HTTP profile's `:Z` labels, file ownership, and audit logs; keep SELinux enforcing.
 - Sign-in links point to HTTPS: correct `.env` to `DJANGO_PUBLIC_BASE_URL=http://mbs.wdn.com.np`, recreate web/worker, then request a new email.
 - Browser automatically changes HTTP to HTTPS: an earlier HTTPS test may have stored HSTS for this hostname. Remove that saved host policy on the affected test device or have IT arrange its expiry; the HTTP proxy does not send HSTS.
+- Session-check/CSRF page: load a fresh form at the same HTTP hostname, confirm cookies are enabled, and use the latest image. The response must use `Referrer-Policy: same-origin`; `no-referrer` makes native browser POSTs send Origin null. After reproducing, `docker compose -f compose.prod.http.yaml logs --since 5m --tail=80 web` records a safe category (`missing_session`, `missing_token`, `invalid_token`, `origin_mismatch`, `referer_rejected`, or `other`) and request reference. Do not disable CSRF or trust null origins.
 - Authentication email unavailable: review the relay host/port/sender and its authorization for this server's IP. SMTP-disabled mode intentionally denies mail-based sign-in.
 - Database permission errors after an update: rerun committed migrations and `db_setup`; do not generate migrations on the server.
 
