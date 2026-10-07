@@ -58,6 +58,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "booking.middleware.ApplicationSafetyMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -65,7 +66,6 @@ MIDDLEWARE = [
     "booking.middleware.LocalNullOriginMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "booking.middleware.ApplicationSafetyMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -131,6 +131,7 @@ CSRF_COOKIE_SECURE = HTTPS_ENABLED
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
+CSRF_TRUSTED_ORIGINS = [PUBLIC_BASE_URL] if HTTPS_ENABLED else []
 CSRF_USE_SESSIONS = True
 CSRF_FAILURE_VIEW = "booking.views.csrf_failure"
 SECURE_HSTS_SECONDS = 3600 if HTTPS_ENABLED else 0
@@ -181,9 +182,12 @@ LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {"safe": {"format": "{levelname} {name}: {message}", "style": "{"}},
-    "filters": {"safe_request": {"()": "booking.logging.SafeRequestLogFilter"}},
+    "filters": {
+        "safe_request": {"()": "booking.logging.SafeRequestLogFilter"},
+        "safe_exception": {"()": "booking.logging.SafeExceptionLogFilter"},
+    },
     "handlers": {
-        "console": {"class": "logging.StreamHandler", "formatter": "safe"},
+        "console": {"class": "logging.StreamHandler", "formatter": "safe", "filters": ["safe_exception"]},
         "safe_request": {"class": "logging.StreamHandler", "formatter": "safe", "filters": ["safe_request"]},
     },
     "loggers": {

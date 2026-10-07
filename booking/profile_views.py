@@ -17,7 +17,7 @@ class ProfileForm(forms.ModelForm):
 @login_required(login_url="sign-in")
 @require_http_methods(["GET", "POST"])
 def profile(request):
-    form = ProfileForm(request.POST or None, instance=request.user)
+    form = ProfileForm(request.POST if request.method == "POST" else None, instance=request.user)
     if request.method == "POST" and form.is_valid():
         with transaction.atomic():
             # Updating only profile fields prevents a concurrent staff access change

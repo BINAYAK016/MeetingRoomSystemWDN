@@ -75,6 +75,11 @@ class EmailConfigurationTests(SimpleTestCase):
                 DJANGO_HTTPS="true", DJANGO_PUBLIC_BASE_URL="https://localhost", DJANGO_EMAIL_BACKEND="file"
             )
 
+    def test_csrf_trusts_only_the_validated_https_public_origin_including_its_port(self):
+        configured = self.configuration(DJANGO_HTTPS="true", DJANGO_PUBLIC_BASE_URL="https://localhost:9444")
+        self.assertEqual(configured["CSRF_TRUSTED_ORIGINS"], ["https://localhost:9444"])
+        self.assertEqual(self.configuration()["CSRF_TRUSTED_ORIGINS"], [])
+
     def test_zero_delivery_is_failure(self):
         with patch("booking.services.mail_delivery.send_mail", return_value=0):
             with self.assertRaises(RuntimeError):
@@ -140,7 +145,7 @@ class NotificationDeliveryTests(TestCase):
             organizer=self.user,
             created_by=self.user,
             kind="booking",
-            status="confirmed",
+            status="approved",
             title="A" * 200,
             starts_at=start,
             ends_at=end,

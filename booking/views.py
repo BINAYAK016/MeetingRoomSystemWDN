@@ -25,8 +25,11 @@ def home(request):
         context["policy"] = BookingPolicy.objects.filter(pk=1).first()
         context["upcoming_count"] = Reservation.objects.filter(
             organizer=request.user,
-            status__in=[Reservation.Status.CONFIRMED, Reservation.Status.CHECKED_IN],
+            status__in=[Reservation.Status.APPROVED, Reservation.Status.CHECKED_IN],
             starts_at__gte=timezone.now(),
+        ).count()
+        context["pending_count"] = Reservation.objects.filter(
+            organizer=request.user, status=Reservation.Status.PENDING
         ).count()
     return render(request, "booking/home.html", context)
 

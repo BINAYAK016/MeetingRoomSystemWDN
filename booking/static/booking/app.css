@@ -294,8 +294,12 @@ td a, .panel a:not(.button) { color: var(--navy); }
 .stacked-action { display: grid; gap: 9px; margin-top: 16px; }
 .button-wide { width: 100%; justify-content: center; }
 .status { display: inline-block; border-radius: 100px; background: #edf2f6; color: #415d74; padding: 5px 10px; font-size: 12px; white-space: nowrap; }
-.status-confirmed, .status-checked_in { color: #126b47; background: #e7f6ee; }
-.status-cancelled, .status-no_show { color: #9a2833; background: #fff0f0; }
+.status-approved, .status-checked_in { color: #126b47; background: #e7f6ee; }
+.status-cancelled, .status-rejected, .status-no_show { color: #9a2833; background: #fff0f0; }
+.status-pending { color: #795614; background: #fff2d5; }
+.button-danger { color: #9a2833; border-color: #e7bfc4; background: #fff0f0; }
+.notice-error { color: #9a2833; border-color: #e7bfc4; background: #fff0f0; }
+.stacked-action textarea { width: 100%; padding: 11px 12px; border: 1px solid #cbd9e4; border-radius: 7px; font: inherit; resize: vertical; }
 .flash-stack { width: min(100% - 64px, 1240px); margin: 16px auto 0; }
 .flash { padding: 11px 15px; border-radius: 8px; background: #eaf4eb; color: #285c37; margin-bottom: 6px; }
 .flash-error { background: #fff0f0; color: #a22432; }
@@ -351,3 +355,14 @@ button:disabled { cursor: wait; opacity: .7; }
   .detail-list div { grid-template-columns: 1fr; gap: 5px; }
   .pagination { align-items: flex-start; }
 }
+
+.metric-link { color: var(--navy); text-decoration: none; }
+.brand-product small { white-space: normal; max-width: 240px; line-height: 1.3; }
+@media (max-width: 800px) { .brand-product { white-space: normal; } .brand img { width: 150px; } }
+
+/* Native HTML dialog keeps focus inside the confirmation and supports Escape. */
+.action-confirmation { width:min(28rem,calc(100% - 2rem)); padding:1.75rem; border:1px solid var(--line); border-radius:18px; background:#fff; color:var(--navy); box-shadow:0 24px 80px #10406833; }
+.action-confirmation::backdrop { background:#071f36aa; }
+.action-confirmation h2 { margin:0 0 .75rem; }
+.action-confirmation p { margin:0 0 1.5rem; line-height:1.5; }
+.confirmation-actions { display:flex; justify-content:flex-end; gap:.75rem; flex-wrap:wrap; }

@@ -12,7 +12,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from booking.forms import BookingForm
-from booking.models import BookingPolicy, CompanyHoliday, Reservation, Room
+from booking.models import ACTIVE_RESERVATION_STATUSES, BookingPolicy, CompanyHoliday, Reservation, Room
 from booking.services.auth_security import staff_session_verified
 from booking.services.bookings import BookingError, cancel_booking, create_booking, update_booking
 from booking.services.checkin import CheckInError, confirm_checkin_hash
@@ -36,7 +36,7 @@ def room_list(request):
     search = request.GET.get("q", "").strip()[:100]
     location = request.GET.get("location", "")[:120]
     facility = request.GET.get("facility", "")[:120]
-    if capacity.isdigit():
+    if capacity.isascii() and capacity.isdigit():
         rooms = rooms.filter(capacity__gte=int(capacity))
     if search:
         rooms = rooms.filter(
@@ -110,15 +110,10 @@ def calendar_view(request):
     )
     bookings = list(
         Reservation.objects.filter(
-            room__is_active=True,
+            room_id__in=[room.pk for room in rooms],
             occupied_from__lt=datetime.combine(last, datetime.min.time(), local_tz),
             occupied_until__gt=datetime.combine(days[0], datetime.min.time(), local_tz),
-            status__in=[
-                Reservation.Status.CONFIRMED,
-                Reservation.Status.CHECKED_IN,
-                Reservation.Status.COMPLETED,
-                Reservation.Status.BLOCKED,
-            ],
+            status__in=ACTIVE_RESERVATION_STATUSES,
         ).select_related("room")
     )
     by_room = {room.pk: [] for room in rooms}
@@ -162,6 +157,13 @@ def calendar_view(request):
                     reason = "Start time has passed"
                 if not reason and cursor + timedelta(minutes=policy.minimum_minutes) > end:
                     reason = "Not enough time before closing"
+                if not reason and not occupying:
+                    minimum_end = cursor + timedelta(minutes=policy.minimum_minutes + policy.gap_minutes)
+                    if any(
+                        item.occupied_from < minimum_end and item.occupied_until > cursor
+                        for item in by_room[room.pk]
+                    ):
+                        reason = "Not enough time for a meeting and buffer"
                 cells.append(
                     {
                         "room": room,
@@ -225,7 +227,9 @@ def booking_new(request):
         "department": request.user.department,
     }
     form = BookingForm(
-        request.POST or None, initial=initial if request.method == "GET" else None, staff=staff
+        request.POST if request.method == "POST" else None,
+        initial=initial if request.method == "GET" else None,
+        staff=staff,
     )
     if request.method == "POST" and form.is_valid():
         try:
@@ -240,14 +244,19 @@ def booking_new(request):
                     form.cleaned_data["start_time"],
                 )
         else:
-            messages.success(request, f"{len(bookings)} booking(s) created")
+            if staff:
+                messages.success(request, f"{len(bookings)} approved booking(s) created.")
+            else:
+                messages.success(request, "Booking request submitted. Waiting for administrator approval.")
             return redirect("booking-detail", booking_id=bookings[0].pk)
-    return render(request, "booking/booking_form.html", {"form": form, "editing": False})
+    return render(request, "booking/booking_form.html", {"form": form, "editing": False, "staff": staff})
 
 
 def _visible_booking(request, booking_id):
     booking = get_object_or_404(
-        Reservation.objects.select_related("room", "organizer", "series").prefetch_related("attendees"),
+        Reservation.objects.select_related(
+            "room", "organizer", "series", "approved_by", "rejected_by"
+        ).prefetch_related("attendees"),
         pk=booking_id,
         kind=Reservation.Kind.BOOKING,
     )
@@ -259,10 +268,21 @@ def _visible_booking(request, booking_id):
 @login_required(login_url="sign-in")
 @require_GET
 def booking_detail(request, booking_id):
+    booking = _visible_booking(request, booking_id)
+    staff = _staff(request)
+    upcoming = booking.starts_at > timezone.now()
     return render(
         request,
         "booking/booking_detail.html",
-        {"booking": _visible_booking(request, booking_id), "staff": _staff(request)},
+        {
+            "booking": booking,
+            "staff": staff,
+            "can_edit": upcoming
+            and booking.status in [Reservation.Status.PENDING, Reservation.Status.APPROVED],
+            "can_cancel": booking.status
+            in [Reservation.Status.PENDING, Reservation.Status.APPROVED, Reservation.Status.CHECKED_IN],
+            "can_review": staff and upcoming and booking.status == Reservation.Status.PENDING,
+        },
     )
 
 
@@ -270,8 +290,11 @@ def booking_detail(request, booking_id):
 @require_http_methods(["GET", "POST"])
 def booking_edit(request, booking_id):
     booking = _visible_booking(request, booking_id)
-    if booking.status != Reservation.Status.CONFIRMED:
-        messages.error(request, "Only confirmed bookings can be edited")
+    if (
+        booking.status not in [Reservation.Status.PENDING, Reservation.Status.APPROVED]
+        or booking.starts_at <= timezone.now()
+    ):
+        messages.error(request, "Only upcoming pending or approved bookings can be edited")
         return redirect("booking-detail", booking_id=booking.pk)
     staff = _staff(request)
     local_start, local_end = timezone.localtime(booking.starts_at), timezone.localtime(booking.ends_at)
@@ -293,7 +316,9 @@ def booking_edit(request, booking_id):
         "organizer_email": booking.organizer.email,
     }
     form = BookingForm(
-        request.POST or None, initial=initial if request.method == "GET" else None, staff=staff
+        request.POST if request.method == "POST" else None,
+        initial=initial if request.method == "GET" else None,
+        staff=staff,
     )
     form.fields.pop("recurrence")
     form.fields.pop("until_date")
@@ -301,7 +326,7 @@ def booking_edit(request, booking_id):
         form.cleaned_data["recurrence"] = "none"
         form.cleaned_data["until_date"] = None
         try:
-            update_booking(booking.pk, form.cleaned_data, actor=request.user, staff=staff)
+            updated = update_booking(booking.pk, form.cleaned_data, actor=request.user, staff=staff)
         except BookingError as exc:
             form.add_error(None, str(exc))
             if "unavailable" in str(exc).lower():
@@ -312,9 +337,16 @@ def booking_edit(request, booking_id):
                     form.cleaned_data["start_time"],
                 )
         else:
-            messages.success(request, "Booking updated")
+            if updated.status == Reservation.Status.PENDING:
+                messages.success(request, "Booking request updated. Waiting for administrator approval.")
+            else:
+                messages.success(request, "Booking updated")
             return redirect("booking-detail", booking_id=booking.pk)
-    return render(request, "booking/booking_form.html", {"form": form, "editing": True, "booking": booking})
+    return render(
+        request,
+        "booking/booking_form.html",
+        {"form": form, "editing": True, "booking": booking, "staff": staff},
+    )
 
 
 @login_required(login_url="sign-in")
@@ -343,7 +375,7 @@ def my_bookings(request):
     period = request.GET.get("period", "upcoming")
     if period == "upcoming":
         bookings = bookings.filter(
-            ends_at__gte=timezone.now(), status__in=["confirmed", "checked_in"]
+            ends_at__gte=timezone.now(), status__in=["pending", "approved", "checked_in"]
         ).order_by("starts_at", "pk")
     else:
         period = "history"

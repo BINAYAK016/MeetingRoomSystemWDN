@@ -4,6 +4,7 @@
 <div class="page-container message-page"><section class="message-card" role="alert">
   <p class="eyebrow">{{ status }} · WDN MEETING ROOMS</p>
   <h1>{{ error_title }}</h1><p class="message-lead">{{ explanation }}</p>
+  {% if request_reference %}<p class="muted">Support reference: <code>{{ request_reference }}</code></p>{% endif %}
   <a class="button button-primary" href="{% url 'home' %}">Return to overview</a>
 </section></div>
 {% endblock %}

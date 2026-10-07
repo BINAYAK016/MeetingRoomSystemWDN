@@ -14,18 +14,21 @@ class BookingForm(forms.Form):
     start_time = forms.TimeField(widget=forms.TimeInput(attrs={"type": "time", "step": "900"}))
     end_time = forms.TimeField(widget=forms.TimeInput(attrs={"type": "time", "step": "900"}))
     title = forms.CharField(max_length=200)
-    description = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 3}))
+    description = forms.CharField(max_length=10000, required=False, widget=forms.Textarea(attrs={"rows": 3}))
     meeting_type = forms.ChoiceField(choices=Reservation.MeetingType.choices)
     guest_company_name = forms.CharField(max_length=200, required=False)
     external_attendee_count = forms.IntegerField(min_value=0, max_value=500, initial=0)
     department = forms.CharField(max_length=120, required=False)
     attendees = forms.CharField(
+        max_length=15000,
         required=False,
         widget=forms.Textarea(attrs={"rows": 3}),
         help_text="One email address per line or separated by commas.",
     )
     refreshments_requested = forms.BooleanField(required=False)
-    front_desk_notes = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 3}))
+    front_desk_notes = forms.CharField(
+        max_length=10000, required=False, widget=forms.Textarea(attrs={"rows": 3})
+    )
     recurrence = forms.ChoiceField(
         choices=[("none", "One meeting"), ("daily", "Daily"), ("weekly", "Weekly"), ("monthly", "Monthly")],
         initial="none",
@@ -47,6 +50,14 @@ class BookingForm(forms.Form):
         self.fields["room"].queryset = Room.objects.filter(is_active=True).order_by(
             "location", "floor", "name"
         )
+        policy = BookingPolicy.objects.filter(pk=1).first()
+        if policy:
+            for field in ("start_time", "end_time"):
+                self.fields[field].widget.attrs["step"] = str(policy.slot_minutes * 60)
+            self.fields["until_date"].help_text = (
+                f"Every occurrence must stay within {policy.advance_days} days. "
+                "Reserve later months manually when they enter the booking window."
+            )
         if not staff:
             self.fields.pop("organizer_email")
             self.fields.pop("override_reason")
@@ -88,6 +99,8 @@ class BookingForm(forms.Form):
 
 
 class RoomForm(forms.ModelForm):
+    description = forms.CharField(max_length=10000, required=False, widget=forms.Textarea(attrs={"rows": 3}))
+    instructions = forms.CharField(max_length=10000, required=False, widget=forms.Textarea(attrs={"rows": 3}))
     facilities_text = forms.CharField(
         max_length=10000,
         required=False,
@@ -120,6 +133,15 @@ class RoomForm(forms.ModelForm):
         }
 
 
+class BookingRejectionForm(forms.Form):
+    reason = forms.CharField(
+        label="Rejection reason",
+        max_length=500,
+        widget=forms.Textarea(attrs={"rows": 3}),
+        help_text="Explain why this request cannot be approved. The requester will see this reason.",
+    )
+
+
 class RoomBlockForm(forms.Form):
     room = forms.ModelChoiceField(queryset=Room.objects.none())
     date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
@@ -130,6 +152,10 @@ class RoomBlockForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["room"].queryset = Room.objects.filter(is_active=True)
+        policy = BookingPolicy.objects.filter(pk=1).first()
+        if policy:
+            for field in ("start_time", "end_time"):
+                self.fields[field].widget.attrs["step"] = str(policy.slot_minutes * 60)
 
 
 class PolicyForm(forms.ModelForm):

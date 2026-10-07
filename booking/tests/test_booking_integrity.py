@@ -221,7 +221,7 @@ class BookingIntegrityTests(TestCase):
         with self.assertRaises(BookingError):
             cancel_booking(item.pk, actor=other)
         item.refresh_from_db()
-        self.assertEqual(item.status, Reservation.Status.CONFIRMED)
+        self.assertEqual(item.status, Reservation.Status.PENDING)
 
     def test_persisted_booking_retains_nepal_wall_time(self):
         item = create_booking(booking_data(self.room), actor=self.user)[0]
@@ -343,7 +343,8 @@ class BookingConcurrencyTests(TransactionTestCase):
         self.assertEqual(Reservation.objects.count(), 1)
         self.assertEqual(BookingAttendee.objects.count(), 1)
         self.assertEqual(AuditEvent.objects.filter(action="booking_created").count(), 1)
-        self.assertEqual(Notification.objects.filter(event_type="confirmation").count(), 3)
+        self.assertEqual(Notification.objects.filter(event_type="request").count(), 2)
+        self.assertFalse(Notification.objects.filter(event_type="confirmation").exists())
 
     def test_service_simultaneous_edits_into_one_slot_commit_one_change(self):
         first = create_booking(booking_data(self.room), actor=self.user)[0]

@@ -4,12 +4,12 @@ from datetime import time, timedelta
 from unittest.mock import patch
 
 from django.core import mail
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from booking.models import EmailToken, Notification, Reservation, Room, User
-from booking.services.bookings import BookingError, create_booking, occurrence_dates
+from booking.services.bookings import BookingError, approve_booking, create_booking, occurrence_dates
 from booking.services.checkin import confirm_checkin, release_due_no_shows
 from booking.services.notifications import queue_due_reminders, send_due_notifications
 
@@ -44,10 +44,18 @@ class BookingWorkflowTests(TestCase):
         values.update(changes)
         return values
 
+    def approve(self, booking):
+        staff = User.objects.create_user("approver@wdn.com.np", is_staff=True)
+        request = RequestFactory().post("/staff/")
+        request.user = staff
+        request.session = {"staff_verified": True, "staff_auth_version": staff.auth_version}
+        return approve_booking(booking.pk, actor=staff, request=request)
+
     def test_booking_conflict_and_notifications(self):
         booking = create_booking(self.data(), actor=self.user)[0]
-        self.assertEqual(booking.status, "confirmed")
-        self.assertEqual(Notification.objects.filter(event_type="confirmation").count(), 2)
+        self.assertEqual(booking.status, "pending")
+        self.assertEqual(Notification.objects.filter(event_type="request").count(), 1)
+        self.assertFalse(Notification.objects.filter(event_type="confirmation").exists())
         with self.assertRaises(BookingError):
             create_booking(self.data(start_time=time(12), end_time=time(13)), actor=self.user)
         self.assertEqual(Reservation.objects.count(), 1)
@@ -72,9 +80,9 @@ class BookingWorkflowTests(TestCase):
         )
 
     def test_reminder_link_and_checkin(self):
-        booking = create_booking(self.data(), actor=self.user)[0]
+        booking = self.approve(create_booking(self.data(), actor=self.user)[0])
         reminder_time = booking.starts_at - timedelta(minutes=45)
-        self.assertEqual(queue_due_reminders(now=reminder_time), 2)
+        self.assertEqual(queue_due_reminders(now=reminder_time), 3)
         with patch("booking.services.notifications.timezone.now", return_value=reminder_time):
             self.assertGreater(send_due_notifications(now=reminder_time), 0)
         reminder = next(
@@ -98,7 +106,7 @@ class BookingWorkflowTests(TestCase):
         self.assertEqual(release_due_no_shows(now=booking.starts_at + timedelta(minutes=20)), 0)
 
     def test_missed_checkin_releases_room(self):
-        booking = create_booking(self.data(), actor=self.user)[0]
+        booking = self.approve(create_booking(self.data(), actor=self.user)[0])
         self.assertEqual(release_due_no_shows(now=booking.starts_at + timedelta(minutes=16)), 1)
         booking.refresh_from_db()
         self.assertEqual(booking.status, "no_show")
@@ -194,7 +202,7 @@ class BookingWorkflowTests(TestCase):
         self.assertEqual(self.client.get(reverse("booking-edit", args=[booking.pk])).status_code, 404)
         self.assertEqual(self.client.post(reverse("booking-cancel", args=[booking.pk])).status_code, 404)
         booking.refresh_from_db()
-        self.assertEqual(booking.status, "confirmed")
+        self.assertEqual(booking.status, "pending")
 
     def test_inactive_room_and_invalid_duration_are_rejected(self):
         with self.assertRaises(BookingError):
@@ -210,7 +218,7 @@ class BookingWorkflowTests(TestCase):
             self.assertEqual(send_due_notifications(limit=1), 0)
         self.assertTrue(Notification.objects.filter(reservation=booking, status="failed").exists())
         booking.refresh_from_db()
-        self.assertEqual(booking.status, "confirmed")
+        self.assertEqual(booking.status, "pending")
 
     def test_staff_room_management_requires_second_factor(self):
         staff = User.objects.create_user(

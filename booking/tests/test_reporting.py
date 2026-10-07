@@ -131,7 +131,7 @@ class ReportingTests(TestCase):
         self.assertEqual(row["utilization"], 0)
 
     def test_only_checked_in_or_completed_bookings_contribute_minutes(self):
-        self.booking(local_at(MONDAY, 9), local_at(MONDAY, 10), Reservation.Status.CONFIRMED)
+        self.booking(local_at(MONDAY, 9), local_at(MONDAY, 10), Reservation.Status.APPROVED)
         self.booking(local_at(MONDAY, 10), local_at(MONDAY, 11), Reservation.Status.CANCELLED)
         self.booking(local_at(MONDAY, 11), local_at(MONDAY, 12), Reservation.Status.NO_SHOW)
         self.booking(local_at(MONDAY, 12), local_at(MONDAY, 13), Reservation.Status.CHECKED_IN)
@@ -142,6 +142,21 @@ class ReportingTests(TestCase):
         self.assertEqual(row["cancelled"], 1)
         self.assertEqual(row["no_shows"], 1)
         self.assertEqual(row["occupied_minutes"], 120)
+
+    def test_pending_and_rejected_requests_have_separate_counts_and_no_utilization(self):
+        self.booking(local_at(MONDAY, 9), local_at(MONDAY, 10), Reservation.Status.PENDING)
+        rejected = self.booking(local_at(MONDAY, 10), local_at(MONDAY, 11), Reservation.Status.CANCELLED)
+        Reservation.objects.filter(pk=rejected.pk).update(
+            status=Reservation.Status.REJECTED,
+            rejection_reason="Meeting not required",
+            rejected_at=local_at(MONDAY, 8),
+        )
+        records, row, _, _ = self.row()
+        self.assertEqual(len(records), 2)
+        self.assertEqual(row["pending"], 1)
+        self.assertEqual(row["rejected"], 1)
+        self.assertEqual(row["approved"], 0)
+        self.assertEqual(row["occupied_minutes"], 0)
 
     def test_booking_counts_use_nepal_date_not_utc_date(self):
         early = self.booking(local_at(MONDAY, 0, 15), local_at(MONDAY, 1, 15), department="")

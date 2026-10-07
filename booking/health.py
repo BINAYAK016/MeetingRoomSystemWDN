@@ -1,6 +1,7 @@
 import logging
 from datetime import timedelta
 
+from django.conf import settings
 from django.db import connection
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
@@ -40,4 +41,7 @@ def readiness(request):
         return JsonResponse({"status": "unavailable", "database": "unavailable"}, status=503)
     if not worker_ok:
         return JsonResponse({"status": "unavailable", "database": "ok", "worker": "unavailable"}, status=503)
-    return JsonResponse({"status": "ok", "database": "ok", "worker": "ok"})
+    email = "unavailable"
+    if settings.EMAIL_READY:
+        email = "local-file" if settings.MAIL_MODE == "file" else "configured"
+    return JsonResponse({"status": "ok", "database": "ok", "worker": "ok", "email": email})

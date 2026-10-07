@@ -9,7 +9,7 @@ from django.db.models import F, Func, Q
 from django.db.models.functions import Lower
 from django.utils.crypto import salted_hmac
 
-ACTIVE_RESERVATION_STATUSES = ("confirmed", "checked_in", "completed", "blocked")
+ACTIVE_RESERVATION_STATUSES = ("pending", "approved", "checked_in", "completed", "blocked")
 
 
 class UserManager(BaseUserManager):
@@ -133,7 +133,9 @@ class Reservation(models.Model):
         BLOCK = "block", "Room closure"
 
     class Status(models.TextChoices):
-        CONFIRMED = "confirmed", "Confirmed"
+        PENDING = "pending", "Pending approval"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
         CHECKED_IN = "checked_in", "Checked in"
         COMPLETED = "completed", "Completed"
         CANCELLED = "cancelled", "Cancelled"
@@ -172,6 +174,16 @@ class Reservation(models.Model):
     checked_in_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
     cancellation_reason = models.CharField(max_length=240, blank=True)
+    approved_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.PROTECT, related_name="approved_reservations"
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    rejected_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.PROTECT, related_name="rejected_reservations"
+    )
+    rejected_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.CharField(max_length=500, blank=True)
+    revision = models.PositiveIntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -181,6 +193,9 @@ class Reservation(models.Model):
             models.Index(fields=["room", "starts_at"], name="reservations_room_start_idx"),
             models.Index(fields=["organizer", "starts_at"], name="reservations_org_start_idx"),
             models.Index(fields=["status", "starts_at"], name="reservations_status_start_idx"),
+            models.Index(
+                fields=["created_at"], condition=Q(status="pending"), name="reservations_pending_idx"
+            ),
         ]
         constraints = [
             models.CheckConstraint(condition=Q(starts_at__lt=F("ends_at")), name="reservation_time_ordered"),
@@ -192,7 +207,17 @@ class Reservation(models.Model):
                 condition=(
                     Q(kind="booking", organizer__isnull=False)
                     & ~Q(title="")
-                    & Q(status__in=["confirmed", "checked_in", "completed", "cancelled", "no_show"])
+                    & Q(
+                        status__in=[
+                            "pending",
+                            "approved",
+                            "rejected",
+                            "checked_in",
+                            "completed",
+                            "cancelled",
+                            "no_show",
+                        ]
+                    )
                 )
                 | (
                     Q(kind="block", organizer__isnull=True)
@@ -200,6 +225,10 @@ class Reservation(models.Model):
                     & Q(status__in=["blocked", "block_cancelled"])
                 ),
                 name="reservation_kind_status_fields_valid",
+            ),
+            models.CheckConstraint(
+                condition=~Q(status="rejected") | (~Q(rejection_reason="") & Q(rejected_at__isnull=False)),
+                name="reservation_rejection_has_reason",
             ),
             models.CheckConstraint(
                 condition=Q(kind="block")
@@ -290,6 +319,7 @@ class Notification(models.Model):
         SKIPPED = "skipped", "Superseded"
 
     reservation = models.ForeignKey(Reservation, null=True, blank=True, on_delete=models.PROTECT)
+    reservation_revision = models.PositiveIntegerField(null=True, blank=True)
     recipient_email = models.EmailField()
     event_type = models.CharField(max_length=40)
     subject = models.CharField(max_length=240)

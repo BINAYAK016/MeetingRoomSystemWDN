@@ -5,13 +5,13 @@ from io import StringIO
 from django.core import mail
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from booking.forms import BookingForm
 from booking.models import EmailToken, Notification, Reservation, Room, User
-from booking.services.bookings import BookingError, create_booking
+from booking.services.bookings import BookingError, approve_booking, create_booking
 
 OUTSIDE_EMPLOYEE_ADDRESSES = (
     "person@example.com",
@@ -93,9 +93,27 @@ class EmployeeDomainTests(TestCase):
             set(booking.attendees.values_list("email", flat=True)),
             {"wdn.colleague@wdn.com.np", "trans.colleague@transgate.com.np"},
         )
+        self.assertEqual(booking.status, Reservation.Status.PENDING)
         self.assertSetEqual(
-            set(Notification.objects.filter(reservation=booking).values_list("recipient_email", flat=True)),
-            {employee.email, "wdn.colleague@wdn.com.np", "trans.colleague@transgate.com.np"},
+            set(
+                Notification.objects.filter(reservation=booking, event_type="request").values_list(
+                    "recipient_email", flat=True
+                )
+            ),
+            {employee.email},
+        )
+        staff = User.objects.create_user("reviewer@wdn.com.np", is_staff=True)
+        request = RequestFactory().post("/staff/")
+        request.user = staff
+        request.session = {"staff_verified": True, "staff_auth_version": staff.auth_version}
+        approve_booking(booking.pk, actor=staff, request=request)
+        self.assertSetEqual(
+            set(
+                Notification.objects.filter(reservation=booking, event_type="confirmation").values_list(
+                    "recipient_email", flat=True
+                )
+            ),
+            {employee.email, staff.email, "wdn.colleague@wdn.com.np", "trans.colleague@transgate.com.np"},
         )
         self.assertEqual(len(mail.outbox), 0)
 

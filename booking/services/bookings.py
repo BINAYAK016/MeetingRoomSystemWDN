@@ -7,6 +7,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from booking.models import (
+    ACTIVE_RESERVATION_STATUSES,
     AuditEvent,
     BookingAttendee,
     BookingPolicy,
@@ -17,6 +18,7 @@ from booking.models import (
     Room,
     User,
 )
+from booking.services.auth_security import staff_session_verified
 from booking.services.email_login import normalized_employee_email
 from booking.services.reservations import ReservationConflict, reserve_time
 
@@ -95,7 +97,7 @@ def _organizer(actor, data, *, staff):
         return actor
     email = normalized_employee_email(email)
     if not email:
-        raise BookingError("Use a WDN organizer email address")
+        raise BookingError("Use a company employee organizer email address")
     user, _ = User.objects.get_or_create(
         email__iexact=email,
         defaults={"email": email, "password": make_password(None)},
@@ -136,9 +138,52 @@ def _common_fields(data):
     }
 
 
+def _require_actor(actor, *, staff=False, current=None):
+    current = current or User.objects.filter(pk=actor.pk).first()
+    if not actor.is_authenticated or current is None or not current.is_active:
+        raise BookingError("An active employee account is required")
+    if staff and not current.is_staff:
+        raise BookingError("Staff access is required")
+
+
+def _locked_users(*ids):
+    # Role/deactivation updates use the same row lock. NO KEY UPDATE allows FK
+    # inserts (audit/booking/email) without creating User -> Room lock inversions.
+    return {
+        user.pk: user
+        for user in User.objects.select_for_update(no_key=True).filter(pk__in=ids).order_by("pk")
+    }
+
+
+def _require_verified_staff(actor, request, *, current=None):
+    current = current or _locked_users(actor.pk).get(actor.pk)
+    _require_actor(actor, staff=True, current=current)
+    if (
+        not current.is_active
+        or not current.is_staff
+        or request is None
+        or request.user.pk != actor.pk
+        or request.session.get("staff_auth_version") != current.auth_version
+        or not staff_session_verified(request)
+    ):
+        raise BookingError("Verified staff sign-in is required")
+
+
+def _supersede_booking_mail(booking):
+    from booking.models import Notification
+
+    Notification.objects.filter(reservation=booking, status__in=["pending", "failed", "sending"]).update(
+        status=Notification.Status.SKIPPED, last_error="", lease_token=None, lease_expires_at=None
+    )
+    EmailToken.objects.filter(
+        purpose=EmailToken.Purpose.CHECK_IN, reservation=booking, consumed_at__isnull=True
+    ).update(consumed_at=timezone.now())
+
+
 def create_booking(data, *, actor, staff=False):
     from booking.services.checkin import release_due_no_shows
 
+    _require_actor(actor, staff=staff)
     release_due_no_shows()
     return _create_booking(data, actor=actor, staff=staff)
 
@@ -147,10 +192,15 @@ def create_booking(data, *, actor, staff=False):
 def _create_booking(data, *, actor, staff):
     from booking.services.notifications import queue_booking_event
 
+    organizer = _organizer(actor, data, staff=staff)
+    users = _locked_users(actor.pk, organizer.pk)
+    _require_actor(actor, staff=staff, current=users.get(actor.pk))
+    organizer = users[organizer.pk]
+    if not organizer.is_active:
+        raise BookingError("This organizer is inactive")
     room = Room.objects.select_for_update().get(pk=data["room"].pk)
     if not room.is_active:
         raise BookingError("This room is inactive")
-    organizer = _organizer(actor, data, staff=staff)
     _capacity(room, data, organizer)
     policy = BookingPolicy.objects.get(pk=1)
     last = data["until_date"] if data["recurrence"] != "none" else data["date"]
@@ -193,7 +243,9 @@ def _create_booking(data, *, actor, staff):
                 starts_at=start,
                 ends_at=end,
                 kind=Reservation.Kind.BOOKING,
-                status=Reservation.Status.CONFIRMED,
+                status=Reservation.Status.APPROVED if staff else Reservation.Status.PENDING,
+                approved_by=actor if staff else None,
+                approved_at=timezone.now() if staff else None,
                 organizer=organizer,
                 created_by=actor,
                 series=series,
@@ -204,14 +256,14 @@ def _create_booking(data, *, actor, staff):
                 f"Room unavailable on {timezone.localtime(start, LOCAL_TZ):%d %b %Y at %H:%M}"
             ) from exc
         _attendees(booking, data["attendees"])
-        queue_booking_event(booking, "confirmation")
+        queue_booking_event(booking, "confirmation" if staff else "request")
         AuditEvent.objects.create(
             actor=actor,
             action="booking_created",
             target_type="reservation",
             target_id=booking.pk,
             outcome="success",
-            details={"room_id": room.pk, "on_behalf": organizer.pk != actor.pk},
+            details={"room_id": room.pk, "on_behalf": organizer.pk != actor.pk, "status": booking.status},
         )
         created.append(booking)
     return created
@@ -220,6 +272,7 @@ def _create_booking(data, *, actor, staff):
 def update_booking(booking_id, data, *, actor, staff=False):
     from booking.services.checkin import release_due_no_shows
 
+    _require_actor(actor, staff=staff)
     release_due_no_shows()
     return _update_booking(booking_id, data, actor=actor, staff=staff)
 
@@ -228,9 +281,18 @@ def update_booking(booking_id, data, *, actor, staff=False):
 def _update_booking(booking_id, data, *, actor, staff):
     from booking.services.notifications import queue_booking_event
 
-    original_room_id = Reservation.objects.values_list("room_id", flat=True).get(
+    original = Reservation.objects.values("room_id", "organizer_id").get(
         pk=booking_id, kind=Reservation.Kind.BOOKING
     )
+    if not staff and original["organizer_id"] != actor.pk:
+        raise BookingError("You cannot edit another employee's booking")
+    organizer = _organizer(actor, data, staff=staff) if staff else actor
+    users = _locked_users(actor.pk, organizer.pk)
+    _require_actor(actor, staff=staff, current=users.get(actor.pk))
+    organizer = users[organizer.pk]
+    if not organizer.is_active:
+        raise BookingError("This organizer is inactive")
+    original_room_id = original["room_id"]
     requested_room_id = data["room"].pk
     locked_rooms = {
         room.pk: room
@@ -239,10 +301,13 @@ def _update_booking(booking_id, data, *, actor, staff):
         .order_by("pk")
     }
     booking = Reservation.objects.select_for_update().get(pk=booking_id, kind=Reservation.Kind.BOOKING)
-    if booking.room_id not in locked_rooms:
+    if booking.room_id not in locked_rooms or booking.organizer_id != original["organizer_id"]:
         raise BookingError("This booking changed while you were editing it. Reload it and try again")
-    if booking.status != Reservation.Status.CONFIRMED:
-        raise BookingError("Only upcoming confirmed bookings can be edited")
+    if (
+        booking.status not in [Reservation.Status.PENDING, Reservation.Status.APPROVED]
+        or booking.starts_at <= timezone.now()
+    ):
+        raise BookingError("Only upcoming pending or approved bookings can be edited")
     if not staff and booking.organizer_id != actor.pk:
         raise BookingError("You cannot edit another employee's booking")
     old_attendees = list(booking.attendees.values_list("email", flat=True))
@@ -250,7 +315,6 @@ def _update_booking(booking_id, data, *, actor, staff):
     new_room = locked_rooms.get(requested_room_id)
     if new_room is None or not new_room.is_active:
         raise BookingError("This room is inactive")
-    organizer = _organizer(actor, data, staff=staff) if staff else booking.organizer
     _capacity(new_room, data, organizer)
     policy = BookingPolicy.objects.get(pk=1)
     start, end, occupied_from, occupied_until = policy_intervals(
@@ -259,7 +323,7 @@ def _update_booking(booking_id, data, *, actor, staff):
     conflict = (
         Reservation.objects.filter(
             room=new_room,
-            status__in=["confirmed", "checked_in", "completed", "blocked"],
+            status__in=ACTIVE_RESERVATION_STATUSES,
             occupied_from__lt=occupied_until,
             occupied_until__gt=occupied_from,
         )
@@ -268,7 +332,7 @@ def _update_booking(booking_id, data, *, actor, staff):
     )
     if conflict:
         raise BookingError("This room is unavailable for the selected time")
-    for field, value in {
+    changes = {
         "room": new_room,
         "organizer": organizer,
         "starts_at": start,
@@ -276,7 +340,18 @@ def _update_booking(booking_id, data, *, actor, staff):
         "occupied_from": occupied_from,
         "occupied_until": occupied_until,
         **_common_fields(data),
-    }.items():
+    }
+    substantive_change = any(getattr(booking, field) != value for field, value in changes.items()) or set(
+        old_attendees
+    ) != set(data["attendees"])
+    if not substantive_change:
+        return booking
+    booking.revision += 1
+    if not staff and booking.status == Reservation.Status.APPROVED:
+        booking.status = Reservation.Status.PENDING
+        booking.approved_by = None
+        booking.approved_at = None
+    for field, value in changes.items():
         setattr(booking, field, value)
     try:
         with transaction.atomic():
@@ -286,10 +361,11 @@ def _update_booking(booking_id, data, *, actor, staff):
             raise BookingError("This room is unavailable for the selected time") from exc
         raise
     _attendees(booking, data["attendees"])
-    EmailToken.objects.filter(
-        purpose=EmailToken.Purpose.CHECK_IN, reservation=booking, consumed_at__isnull=True
-    ).update(consumed_at=timezone.now())
-    queue_booking_event(booking, "change", extra_recipients=[*old_attendees, old_organizer_email])
+    _supersede_booking_mail(booking)
+    event = "request" if booking.status == Reservation.Status.PENDING else "change"
+    queue_booking_event(
+        booking, event, extra_recipients=[*old_attendees, old_organizer_email] if event == "change" else ()
+    )
     AuditEvent.objects.create(
         actor=actor,
         action="booking_modified",
@@ -305,18 +381,22 @@ def _update_booking(booking_id, data, *, actor, staff):
 def cancel_booking(booking_id, *, actor, staff=False, reason="Cancelled by organizer"):
     from booking.services.notifications import queue_booking_event
 
+    _require_actor(actor, staff=staff, current=_locked_users(actor.pk).get(actor.pk))
     booking = Reservation.objects.select_for_update().get(pk=booking_id, kind=Reservation.Kind.BOOKING)
     if not staff and booking.organizer_id != actor.pk:
         raise BookingError("You cannot cancel another employee's booking")
-    if booking.status not in [Reservation.Status.CONFIRMED, Reservation.Status.CHECKED_IN]:
+    if booking.status not in [
+        Reservation.Status.PENDING,
+        Reservation.Status.APPROVED,
+        Reservation.Status.CHECKED_IN,
+    ]:
         raise BookingError("This booking is already closed")
     booking.status = Reservation.Status.CANCELLED
+    booking.revision += 1
     booking.cancelled_at = timezone.now()
     booking.cancellation_reason = reason[:240]
-    booking.save(update_fields=["status", "cancelled_at", "cancellation_reason", "updated_at"])
-    EmailToken.objects.filter(
-        purpose=EmailToken.Purpose.CHECK_IN, reservation=booking, consumed_at__isnull=True
-    ).update(consumed_at=timezone.now())
+    booking.save(update_fields=["status", "revision", "cancelled_at", "cancellation_reason", "updated_at"])
+    _supersede_booking_mail(booking)
     queue_booking_event(booking, "cancellation")
     AuditEvent.objects.create(
         actor=actor,
@@ -325,5 +405,77 @@ def cancel_booking(booking_id, *, actor, staff=False, reason="Cancelled by organ
         target_id=booking.pk,
         outcome="success",
         details={"reason": reason[:100]},
+    )
+    return booking
+
+
+@transaction.atomic
+def approve_booking(booking_id, *, actor, request):
+    from booking.services.notifications import queue_booking_event
+
+    initial = Reservation.objects.values("room_id", "organizer_id").get(pk=booking_id, kind="booking")
+    users = _locked_users(actor.pk, initial["organizer_id"])
+    _require_verified_staff(actor, request, current=users.get(actor.pk))
+    organizer = users.get(initial["organizer_id"])
+    if organizer is None or not organizer.is_active:
+        raise BookingError("The organizer must be active before approval")
+    room = Room.objects.select_for_update().get(pk=initial["room_id"])
+    booking = (
+        Reservation.objects.select_for_update(of=("self",))
+        .select_related("room", "organizer")
+        .get(pk=booking_id, kind="booking")
+    )
+    if booking.room_id != room.pk or booking.organizer_id != organizer.pk:
+        raise BookingError("This request changed. Reload it before approving")
+    if booking.status != Reservation.Status.PENDING:
+        raise BookingError("Only pending booking requests can be approved")
+    if booking.starts_at <= timezone.now():
+        raise BookingError("A booking must be approved before its start time")
+    if not room.is_active or not booking.organizer.is_active:
+        raise BookingError("The room and organizer must be active before approval")
+    booking.status = Reservation.Status.APPROVED
+    booking.approved_by = actor
+    booking.approved_at = timezone.now()
+    booking.revision += 1
+    booking.save(update_fields=["status", "approved_by", "approved_at", "revision", "updated_at"])
+    _supersede_booking_mail(booking)
+    queue_booking_event(booking, "confirmation")
+    AuditEvent.objects.create(
+        actor=actor,
+        action="booking_approved",
+        target_type="reservation",
+        target_id=booking.pk,
+        outcome="success",
+    )
+    return booking
+
+
+@transaction.atomic
+def reject_booking(booking_id, *, actor, request, reason):
+    from booking.services.notifications import queue_booking_event
+
+    _require_verified_staff(actor, request)
+    if not isinstance(reason, str) or not reason.strip() or len(reason.strip()) > 500:
+        raise BookingError("Enter a rejection reason of up to 500 characters")
+    booking = Reservation.objects.select_for_update().get(pk=booking_id, kind="booking")
+    if booking.status != Reservation.Status.PENDING:
+        raise BookingError("Only pending booking requests can be rejected")
+    booking.status = Reservation.Status.REJECTED
+    booking.rejected_by = actor
+    booking.rejected_at = timezone.now()
+    booking.rejection_reason = reason.strip()
+    booking.revision += 1
+    booking.save(
+        update_fields=["status", "rejected_by", "rejected_at", "rejection_reason", "revision", "updated_at"]
+    )
+    _supersede_booking_mail(booking)
+    queue_booking_event(booking, "rejection")
+    AuditEvent.objects.create(
+        actor=actor,
+        action="booking_rejected",
+        target_type="reservation",
+        target_id=booking.pk,
+        outcome="success",
+        details={"reason": booking.rejection_reason[:100]},
     )
     return booking

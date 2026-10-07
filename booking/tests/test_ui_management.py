@@ -50,7 +50,8 @@ class UserInterfaceTests(TestCase):
             "until_date": None,
         }
         data.update(changes)
-        return create_booking(data, actor=self.employee)[0]
+        data["organizer_email"] = self.employee.email
+        return create_booking(data, actor=self.staff, staff=True)[0]
 
     def test_profile_updates_only_owned_nonsecurity_fields(self):
         self.client.force_login(self.employee)
@@ -129,7 +130,7 @@ class UserInterfaceTests(TestCase):
         )
         self.assertEqual(response.context["page_obj"].paginator.count, 1)
         self.assertEqual(
-            self.client.get(reverse("staff-bookings"), {"status": "confirmed"})
+            self.client.get(reverse("staff-bookings"), {"status": "approved"})
             .context["page_obj"]
             .paginator.count,
             0,
@@ -226,6 +227,7 @@ class UserInterfaceTests(TestCase):
         token_hash = hashlib.sha256(raw.encode()).hexdigest()
         EmailToken.objects.create(
             purpose="check_in",
+            user=self.employee,
             email=self.employee.email,
             reservation=booking,
             token_hash=token_hash,
@@ -252,6 +254,7 @@ class UserInterfaceTests(TestCase):
         token_hash = hashlib.sha256(raw.encode()).hexdigest()
         token = EmailToken.objects.create(
             purpose="check_in",
+            user=self.employee,
             email=self.employee.email,
             reservation=booking,
             token_hash=token_hash,
@@ -265,7 +268,7 @@ class UserInterfaceTests(TestCase):
             token.refresh_from_db()
             booking.refresh_from_db()
             self.assertIsNone(token.consumed_at)
-            self.assertEqual(booking.status, "confirmed")
+            self.assertEqual(booking.status, "approved")
             self.client.get(reverse("checkin-link", args=[raw]))
             self.assertEqual(self.client.post(reverse("checkin-confirm")).status_code, 200)
         booking.refresh_from_db()

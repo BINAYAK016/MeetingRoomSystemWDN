@@ -142,6 +142,9 @@ def report_data(start, end):
             {
                 "room": room,
                 "bookings": len(subset),
+                "pending": statuses[Reservation.Status.PENDING],
+                "approved": statuses[Reservation.Status.APPROVED],
+                "rejected": statuses[Reservation.Status.REJECTED],
                 "completed": statuses[Reservation.Status.COMPLETED],
                 "cancelled": statuses[Reservation.Status.CANCELLED],
                 "no_shows": statuses[Reservation.Status.NO_SHOW],

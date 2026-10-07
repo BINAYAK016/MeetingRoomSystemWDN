@@ -19,14 +19,17 @@ logger = logging.getLogger(__name__)
 
 def queue_booking_event(booking, event, *, extra_recipients=()):
     labels = {
-        "confirmation": "confirmed",
+        "request": "submitted and awaiting administrator approval",
+        "confirmation": "approved",
+        "rejection": "rejected",
         "change": "changed",
         "cancellation": "cancelled",
         "no_show": "released after no check-in",
         "check_in": "checked in",
     }
     recipients = {booking.organizer.email, *extra_recipients}
-    recipients.update(booking.attendees.values_list("email", flat=True))
+    if event not in {"request", "rejection"}:
+        recipients.update(booking.attendees.values_list("email", flat=True))
     recipients.update(User.objects.filter(is_staff=True, is_active=True).values_list("email", flat=True))
     local_start = timezone.localtime(booking.starts_at).strftime("%A %d %B %Y, %H:%M")
     local_end = timezone.localtime(booking.ends_at).strftime("%H:%M")
@@ -35,12 +38,20 @@ def queue_booking_event(booking, event, *, extra_recipients=()):
         f"Your meeting room booking was {labels[event]}.\n\n"
         f"Meeting: {booking.title}\nRoom: {booking.room.name} ({booking.room.location}, floor {booking.room.floor})\n"
         f"When: {local_start}–{local_end} Nepal time\nOrganizer: {booking.organizer.email}\n\n"
-        "Open the WDN Meeting Rooms app for current details."
+        "Open the Meeting Rooms app for current details."
+        + (f"\n\nRejection reason: {booking.rejection_reason}" if event == "rejection" else "")
+        + (f"\n\nCancellation reason: {booking.cancellation_reason}" if event == "cancellation" else "")
+        + (
+            "\n\nThis request holds the room while awaiting administrator approval. It is not approved yet."
+            if event == "request"
+            else ""
+        )
     )
     Notification.objects.bulk_create(
         [
             Notification(
                 reservation=booking,
+                reservation_revision=booking.revision,
                 recipient_email=email,
                 event_type=event,
                 subject=subject,
@@ -70,7 +81,7 @@ def queue_due_reminders(now=None):
     now = now or timezone.now()
     queued = 0
     ids = Reservation.objects.filter(
-        status=Reservation.Status.CONFIRMED,
+        status=Reservation.Status.APPROVED,
         kind=Reservation.Kind.BOOKING,
         starts_at__gt=now,
         starts_at__lte=now + timedelta(hours=1),
@@ -83,7 +94,7 @@ def queue_due_reminders(now=None):
                 .get(pk=booking_id)
             )
             if (
-                booking.status != Reservation.Status.CONFIRMED
+                booking.status != Reservation.Status.APPROVED
                 or not now < booking.starts_at <= now + timedelta(hours=1)
             ):
                 continue
@@ -95,11 +106,16 @@ def queue_due_reminders(now=None):
             )
             for email in recipients:
                 if Notification.objects.filter(
-                    reservation=booking, event_type="reminder", body=marker, recipient_email=email
+                    reservation=booking,
+                    reservation_revision=booking.revision,
+                    event_type="reminder",
+                    body=marker,
+                    recipient_email=email,
                 ).exists():
                     continue
                 Notification.objects.create(
                     reservation=booking,
+                    reservation_revision=booking.revision,
                     recipient_email=email,
                     event_type="reminder",
                     subject=safe_subject(f"Meeting room reminder: {booking.title}"),
@@ -113,7 +129,7 @@ def queue_due_reminders(now=None):
 def _checkin_instructions(booking):
     now = timezone.now()
     policy = BookingPolicy.objects.get(pk=1)
-    if booking.status != Reservation.Status.CONFIRMED or now >= booking.starts_at + timedelta(
+    if booking.status != Reservation.Status.APPROVED or now >= booking.starts_at + timedelta(
         minutes=policy.check_in_minutes
     ):
         return ""
@@ -135,20 +151,49 @@ def _checkin_instructions(booking):
 
 @transaction.atomic
 def _delivery_body(notification):
-    if notification.event_type not in {"reminder", "confirmation", "change"}:
+    if notification.reservation_id is None:
         return notification.body
+    if not Notification.objects.filter(
+        pk=notification.pk, lease_token=notification.lease_token, status=Notification.Status.SENDING
+    ).exists():
+        return None
     booking = (
         Reservation.objects.select_for_update(of=("self",))
         .select_related("room", "organizer")
         .get(pk=notification.reservation_id)
     )
+    if (
+        notification.reservation_revision is not None
+        and notification.reservation_revision != booking.revision
+    ):
+        return None
+    allowed = {
+        "request": {Reservation.Status.PENDING},
+        "confirmation": {
+            Reservation.Status.APPROVED,
+            Reservation.Status.CHECKED_IN,
+            Reservation.Status.COMPLETED,
+        },
+        "change": {Reservation.Status.APPROVED, Reservation.Status.CHECKED_IN, Reservation.Status.COMPLETED},
+        "rejection": {Reservation.Status.REJECTED},
+        "cancellation": {Reservation.Status.CANCELLED},
+        "no_show": {Reservation.Status.NO_SHOW},
+        "check_in": {Reservation.Status.CHECKED_IN, Reservation.Status.COMPLETED},
+        "reminder": {Reservation.Status.APPROVED},
+    }
+    if notification.event_type in allowed and booking.status not in allowed[notification.event_type]:
+        return None
+    if notification.event_type not in {"reminder", "confirmation", "change"}:
+        return notification.body
+    if notification.reservation_revision is None and notification.created_at < booking.updated_at:
+        return None
     if notification.event_type in {"confirmation", "change"}:
         return notification.body + (
             _checkin_instructions(booking) if notification.recipient_email == booking.organizer.email else ""
         )
     policy = BookingPolicy.objects.get(pk=1)
     if (
-        booking.status != Reservation.Status.CONFIRMED
+        booking.status != Reservation.Status.APPROVED
         or notification.body != f"start={booking.starts_at.isoformat()}"
         or timezone.now() >= booking.starts_at + timedelta(minutes=policy.check_in_minutes)
     ):

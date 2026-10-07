@@ -1,11 +1,31 @@
 import logging
+import re
+import sys
+from importlib import import_module
 
+from django.conf import settings
+from django.contrib.auth.models import AnonymousUser
+from django.contrib.messages.storage.cookie import CookieStorage
+from django.db import InterfaceError, OperationalError
 from django.http import HttpResponse
 from django.shortcuts import render
 from django.views.decorators.cache import never_cache
 
 
+def _isolate_error_rendering(request):
+    """Render server errors without reading broken authentication/session data."""
+    request.user = AnonymousUser()
+    # Preserve the client's existing cookie without loading or saving its DB row.
+    request.session = import_module(settings.SESSION_ENGINE).SessionStore(
+        session_key=request.COOKIES.get(settings.SESSION_COOKIE_NAME)
+    )
+    request.session._session_cache = {}
+    request._messages = CookieStorage(request)
+
+
 def _error(request, status, title, explanation):
+    reference = getattr(request, "request_id", "")
+    reference = reference if status >= 500 and re.fullmatch(r"[a-f0-9]{32}", reference) else ""
     try:
         return render(
             request,
@@ -14,13 +34,15 @@ def _error(request, status, title, explanation):
                 "status": status,
                 "error_title": title,
                 "explanation": explanation,
+                "request_reference": reference,
             },
             status=status,
         )
     except Exception as exc:
         # A missing static manifest or failed session must not break error handling.
         logging.getLogger(__name__).error("Error page rendering failed (%s)", type(exc).__name__)
-        return HttpResponse(f"{title}\n{explanation}", status=status, content_type="text/plain")
+        text = f"{title}\n{explanation}" + (f"\nSupport reference: {reference}" if reference else "")
+        return HttpResponse(text, status=status, content_type="text/plain")
 
 
 @never_cache
@@ -55,6 +77,10 @@ def not_found(request, exception=None):
 
 @never_cache
 def server_error(request):
+    exception = sys.exc_info()[1]
+    if isinstance(exception, (InterfaceError, OperationalError)):
+        return unavailable(request)
+    _isolate_error_rendering(request)
     return _error(
         request, 500, "Something went wrong.", "Please try again later. Contact IT if the problem continues."
     )
@@ -62,6 +88,7 @@ def server_error(request):
 
 @never_cache
 def unavailable(request):
+    _isolate_error_rendering(request)
     response = _error(
         request,
         503,

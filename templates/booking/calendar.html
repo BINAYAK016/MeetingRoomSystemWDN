@@ -5,7 +5,7 @@
   <form method="get" class="filter-bar"><label>Date<input type="date" name="date" value="{{ selected|date:'Y-m-d' }}"></label><label>View<select name="view"><option value="day" {% if view == 'day' %}selected{% endif %}>Day</option><option value="week" {% if view == 'week' %}selected{% endif %}>Week</option>{% if staff %}<option value="month" {% if view == 'month' %}selected{% endif %}>Month</option>{% endif %}</select></label><button class="button button-primary">Show</button><a class="button button-quiet" href="{% url 'calendar' %}">Today</a></form>
   <div class="panel calendar-panel">
     {% if not rooms %}<div class="empty-state"><h2>No active rooms</h2><p>Contact Front Desk to add or reactivate a meeting room.</p></div>{% else %}
-    <div class="calendar-key"><span><i class="key-free"></i> Available start</span><span><i class="key-booked"></i> Booked or buffer</span><span><i class="key-own"></i> Your booking</span><span><i class="key-closed"></i> Outside booking rules</span></div>
+    <div class="calendar-key"><span><i class="key-free"></i> Available start</span><span><i class="key-booked"></i> Pending, approved or buffer</span><span><i class="key-own"></i> Your booking</span><span><i class="key-closed"></i> Outside booking rules</span></div>
     {% if date_unavailable_reason %}<p class="notice">{{ date_unavailable_reason }}</p>{% endif %}
     <p class="muted">Availability is checked again when you save. Meetings need {{ policy.minimum_minutes }}–{{ policy.maximum_minutes }} minutes and a {{ policy.gap_minutes }} minute buffer.</p>
     <div class="table-scroll" tabindex="0" role="region" aria-label="Room availability table">

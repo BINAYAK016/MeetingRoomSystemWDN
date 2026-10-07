@@ -30,23 +30,33 @@ def retry_failed_mail(notification_id=None):
             booking = job.reservation
             eligible = True
             if booking:
-                if job.event_type == "reminder":
+                eligible = job.reservation_revision is None or job.reservation_revision == booking.revision
+                if job.event_type == "request":
                     eligible = (
-                        booking.status == Reservation.Status.CONFIRMED
+                        eligible and booking.status == Reservation.Status.PENDING and now < booking.starts_at
+                    )
+                elif job.event_type == "rejection":
+                    eligible = eligible and booking.status == Reservation.Status.REJECTED
+                elif job.event_type == "reminder":
+                    eligible = eligible and (
+                        booking.status == Reservation.Status.APPROVED
                         and now < booking.starts_at + timedelta(minutes=check_in_minutes)
                         and job.body == f"start={booking.starts_at.isoformat()}"
                     )
                 elif job.event_type in {"confirmation", "change"}:
-                    eligible = (
-                        booking.status in {Reservation.Status.CONFIRMED, Reservation.Status.CHECKED_IN}
+                    eligible = eligible and (
+                        booking.status in {Reservation.Status.APPROVED, Reservation.Status.CHECKED_IN}
                         and now < booking.ends_at
                     )
                 elif job.event_type == "cancellation":
-                    eligible = booking.status == Reservation.Status.CANCELLED
+                    eligible = eligible and booking.status == Reservation.Status.CANCELLED
                 elif job.event_type == "no_show":
-                    eligible = booking.status == Reservation.Status.NO_SHOW
+                    eligible = eligible and booking.status == Reservation.Status.NO_SHOW
                 elif job.event_type == "check_in":
-                    eligible = booking.status in {Reservation.Status.CHECKED_IN, Reservation.Status.COMPLETED}
+                    eligible = eligible and booking.status in {
+                        Reservation.Status.CHECKED_IN,
+                        Reservation.Status.COMPLETED,
+                    }
             job.status = Notification.Status.PENDING if eligible else Notification.Status.SKIPPED
             job.attempts = 0 if eligible else job.attempts
             job.last_error = ""

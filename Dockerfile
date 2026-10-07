@@ -20,4 +20,4 @@ RUN useradd --uid 1000 --create-home appuser && chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8000
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "30", "--capture-output", "--error-logfile", "-"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--worker-class", "gthread", "--threads", "4", "--timeout", "30", "--keep-alive", "5", "--no-control-socket", "--logger-class", "booking.logging.SafeGunicornLogger", "--capture-output", "--error-logfile", "-"]

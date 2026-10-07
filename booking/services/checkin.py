@@ -17,31 +17,69 @@ def _no_show(booking, now):
     from booking.services.notifications import queue_booking_event
 
     booking.status = Reservation.Status.NO_SHOW
+    booking.revision += 1
     booking.cancelled_at = now
     booking.cancellation_reason = "No check-in before the deadline"
-    booking.save(update_fields=["status", "cancelled_at", "cancellation_reason", "updated_at"])
+    booking.save(update_fields=["status", "revision", "cancelled_at", "cancellation_reason", "updated_at"])
     EmailToken.objects.filter(
         reservation=booking, purpose=EmailToken.Purpose.CHECK_IN, consumed_at__isnull=True
     ).update(consumed_at=now)
+    from booking.services.bookings import _supersede_booking_mail
+
+    _supersede_booking_mail(booking)
     queue_booking_event(booking, "no_show")
     AuditEvent.objects.create(
         action="booking_no_show", target_type="reservation", target_id=booking.pk, outcome="success"
     )
 
 
+def release_due_pending_requests(now=None):
+    from booking.services.bookings import _supersede_booking_mail
+    from booking.services.notifications import queue_booking_event
+
+    now = now or timezone.now()
+    count = 0
+    ids = Reservation.objects.filter(
+        kind=Reservation.Kind.BOOKING, status=Reservation.Status.PENDING, starts_at__lte=now
+    ).values_list("pk", flat=True)[:100]
+    for booking_id in ids:
+        with transaction.atomic():
+            booking = Reservation.objects.select_for_update().get(pk=booking_id)
+            if booking.status != Reservation.Status.PENDING or booking.starts_at > now:
+                continue
+            booking.status = Reservation.Status.CANCELLED
+            booking.cancelled_at = now
+            booking.cancellation_reason = "Approval window expired before the meeting started"
+            booking.revision += 1
+            booking.save(
+                update_fields=["status", "revision", "cancelled_at", "cancellation_reason", "updated_at"]
+            )
+            _supersede_booking_mail(booking)
+            queue_booking_event(booking, "cancellation")
+            AuditEvent.objects.create(
+                action="booking_request_expired",
+                target_type="reservation",
+                target_id=booking.pk,
+                outcome="success",
+            )
+            count += 1
+    return count
+
+
 def release_due_no_shows(now=None):
     now = now or timezone.now()
+    release_due_pending_requests(now=now)
     policy = BookingPolicy.objects.get(pk=1)
     cutoff = now - timedelta(minutes=policy.check_in_minutes)
     count = 0
     ids = Reservation.objects.filter(
-        kind=Reservation.Kind.BOOKING, status=Reservation.Status.CONFIRMED, starts_at__lte=cutoff
+        kind=Reservation.Kind.BOOKING, status=Reservation.Status.APPROVED, starts_at__lte=cutoff
     ).values_list("pk", flat=True)[:100]
     for booking_id in ids:
         with transaction.atomic():
             booking = Reservation.objects.select_for_update().get(pk=booking_id)
             if (
-                booking.status == Reservation.Status.CONFIRMED
+                booking.status == Reservation.Status.APPROVED
                 and booking.starts_at + timedelta(minutes=policy.check_in_minutes) <= now
             ):
                 _no_show(booking, now)
@@ -65,12 +103,25 @@ def confirm_checkin_hash(token_hash, *, actor=None):
     initial = EmailToken.objects.filter(token_hash=token_hash, purpose=EmailToken.Purpose.CHECK_IN).first()
     if initial is None:
         raise CheckInError("This check-in link is unavailable")
+    from booking.services.bookings import _locked_users
+    from booking.services.email_login import normalized_employee_email
+
+    organizer_id = Reservation.objects.values_list("organizer_id", flat=True).get(pk=initial.reservation_id)
+    organizer = _locked_users(organizer_id).get(organizer_id)
+    if organizer is None or not organizer.is_active or normalized_employee_email(organizer.email) is None:
+        raise CheckInError("This organizer account is unavailable")
     booking = Reservation.objects.select_for_update().get(pk=initial.reservation_id)
     token = EmailToken.objects.select_for_update().get(pk=initial.pk)
+    if (
+        booking.organizer_id != organizer.pk
+        or token.user_id != organizer.pk
+        or token.email.lower() != organizer.email.lower()
+    ):
+        raise CheckInError("This check-in link is unavailable")
     now = timezone.now()
     policy = BookingPolicy.objects.get(pk=1)
     deadline = booking.starts_at + timedelta(minutes=policy.check_in_minutes)
-    if booking.status != Reservation.Status.CONFIRMED or token.consumed_at or token.expires_at <= now:
+    if booking.status != Reservation.Status.APPROVED or token.consumed_at or token.expires_at <= now:
         raise CheckInError("This check-in link has expired or was already used")
     if now < booking.starts_at:
         raise CheckInError("Check-in opens when the meeting starts")
@@ -97,7 +148,13 @@ def confirm_checkin_hash(token_hash, *, actor=None):
 
 @transaction.atomic
 def manual_checkin(booking_id, *, actor):
+    from booking.services.bookings import BookingError, _locked_users, _require_actor
     from booking.services.notifications import queue_booking_event
+
+    try:
+        _require_actor(actor, staff=True, current=_locked_users(actor.pk).get(actor.pk))
+    except BookingError as exc:
+        raise CheckInError("Active staff access is required") from exc
 
     try:
         booking = Reservation.objects.select_for_update().get(pk=booking_id, kind=Reservation.Kind.BOOKING)
@@ -106,7 +163,7 @@ def manual_checkin(booking_id, *, actor):
     now = timezone.now()
     policy = BookingPolicy.objects.get(pk=1)
     if (
-        booking.status != Reservation.Status.CONFIRMED
+        booking.status != Reservation.Status.APPROVED
         or not booking.starts_at <= now < booking.starts_at + timedelta(minutes=policy.check_in_minutes)
     ):
         raise CheckInError("This booking is outside the check-in window")

@@ -13,6 +13,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
@@ -22,7 +23,7 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 
-from booking.forms import PolicyForm, RoomBlockForm, RoomForm
+from booking.forms import BookingRejectionForm, PolicyForm, RoomBlockForm, RoomForm
 from booking.management_forms import UserAccessForm
 from booking.models import (
     AuditEvent,
@@ -36,6 +37,7 @@ from booking.models import (
     User,
 )
 from booking.services.auth_security import staff_session_verified
+from booking.services.bookings import BookingError, approve_booking, reject_booking
 from booking.services.checkin import CheckInError, manual_checkin
 from booking.services.mail_delivery import deliver_mail
 from booking.services.reporting import report_data
@@ -97,15 +99,18 @@ def dashboard(request):
             "today_bookings": Reservation.objects.filter(
                 kind=Reservation.Kind.BOOKING,
                 starts_at__date=today,
-                status__in=["confirmed", "checked_in", "completed"],
+                status__in=["approved", "checked_in", "completed"],
             ).count(),
             "rooms_count": Room.objects.filter(is_active=True).count(),
             "mail_failed": Notification.objects.filter(status=Notification.Status.FAILED).count(),
+            "pending_count": Reservation.objects.filter(
+                kind=Reservation.Kind.BOOKING, status=Reservation.Status.PENDING
+            ).count(),
             "no_shows": Reservation.objects.filter(
                 status=Reservation.Status.NO_SHOW, starts_at__date=today
             ).count(),
             "upcoming": Reservation.objects.filter(
-                kind=Reservation.Kind.BOOKING, starts_at__gte=timezone.now(), status="confirmed"
+                kind=Reservation.Kind.BOOKING, starts_at__gte=timezone.now(), status="approved"
             )
             .select_related("room", "organizer")
             .order_by("starts_at")[:12],
@@ -116,9 +121,12 @@ def dashboard(request):
 @staff_required
 @require_GET
 def rooms(request):
-    return render(
-        request, "booking/staff_rooms.html", {"rooms": Room.objects.all().prefetch_related("facilities")}
+    context = paginate(
+        request,
+        Room.objects.all().prefetch_related("facilities").order_by("location", "floor", "name", "pk"),
     )
+    context["rooms"] = context["page_obj"]
+    return render(request, "booking/staff_rooms.html", context)
 
 
 @staff_required
@@ -128,7 +136,7 @@ def room_form(request, room_id=None):
     queryset = Room.objects.select_for_update() if request.method == "POST" else Room.objects.all()
     room = get_object_or_404(queryset, pk=room_id) if room_id else None
     form = RoomForm(
-        request.POST or None,
+        request.POST if request.method == "POST" else None,
         instance=room,
         initial={"facilities_text": "\n".join(room.facilities.values_list("name", flat=True))}
         if room and request.method == "GET"
@@ -170,14 +178,14 @@ def room_form(request, room_id=None):
 
 @staff_required
 @require_GET
-def bookings(request):
+def bookings(request, pending_only=False):
     qs = (
         Reservation.objects.filter(kind=Reservation.Kind.BOOKING)
         .select_related("room", "organizer")
         .order_by("-starts_at", "-pk")
     )
     search = request.GET.get("q", "").strip()[:100]
-    status = request.GET.get("status", "")
+    status = Reservation.Status.PENDING if pending_only else request.GET.get("status", "")
     if search:
         qs = qs.filter(
             Q(title__icontains=search)
@@ -186,8 +194,10 @@ def bookings(request):
         )
     if status in Reservation.Status.values:
         qs = qs.filter(status=status)
+    if pending_only:
+        qs = qs.order_by("starts_at", "created_at", "pk")
     room_id = request.GET.get("room", "")[:10]
-    if room_id.isdigit():
+    if room_id.isascii() and room_id.isdigit():
         qs = qs.filter(room_id=int(room_id))
     for parameter, lookup in (("from", "starts_at__date__gte"), ("to", "starts_at__date__lte")):
         value = request.GET.get(parameter, "")
@@ -202,12 +212,62 @@ def bookings(request):
             "bookings": context["page_obj"],
             "search": search,
             "status": status,
-            "statuses": Reservation.Status.choices,
+            "statuses": [
+                choice
+                for choice in Reservation.Status.choices
+                if choice[0] not in {"blocked", "block_cancelled"}
+            ],
+            "pending_only": pending_only,
             "rooms": Room.objects.all(),
             "selected_room": room_id,
         }
     )
     return render(request, "booking/staff_bookings.html", context)
+
+
+@staff_required
+@require_POST
+def booking_approve(request, booking_id):
+    get_object_or_404(Reservation, pk=booking_id, kind=Reservation.Kind.BOOKING)
+    try:
+        approve_booking(booking_id, actor=request.user, request=request)
+    except BookingError as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, "Booking approved. Confirmation has been queued for the requester.")
+    return redirect("booking-detail", booking_id=booking_id)
+
+
+@staff_required
+@require_POST
+def booking_reject(request, booking_id):
+    booking = get_object_or_404(
+        Reservation.objects.select_related("room", "organizer"),
+        pk=booking_id,
+        kind=Reservation.Kind.BOOKING,
+    )
+    form = BookingRejectionForm(request.POST)
+    if form.is_valid():
+        try:
+            reject_booking(
+                booking_id, actor=request.user, request=request, reason=form.cleaned_data["reason"]
+            )
+        except BookingError as exc:
+            form.add_error(None, str(exc))
+        else:
+            messages.success(request, "Booking rejected. The requester can see your reason.")
+            return redirect("booking-detail", booking_id=booking_id)
+    return render(
+        request,
+        "booking/staff_form.html",
+        {
+            "form": form,
+            "heading": f"Reject request: {booking.title}",
+            "submit_label": "Reject request",
+            "cancel_url": reverse("booking-detail", args=[booking.pk]),
+        },
+        status=400,
+    )
 
 
 @staff_required
@@ -225,7 +285,7 @@ def staff_checkin(request, booking_id):
 @require_http_methods(["GET", "POST"])
 @transaction.atomic
 def block_new(request):
-    form = RoomBlockForm(request.POST or None)
+    form = RoomBlockForm(request.POST if request.method == "POST" else None)
     if request.method == "POST" and form.is_valid():
         data = form.cleaned_data
         start = datetime.combine(data["date"], data["start_time"], ZoneInfo("Asia/Kathmandu"))
@@ -302,8 +362,11 @@ def block_cancel(request, block_id):
 @require_http_methods(["GET", "POST"])
 @transaction.atomic
 def policy(request):
-    policy = BookingPolicy.objects.select_for_update().get(pk=1)
-    form = PolicyForm(request.POST or None, instance=policy)
+    qs = (
+        BookingPolicy.objects.select_for_update() if request.method == "POST" else BookingPolicy.objects.all()
+    )
+    policy = qs.get(pk=1)
+    form = PolicyForm(request.POST if request.method == "POST" else None, instance=policy)
     if request.method == "POST" and form.is_valid():
         saved = form.save(commit=False)
         saved.updated_by = request.user
@@ -342,7 +405,9 @@ def holidays(request):
         except ValueError:
             messages.error(request, "Enter a valid date and holiday name")
         return redirect("staff-holidays")
-    return render(request, "booking/staff_holidays.html", {"holidays": CompanyHoliday.objects.all()})
+    context = paginate(request, CompanyHoliday.objects.order_by("-date", "-pk"))
+    context["holidays"] = context["page_obj"]
+    return render(request, "booking/staff_holidays.html", context)
 
 
 @staff_required
@@ -384,7 +449,7 @@ def _user_directory(request, form=None):
         qs = qs.filter(is_active=False)
     initial = {"is_active": True}
     edit_id = request.GET.get("edit", "")[:10]
-    if edit_id.isdigit():
+    if edit_id.isascii() and edit_id.isdigit():
         item = get_object_or_404(User, pk=int(edit_id))
         initial = {field: getattr(item, field) for field in UserAccessForm.base_fields}
     context = paginate(request, qs)
@@ -493,9 +558,14 @@ def send_staff_setup(request, user_id):
 @sensitive_variables("password", "token")
 @require_http_methods(["GET", "POST"])
 def set_staff_password(request, uid, token):
+    if len(uid) > 32 or len(token) > 128:
+        raise Http404
     try:
-        user = User.objects.get(pk=force_str(urlsafe_base64_decode(uid)), is_staff=True, is_active=True)
-    except (ValueError, TypeError, OverflowError, User.DoesNotExist):
+        decoded = force_str(urlsafe_base64_decode(uid))
+        if not decoded.isascii() or not decoded.isdigit() or len(decoded) > 19:
+            raise ValueError
+        user = User.objects.get(pk=int(decoded), is_staff=True, is_active=True)
+    except (ValueError, TypeError, OverflowError, UnicodeDecodeError, User.DoesNotExist):
         raise Http404 from None
     if not default_token_generator.check_token(user, token):
         raise Http404

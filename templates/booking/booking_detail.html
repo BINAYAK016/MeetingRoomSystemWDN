@@ -1,1 +1,41 @@
-{% extends "booking/base.html" %}{% block title %}Booking details{% endblock %}{% block content %}<div class="page-container app-page"><a class="back-link" href="{% url 'my-bookings' %}">← Back to bookings</a><div class="page-heading"><div><p class="eyebrow">BOOKING #{{ booking.pk }}</p><h1>{{ booking.title }}</h1><p class="lead">{{ booking.room.name }} · {{ booking.starts_at|date:'D, d M Y' }}</p></div><span class="status status-{{ booking.status }}">{{ booking.get_status_display }}</span></div><div class="detail-grid"><section class="panel"><h2>Meeting details</h2><dl class="detail-list"><div><dt>Room</dt><dd>{{ booking.room.name }} · {{ booking.room.location }}, floor {{ booking.room.floor }}</dd></div><div><dt>Time</dt><dd>{{ booking.starts_at|date:'d M Y, H:i' }}–{{ booking.ends_at|date:'H:i' }} NPT</dd></div><div><dt>Organizer</dt><dd>{{ booking.organizer.get_full_name|default:booking.organizer.email }} ({{ booking.organizer.email }})</dd></div><div><dt>Department</dt><dd>{{ booking.department|default:'—' }}</dd></div><div><dt>Meeting type</dt><dd>{{ booking.get_meeting_type_display }}{% if booking.guest_company_name %} · {{ booking.guest_company_name }}{% endif %}</dd></div><div><dt>External guests</dt><dd>{{ booking.external_attendee_count }}</dd></div><div><dt>Refreshments</dt><dd>{{ booking.refreshments_requested|yesno:'Requested,Not requested' }}</dd></div><div><dt>Attendees</dt><dd>{% for attendee in booking.attendees.all %}{{ attendee.email }}{% if not forloop.last %}, {% endif %}{% empty %}None listed{% endfor %}</dd></div><div><dt>Description</dt><dd>{{ booking.description|default:'—'|linebreaksbr }}</dd></div><div><dt>Front Desk notes</dt><dd>{{ booking.front_desk_notes|default:'—'|linebreaksbr }}</dd></div>{% if booking.cancellation_reason %}<div><dt>Cancellation reason</dt><dd>{{ booking.cancellation_reason }}</dd></div>{% endif %}</dl></section><aside class="panel"><h2>Manage booking</h2>{% if booking.status == 'confirmed' %}<p class="muted">Changes are checked against current availability.</p><a class="button button-primary button-wide" href="{% url 'booking-edit' booking.pk %}">Edit booking →</a><form method="post" action="{% url 'booking-cancel' booking.pk %}" class="stacked-action">{% csrf_token %}<label for="reason">Cancellation reason</label><input id="reason" name="reason" maxlength="240" value="Cancelled"><button class="button button-quiet button-wide" type="submit">Cancel booking</button></form>{% if staff %}<form method="post" action="{% url 'staff-checkin' booking.pk %}" class="stacked-action">{% csrf_token %}<button class="button button-quiet button-wide">Manual check-in</button></form>{% endif %}{% else %}<p class="muted">This booking is {{ booking.get_status_display|lower }}.</p>{% endif %}{% if booking.series %}<p class="muted">Part of a {{ booking.series.get_frequency_display|lower }} series. Each occurrence can be managed separately.</p>{% endif %}</aside></div></div>{% endblock %}
+{% extends "booking/base.html" %}
+{% block title %}Booking details{% endblock %}
+{% block content %}
+<div class="page-container app-page">
+  <a class="back-link" href="{% if staff %}{% url 'staff-bookings' %}{% else %}{% url 'my-bookings' %}{% endif %}">← Back to bookings</a>
+  <div class="page-heading"><div><p class="eyebrow">BOOKING #{{ booking.pk }}</p><h1>{{ booking.title }}</h1><p class="lead">{{ booking.room.name }} · {{ booking.starts_at|date:'D, d M Y' }}</p></div><span class="status status-{{ booking.status }}">{{ booking.get_status_display }}</span></div>
+  {% if booking.status == 'pending' %}<p class="notice" role="status">Booking request submitted. Waiting for administrator approval. This room and time are held while the request is reviewed.</p>{% elif booking.status == 'rejected' %}<div class="notice notice-error"><strong>Booking request rejected</strong><p>{{ booking.rejection_reason|linebreaksbr }}</p><p>This request no longer holds the room.</p></div>{% endif %}
+  <div class="detail-grid">
+    <section class="panel"><h2>Meeting details</h2>
+      <dl class="detail-list">
+        <div><dt>Room</dt><dd>{{ booking.room.name }} · {{ booking.room.location }}, floor {{ booking.room.floor }}</dd></div>
+        <div><dt>Time</dt><dd>{{ booking.starts_at|date:'d M Y, H:i' }}–{{ booking.ends_at|date:'H:i' }} NPT</dd></div>
+        <div><dt>Requester</dt><dd>{{ booking.organizer.get_full_name|default:booking.organizer.email }} ({{ booking.organizer.email }})</dd></div>
+        <div><dt>Requested</dt><dd>{{ booking.created_at|date:'d M Y, H:i' }} NPT</dd></div>
+        <div><dt>Department</dt><dd>{{ booking.department|default:'—' }}</dd></div>
+        <div><dt>Meeting type</dt><dd>{{ booking.get_meeting_type_display }}{% if booking.guest_company_name %} · {{ booking.guest_company_name }}{% endif %}</dd></div>
+        <div><dt>External guests</dt><dd>{{ booking.external_attendee_count }}</dd></div>
+        <div><dt>Refreshments</dt><dd>{{ booking.refreshments_requested|yesno:'Requested,Not requested' }}</dd></div>
+        <div><dt>Attendees</dt><dd>{% for attendee in booking.attendees.all %}{{ attendee.email }}{% if not forloop.last %}, {% endif %}{% empty %}None listed{% endfor %}</dd></div>
+        <div><dt>Description</dt><dd>{{ booking.description|default:'—'|linebreaksbr }}</dd></div>
+        <div><dt>Front Desk notes</dt><dd>{{ booking.front_desk_notes|default:'—'|linebreaksbr }}</dd></div>
+        {% if booking.approved_at %}<div><dt>Approved</dt><dd>{{ booking.approved_at|date:'d M Y, H:i' }} NPT{% if staff %} · {{ booking.approved_by.get_full_name|default:booking.approved_by.email }}{% endif %}</dd></div>{% endif %}
+        {% if booking.rejected_at %}<div><dt>Rejected</dt><dd>{{ booking.rejected_at|date:'d M Y, H:i' }} NPT</dd></div>{% endif %}
+        {% if booking.cancellation_reason %}<div><dt>Cancellation reason</dt><dd>{{ booking.cancellation_reason }}</dd></div>{% endif %}
+      </dl>
+    </section>
+    <aside class="panel"><h2>{% if can_review %}Review request{% else %}Manage booking{% endif %}</h2>
+      {% if can_review %}
+        <p class="muted">Approval confirms this meeting and notifies the requester.</p>
+        <form method="post" action="{% url 'staff-booking-approve' booking.pk %}" data-confirm="Approve this booking request?">{% csrf_token %}<button class="button button-primary button-wide" type="submit">Approve request</button></form>
+        <form method="post" action="{% url 'staff-booking-reject' booking.pk %}" class="stacked-action" data-confirm="Reject this request and release the room?">{% csrf_token %}<label for="rejection-reason">Rejection reason</label><textarea id="rejection-reason" name="reason" rows="3" maxlength="500" required aria-describedby="rejection-help"></textarea><small id="rejection-help" class="muted">Required. The requester will see your explanation.</small><button class="button button-danger button-wide" type="submit">Reject request</button></form>
+      {% endif %}
+      {% if can_edit %}<p class="muted">Changes are checked against current availability.{% if not staff and booking.status == 'approved' %} Changing meeting details will require a new approval.{% endif %}</p><a class="button button-quiet button-wide" href="{% url 'booking-edit' booking.pk %}">Edit booking →</a>{% endif %}
+      {% if can_cancel %}<form method="post" action="{% url 'booking-cancel' booking.pk %}" class="stacked-action" data-confirm="Cancel this booking and release the room?">{% csrf_token %}<label for="reason">Cancellation reason</label><input id="reason" name="reason" maxlength="240" value="Cancelled"><button class="button button-quiet button-wide" type="submit">Cancel booking</button></form>{% endif %}
+      {% if staff and booking.status == 'approved' %}<form method="post" action="{% url 'staff-checkin' booking.pk %}" class="stacked-action" data-confirm="Check in this meeting now?">{% csrf_token %}<button class="button button-quiet button-wide" type="submit">Manual check-in</button></form>{% endif %}
+      {% if not can_edit and not can_cancel and not can_review %}<p class="muted">This booking is {{ booking.get_status_display|lower }}.</p>{% endif %}
+      {% if booking.series %}<p class="muted">Part of a {{ booking.series.get_frequency_display|lower }} series. Each occurrence is reviewed and managed separately.</p>{% endif %}
+    </aside>
+  </div>
+</div>
+{% endblock %}
