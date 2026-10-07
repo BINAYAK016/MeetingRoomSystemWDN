@@ -18,7 +18,7 @@ DEBUG = False
 ALLOWED_HOSTS = [host.strip() for host in required_env("DJANGO_ALLOWED_HOSTS").split(",") if host.strip()]
 EMPLOYEE_EMAIL_DOMAINS = tuple(
     domain.strip().lower().lstrip("@")
-    for domain in os.environ.get("EMPLOYEE_EMAIL_DOMAINS", "wdn.com.np").split(",")
+    for domain in os.environ.get("EMPLOYEE_EMAIL_DOMAINS", "wdn.com.np,transgate.com.np").split(",")
     if domain.strip()
 )
 if not EMPLOYEE_EMAIL_DOMAINS:
@@ -82,6 +82,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "booking.context_processors.employee_email_domains",
             ],
         },
     }

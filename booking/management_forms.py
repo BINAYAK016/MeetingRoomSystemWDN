@@ -1,6 +1,6 @@
 from django import forms
 
-from booking.services.email_login import normalized_employee_email
+from booking.services.email_login import employee_email_domain_label, normalized_employee_email
 
 
 class UserAccessForm(forms.Form):
@@ -14,5 +14,5 @@ class UserAccessForm(forms.Form):
     def clean_email(self):
         email = normalized_employee_email(self.cleaned_data["email"])
         if not email:
-            raise forms.ValidationError("Use a valid wdn.com.np employee email address.")
+            raise forms.ValidationError(f"Use a company email address at {employee_email_domain_label()}.")
         return email

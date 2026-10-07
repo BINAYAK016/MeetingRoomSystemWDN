@@ -1,6 +1,6 @@
 # Employee guide
 
-1. Open the internal WDN Meeting Rooms address and enter your `wdn.com.np` email. Open the one-time link in your company mailbox and confirm sign-in. Keep the same browser and internal address throughout sign-in.
+1. Open the internal WDN Meeting Rooms address and enter your `wdn.com.np` or `transgate.com.np` email. Open the one-time link in your company mailbox and confirm sign-in. Keep the same browser and internal address throughout sign-in.
 2. Update your name and department in **My profile**. Open **Rooms** to search by room name/floor/description and filter seating capacity, location, and facilities. Use **Calendar** to see free and occupied time. The day view has 15-minute rows; selecting a free row starts a booking. The week view gives an overview. Past slots, weekends, holidays, and dates outside the booking window are labelled unavailable.
 3. On **New booking**, choose a room, working date, start/end time, meeting type, title, attendee email addresses, and any Front Desk notes. For external meetings, enter the guest company and guest count. Select daily, weekly, or monthly recurrence if needed. Only occurrences within the next two weeks are reserved; book later months when they enter that window.
 4. Check the confirmation page and email. If a room becomes unavailable before your booking saves, choose a new room or time. Bookings require a 15-minute gap, run during configured working hours, and cannot overlap room closures or another meeting.

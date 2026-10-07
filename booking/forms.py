@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 
 from booking.models import BookingPolicy, Reservation, Room
-from booking.services.email_login import normalized_employee_email
+from booking.services.email_login import employee_email_domain_label, normalized_employee_email
 
 
 class BookingForm(forms.Form):
@@ -32,7 +32,7 @@ class BookingForm(forms.Form):
     )
     until_date = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}))
     organizer_email = forms.EmailField(
-        required=False, help_text="Staff only: book on behalf of a WDN employee."
+        required=False, help_text="Staff only: book on behalf of a company employee."
     )
     override_reason = forms.CharField(
         max_length=500,
@@ -71,7 +71,7 @@ class BookingForm(forms.Form):
     def clean_organizer_email(self):
         value = self.cleaned_data.get("organizer_email", "")
         if value and not normalized_employee_email(value):
-            raise forms.ValidationError("Use a wdn.com.np employee address")
+            raise forms.ValidationError(f"Use a company email address at {employee_email_domain_label()}.")
         return normalized_employee_email(value) if value else ""
 
     def clean(self):

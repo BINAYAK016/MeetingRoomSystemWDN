@@ -1,6 +1,6 @@
 # WDN Meeting Rooms
 
-An internal meeting room application for `wdn.com.np` employees. Django renders the employee and staff interface; PostgreSQL stores records, sessions, notification jobs, and audit history. A worker sends email and reconciles reminders, completed meetings, and missed check-ins. Docker Compose runs the application, worker, and persistent PostgreSQL database; production adds an HTTPS Nginx proxy on the company network.
+An internal meeting room application for employees with `wdn.com.np` or `transgate.com.np` email addresses. Django renders the employee and staff interface; PostgreSQL stores records, sessions, notification jobs, and audit history. A worker sends email and reconciles reminders, completed meetings, and missed check-ins. Docker Compose runs the application, worker, and persistent PostgreSQL database; production adds an HTTPS Nginx proxy on the company network.
 
 The interface uses the Transgate navy/red palette and logo, with Times New Roman as approved. Front Desk and Administrators have identical staff permissions. Staff use a password plus a company-email code; employees use a company-email link.
 
@@ -60,7 +60,7 @@ Stop containers and preserve data with `docker compose down`. Restart with `dock
 | `DJANGO_ALLOWED_HOSTS` | Allowed hostnames. Production proxy expects one internal hostname without scheme/port. |
 | `DJANGO_PUBLIC_BASE_URL` | Matching origin used in secure email links, e.g. `https://meetings.company.invalid`. |
 | `DJANGO_HTTPS` | Secure cookies and HTTPS redirect. Production Compose forces `true`. |
-| `EMPLOYEE_EMAIL_DOMAINS` | Local allowed employee domains; production is fixed to `wdn.com.np`. |
+| `EMPLOYEE_EMAIL_DOMAINS` | Comma-separated local employee domains; defaults to `wdn.com.np,transgate.com.np`. Production allows these two domains. |
 | `DJANGO_EMAIL_BACKEND` | `file` for local HTTP development, `disabled` while unconfigured, or `smtp` for the approved relay. |
 | `AUTH_TRUSTED_PROXY_CIDRS` | Networks/IPs allowed to supply `X-Real-IP`; production trusts only its fixed proxy IP. |
 | `PROXY_NETWORK_SUBNET`, `PROXY_NETWORK_DYNAMIC_RANGE`, `PROXY_IP` | Production proxy network; keep the fixed proxy outside the automatic address range and update the trusted CIDR consistently if changed. |

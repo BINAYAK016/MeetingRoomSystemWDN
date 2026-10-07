@@ -35,7 +35,7 @@ flowchart LR
 
 **Manual priority.** Front Desk will decide when senior management receives priority for the WDN third-floor room. If staff must move or cancel an existing booking, that change must be audited and the affected organizer notified. Staff cannot bypass the database conflict constraint and leave two active bookings for the same room and time.
 
-**Email identity and privacy.** Employees use expiring, single-use links sent only to `wdn.com.np`. Token records and pending session values contain hashes; raw links are needed in queued email bodies until delivery, so database and backup access must be restricted. Request logs omit token URLs and sensitive values. Atomic database throttles limit account and client-IP requests independently; only the known proxy may supply client-IP headers. Login tokens and check-in tokens have separate purposes; an occurrence's check-in link only authorizes check-in for that occurrence. Rescheduling or cancelling invalidates its old check-in link. Employee availability shows room and time but hides attendee lists, notes, meeting titles, and purpose from other employees. Every detail view and change requires server-side authorization.
+**Email identity and privacy.** Employees use expiring, single-use links sent only to `wdn.com.np` or `transgate.com.np`. Token records and pending session values contain hashes; raw links are needed in queued email bodies until delivery, so database and backup access must be restricted. Request logs omit token URLs and sensitive values. Atomic database throttles limit account and client-IP requests independently; only the known proxy may supply client-IP headers. Login tokens and check-in tokens have separate purposes; an occurrence's check-in link only authorizes check-in for that occurrence. Rescheduling or cancelling invalidates its old check-in link. Employee availability shows room and time but hides attendee lists, notes, meeting titles, and purpose from other employees. Every detail view and change requires server-side authorization.
 
 **Safe use of email links.** Opening a link displays a confirmation page; a deliberate button press performs login or check-in using a protected POST request. Merely fetching or previewing a URL must not consume the token or check in a meeting. This also reduces accidental actions from email link inspection. Django requires safe HTTP methods such as GET to be free of state-changing actions. [Django CSRF guidance](https://docs.djangoproject.com/en/5.2/ref/csrf/)
 
@@ -65,7 +65,7 @@ The single server is a shared point of failure. IT must agree acceptable downtim
 
 ## Operational inputs still needed
 
-1. Employee name/department source, official holiday calendar, five room records, and exact WDN third-floor priority procedure. Only `wdn.com.np` employee email addresses are allowed for now. Front Desk will handle room priority manually; the workflow still needs definition.
+1. Employee name/department source, official holiday calendar, five room records, and exact WDN third-floor priority procedure. Employee email addresses must use `wdn.com.np` or `transgate.com.np`. Front Desk will handle room priority manually; the workflow still needs definition.
 2. Server access, internal hostname and certificate, SMTP relay details, and backup policy. Staff password plus email code has been approved.
 
 ## Acceptance checks before rollout

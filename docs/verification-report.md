@@ -84,7 +84,7 @@ Follow [the deployment guide](deployment.md) for the exact first deployment, ema
 6. Enter real rooms/equipment/capacities, holidays, and approved booking rules. Verify employee/staff sign-in, room changes, booking/recurrence/conflicts, check-in/no-show, all mail, reports, and audit history on the company network.
 7. Schedule backups to approved separate storage, verify a restore, and enable health/mail/disk/certificate/backup alerts before rollout.
 
-Required production configuration: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_APP_USER`, `POSTGRES_APP_PASSWORD`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, and `DJANGO_PUBLIC_BASE_URL`. Production Compose forces HTTPS and `wdn.com.np`. If its Docker subnet conflicts, update `PROXY_NETWORK_SUBNET`, `PROXY_NETWORK_DYNAMIC_RANGE`, `PROXY_IP`, and `AUTH_TRUSTED_PROXY_CIDRS` together.
+Required production configuration: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_APP_USER`, `POSTGRES_APP_PASSWORD`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, and `DJANGO_PUBLIC_BASE_URL`. Production Compose forces HTTPS and allows `wdn.com.np` and `transgate.com.np`. If its Docker subnet conflicts, update `PROXY_NETWORK_SUBNET`, `PROXY_NETWORK_DYNAMIC_RANGE`, `PROXY_IP`, and `AUTH_TRUSTED_PROXY_CIDRS` together.
 
 SMTP configuration: `DJANGO_EMAIL_BACKEND=smtp`, `SMTP_HOST`, `SMTP_PORT`, `DJANGO_FROM_EMAIL`, `SMTP_USER`/`SMTP_PASSWORD` when required by the relay, and mutually exclusive `SMTP_USE_TLS`/`SMTP_USE_SSL`. Backend acceptance does not guarantee mailbox arrival; verify it with IT. The application starts with email disabled, but email-based sign-in requires delivery to be enabled before office use.
 
@@ -98,3 +98,9 @@ SMTP configuration: `DJANGO_EMAIL_BACKEND=smtp`, `SMTP_HOST`, `SMTP_PORT`, `DJAN
 - HSTS subdomain/preload policies stay disabled pending IT domain-wide approval. These are the only production Django check warnings.
 
 SMTP/email credentials must be supplied by the system administrator during production deployment. No production email credentials are included in this repository.
+
+## Employee domain update — 7 October 2026
+
+Employee access now allows exactly `wdn.com.np` and `transgate.com.np` by default, including the production Compose configuration. Eligibility text and validation messages follow the configured domain allowlist.
+
+All 139 application tests passed, including seven new tests for verified sign-in, booking organizers and attendees, staff setup, and rejection of unrelated or similar-looking domains. Test email delivery used local backends; delivery to real Transgate mailboxes still requires verification against the company's SMTP relay. Employee sign-in does not grant staff privileges.

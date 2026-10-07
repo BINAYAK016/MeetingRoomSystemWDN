@@ -5,7 +5,7 @@ from django.urls import reverse
 from django.utils.http import urlsafe_base64_encode
 
 from booking.models import AuditEvent, User
-from booking.services.email_login import normalized_employee_email
+from booking.services.email_login import employee_email_domain_label, normalized_employee_email
 from booking.services.mail_delivery import deliver_mail
 
 
@@ -18,7 +18,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         email = normalized_employee_email(options["email"])
         if not email:
-            raise CommandError("Use a wdn.com.np email address")
+            raise CommandError(f"Use a company email address at {employee_email_domain_label()}.")
         user, _ = User.objects.get_or_create(email=email, defaults={"password": "!"})
         user.is_active = True
         user.is_staff = True

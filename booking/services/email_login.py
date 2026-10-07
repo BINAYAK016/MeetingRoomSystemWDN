@@ -22,6 +22,14 @@ TOKEN_LIFETIME = timedelta(minutes=15)
 MAX_REQUESTS_PER_ADDRESS = 3
 
 
+def employee_email_domain_label():
+    """Describe the current company-domain allowlist for UI and validation."""
+    domains = [f"@{domain}" for domain in settings.EMPLOYEE_EMAIL_DOMAINS]
+    if len(domains) <= 2:
+        return " or ".join(domains)
+    return ", ".join(domains[:-1]) + f", or {domains[-1]}"
+
+
 def normalized_employee_email(value):
     if not isinstance(value, str) or len(value) > 254:
         return None

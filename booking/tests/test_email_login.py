@@ -49,7 +49,7 @@ class EmployeeEmailLoginTests(TestCase):
         self.assertEqual(self.client.post(reverse("login-confirm")).status_code, 400)
         self.assertNotIn("_auth_user_id", self.client.session)
 
-    def test_only_wdn_domain_is_allowed_with_generic_response(self):
+    def test_unapproved_domains_are_rejected_with_generic_response(self):
         for email in ("person@example.com", "person@tgt.com.np", "bad@@wdn.com.np"):
             response = self.request_link(email)
             self.assertEqual(response.status_code, 200)
