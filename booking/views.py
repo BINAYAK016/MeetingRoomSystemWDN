@@ -82,6 +82,7 @@ def sign_out(request):
 def local_mail_available(request):
     return (
         settings.MAIL_MODE == "file"
+        and not settings.PRODUCTION_ENABLED
         and not settings.HTTPS_ENABLED
         and request.get_host().split(":")[0] in {"localhost", "127.0.0.1"}
     )

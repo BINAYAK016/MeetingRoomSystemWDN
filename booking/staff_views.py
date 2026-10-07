@@ -84,7 +84,11 @@ def staff_code(request):
     return render(
         request,
         "booking/staff_code.html",
-        {"local_mail": settings.MAIL_MODE == "file" and not settings.HTTPS_ENABLED},
+        {
+            "local_mail": settings.MAIL_MODE == "file"
+            and not settings.PRODUCTION_ENABLED
+            and not settings.HTTPS_ENABLED
+        },
     )
 
 

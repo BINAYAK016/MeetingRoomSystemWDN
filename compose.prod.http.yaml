@@ -27,8 +27,8 @@ services:
       DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:?Set internal hostname}
       DJANGO_PRODUCTION: "true"
-      DJANGO_HTTPS: "true"
-      DJANGO_PUBLIC_BASE_URL: ${DJANGO_PUBLIC_BASE_URL:?Set HTTPS internal URL}
+      DJANGO_HTTPS: "false"
+      DJANGO_PUBLIC_BASE_URL: ${DJANGO_PUBLIC_BASE_URL:?Set HTTP internal URL}
       EMPLOYEE_EMAIL_DOMAINS: wdn.com.np,transgate.com.np
       AUTH_TRUSTED_PROXY_CIDRS: ${AUTH_TRUSTED_PROXY_CIDRS:-172.29.16.14/32}
       DJANGO_EMAIL_BACKEND: ${DJANGO_EMAIL_BACKEND:-disabled}
@@ -84,10 +84,9 @@ services:
       APP_HOSTNAME: ${DJANGO_ALLOWED_HOSTS:?Set single internal hostname}
       NGINX_ENVSUBST_FILTER: APP_HOSTNAME
     volumes:
-      - ./deploy/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
-      - ./deploy/certs:/etc/nginx/certs:ro
+      - ./deploy/nginx.http.conf.template:/etc/nginx/templates/default.conf.template:ro,Z
     ports:
-      - "443:443"
+      - "${HTTP_BIND_IP:?Set server office-network IPv4 address}:80:80"
     networks:
       frontend:
         ipv4_address: ${PROXY_IP:-172.29.16.14}
@@ -96,7 +95,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null --no-check-certificate --header=\"Host: $$APP_HOSTNAME\" https://127.0.0.1/livez/"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null --header=\"Host: $$APP_HOSTNAME\" http://127.0.0.1/livez/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -123,7 +122,7 @@ services:
       POSTGRES_APP_USER: ${POSTGRES_APP_USER:?Set distinct application role}
       POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?Set application password}
     volumes:
-      - ./deploy/prepare-db.sh:/deploy/prepare-db.sh:ro
+      - ./deploy/prepare-db.sh:/deploy/prepare-db.sh:ro,Z
     networks: [database]
     depends_on:
       db:

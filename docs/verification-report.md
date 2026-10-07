@@ -33,7 +33,7 @@ The user reported intermittent staff sign-in/rooms errors that cleared after ref
 
 Backend tests cover employee IDOR, foreign edit/cancel attempts, forged approval/staff flags, MFA bypass, stale/deactivated sessions, single-use token/code expiry and guesses, password setup, CSRF, escaped XSS content, literal Excel values, invalid form fields and malicious-looking filters. ORM parameterization is retained; no raw user-built SQL or permissive CORS is added.
 
-Production retains HTTPS, secure HttpOnly/SameSite cookies, CSP/frame denial, no-store private/error responses, bounded requests/timeouts, exact email domains, trusted proxy IP, disabled debug/development inbox, nonroot/read-only containers and an internal database network. Error logs retain view, exception class, safe source locations/SQLSTATE and request reference without exception values, tokens, credentials or request URLs. Proxy access logs retain status/timing/reference without query values or personal headers.
+Both production profiles retain HttpOnly/SameSite cookies, CSRF checks, CSP/frame denial, no-store private/error responses, bounded requests/timeouts, exact email domains, trusted proxy IP, disabled debug/development inbox, nonroot/read-only containers and an internal database network. The HTTPS profile additionally enables HTTPS redirects, secure cookies and HSTS. The selected HTTP profile explicitly omits those transport settings. Error logs retain view, exception class, safe source locations/SQLSTATE and request reference without exception values, tokens, credentials or request URLs. Proxy access logs retain status/timing/reference without query values or personal headers.
 
 Migration `0008_booking_approval` atomically maps existing confirmed records to approved, adds review metadata/revision fields, a pending index, rejection validation and an exclusion constraint including pending. No reviewer is invented for legacy meetings. Fresh migrations and 0007→0008 data preservation passed. Round-trip rollback tests passed: approved→confirmed, pending/rejected→cancelled, unsent request/rejection mail superseded, sent history retained. Stop writers, back up, and reapply runtime grants during updates. Runtime cannot create schemas or modify/delete/truncate audit history.
 
@@ -41,17 +41,17 @@ Migration `0008_booking_approval` atomically maps existing confirmed records to 
 
 | Gate | Final result |
 | --- | --- |
-| Full PostgreSQL suite | **186 passed**, 35.678 seconds; separate test DB created and removed |
+| Full PostgreSQL suite | **202 passed**, 33.125 seconds on the final HTTP-support image; separate test DB created and removed. The earlier HTTPS-support suite passed 186 tests. |
 | Fresh migration chain | All Django migrations and booking 0001–0008 passed |
 | Forward/reverse migration tests | Legacy data, new guards, rollback mail and re-upgrade passed |
 | Concurrency/transactions | Conflicting pending creates/edits, buffer/closure conflicts, atomic recurrence, competing decisions, access changes, login/code and check-in races passed |
 | Email | Disabled/configured backend, failures/zero delivery, retry/lease, request/rejection/approval/cancellation, revision/reminder checks and local fake SMTP relay passed; no company mail sent |
-| Ruff lint/format | Passed; 62 Python files formatted |
+| Ruff lint/format | Passed; 64 Python files formatted |
 | Syntax/system checks | Python compilation, JavaScript syntax, Django system checks passed |
 | Migration drift | No changes detected |
 | Docker build | Passed; 130 static files copied, 388 post-processing outputs |
 | Dependency audit | pip-audit 2.10.1: no known vulnerabilities in pinned application requirements at audit time |
-| Production Django check | Exit 0; unsilenced W005/W021 for HSTS subdomains/preload, pending IT domain-wide policy |
+| Earlier HTTPS production Django check | Exit 0; unsilenced W005/W021 for HSTS subdomains/preload, pending IT domain-wide policy |
 | Static type checker | Not configured; no formal type-check success is claimed |
 | GitHub Actions | CI workflow covers lint, migrations, tests, audit and build; hosted runner result is separate from this local report |
 
@@ -69,7 +69,7 @@ Direct URL plus refresh checks covered:
 
 Back/forward navigation passed. Desktop 1280, mobile 390 and tablet 768 viewports were inspected; tested page widths stayed within the viewport and table/navigation overflow remained inside scrollable containers. Viewport overrides were reset. Native JavaScript confirmation initially stalled the browser test tool; the interface now uses an accessible in-page dialog, and its actions were retested successfully. Password setup, access grants/revocations, closure/holiday/rule mutations, check-in/deadline jobs and pagination are covered by integration tests; they are not all claimed as manual browser mutations.
 
-## Isolated production deployment rehearsal
+## Earlier isolated HTTPS production deployment rehearsal
 
 Actual production Compose ran with synthetic secrets, disabled SMTP, isolated DB/network/volume, a trusted test certificate and loopback HTTPS 9444. Verified:
 
@@ -83,9 +83,27 @@ Actual production Compose ran with synthetic secrets, disabled SMTP, isolated DB
 
 Rehearsal containers/networks were stopped and removed without deleting volumes. Synthetic evidence/backups stayed outside Git. The existing demo was not modified.
 
+## Selected HTTP production deployment rehearsal
+
+After the user selected HTTP for the office network, a separate final-image rehearsal ran at `http://127.0.0.1:9120`, with a fresh isolated database/network, synthetic secrets and a local SMTP capture service. No company relay was contacted. The existing demo remained untouched.
+
+Verified on the final HTTP-support image:
+
+1. Full PostgreSQL suite: **202 tests passed** in 33.125 seconds, including 16 new HTTP-production settings/authentication tests. Django system checks, migration drift, Ruff lint/format, Docker build, and both Compose profiles' quiet configuration checks passed.
+2. Fresh migrations through `0008`, restricted runtime role setup, and healthy database/web/worker/proxy startup. Runtime role superuser/database-creation/role-creation flags were all false.
+3. Actual HTTP employee email-link confirmation and staff password plus emailed-code POSTs succeeded using captured synthetic SMTP messages. Employee approval was denied; staff approval and rejection persisted with the organizer-visible rejection reason.
+4. Session cookies remained HttpOnly/SameSite Lax without Secure. HTTP produced no HTTPS redirect or HSTS, and the proxy mounted no certificate. Development inbox access returned 404 even on loopback in production mode.
+5. Wrong, null and different-port origins, and missing CSRF tokens, returned 403. Valid origin and session-token POSTs passed. Both production profiles reject file-email mode; local development retains its separate email inbox.
+6. The HTTP profile requires an explicit bind IP; blank `HTTP_BIND_IP` failed configuration validation. The environment generator selected the HTTP template, generated independent secrets, rejected `--http` without `--production`, and refused to replace an existing `.env`.
+7. Actual `deploy/backup.sh`, selected with `COMPOSE_FILE=compose.prod.http.yaml`, produced a verified **89,358-byte** custom-format dump. Restore into a separate database succeeded and matched room/user/reservation/audit counts of **1/2/2/6**.
+
+All rehearsal containers/networks were stopped and removed without deleting volumes. Synthetic SMTP evidence, secrets and backups stayed outside Git. This verifies the local HTTP profile; company-server DNS, network access, SMTP authorization and mailbox delivery still require the operator checks in [the HTTP deployment guide](deployment-http.md).
+
 ## Deployment handover
 
-Required: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_APP_USER`, `POSTGRES_APP_PASSWORD`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, and matching HTTPS `DJANGO_PUBLIC_BASE_URL`. Review proxy subnet/trusted IP settings if the defaults conflict. Production forces HTTPS and allows `wdn.com.np,transgate.com.np`.
+The selected company installation is **http://mbs.wdn.com.np**, bound to **192.168.50.222:80**, using `compose.prod.http.yaml`. Follow [the HTTP deployment guide](deployment-http.md); no certificate or private CA is required. The following commands describe the retained HTTPS profile.
+
+Required: `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_APP_USER`, `POSTGRES_APP_PASSWORD`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, and matching HTTPS `DJANGO_PUBLIC_BASE_URL`. Review proxy subnet/trusted IP settings if the defaults conflict. The HTTPS profile forces HTTPS; the HTTP profile forces HTTP. Both force production mode and allow `wdn.com.np,transgate.com.np`.
 
 IT supplies SMTP separately: `DJANGO_EMAIL_BACKEND=smtp`, `SMTP_HOST`, `SMTP_PORT`, `DJANGO_FROM_EMAIL`, `SMTP_USER`/`SMTP_PASSWORD` when required, and mutually exclusive `SMTP_USE_TLS`/`SMTP_USE_SSL`. Keep mail disabled while unconfigured; startup/bookings remain usable and jobs are not falsely marked delivered. Mailbox sign-in requires working delivery. No production credentials are committed.
 
@@ -113,4 +131,4 @@ See [deployment](deployment.md) for exact updates, mail enablement, setup, monit
 
 ## Remaining verification
 
-Company Linux server/access, hostname, certificate trust, firewall/VPN, actual SMTP and both domains' mailbox delivery, backup storage/retention and representative office load await IT configuration. The specific earlier intermittent incident remains unattributed. No company deployment or sustained capacity benchmark is claimed. Direct HCL/Outlook integration remains deferred by agreement. Single-server failure, periodic worker release and possible duplicate SMTP delivery after an ambiguous response remain documented operating limits. HSTS domain-wide flags require IT approval.
+Company-server DNS, firewall/VPN, actual SMTP authorization and both domains' mailbox delivery, backup storage/retention, an on-server restore drill and representative office load await operator verification. The server OS, internal domain and office-interface IP have been supplied; the isolated local rehearsal does not prove those company-server checks. The specific earlier intermittent incident remains unattributed. No company deployment or sustained capacity benchmark is claimed. Direct HCL/Outlook integration remains deferred by agreement. Single-server failure, periodic worker release and possible duplicate SMTP delivery after an ambiguous response remain documented operating limits. For the optional HTTPS profile, HSTS domain-wide flags require IT approval.

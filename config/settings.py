@@ -24,6 +24,12 @@ EMPLOYEE_EMAIL_DOMAINS = tuple(
 if not EMPLOYEE_EMAIL_DOMAINS:
     raise RuntimeError("At least one employee email domain is required")
 HTTPS_ENABLED = os.environ.get("DJANGO_HTTPS", "false").lower() == "true"
+production_flag = os.environ.get("DJANGO_PRODUCTION", "false").lower()
+if production_flag not in {"true", "false"}:
+    raise RuntimeError("DJANGO_PRODUCTION must be true or false")
+# Existing HTTPS deployments retain their production safeguards. HTTP servers
+# explicitly opt in with DJANGO_PRODUCTION=true, independently of transport.
+PRODUCTION_ENABLED = production_flag == "true" or HTTPS_ENABLED
 PUBLIC_BASE_URL = os.environ.get("DJANGO_PUBLIC_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 public_url = urlsplit(PUBLIC_BASE_URL)
 if (
@@ -39,9 +45,13 @@ if (
     raise RuntimeError("DJANGO_PUBLIC_BASE_URL must be an origin whose hostname is in DJANGO_ALLOWED_HOSTS")
 if HTTPS_ENABLED and public_url.scheme != "https":
     raise RuntimeError("HTTPS deployment requires an HTTPS DJANGO_PUBLIC_BASE_URL")
-if HTTPS_ENABLED and ("*" in ALLOWED_HOSTS or len(SECRET_KEY) < 50):
+if PRODUCTION_ENABLED and public_url.scheme != ("https" if HTTPS_ENABLED else "http"):
+    raise RuntimeError("Production DJANGO_PUBLIC_BASE_URL must match the DJANGO_HTTPS transport setting")
+if PRODUCTION_ENABLED and (
+    any(host == "*" or host.startswith(".") for host in ALLOWED_HOSTS) or len(SECRET_KEY) < 50
+):
     raise RuntimeError(
-        "HTTPS deployment requires explicit allowed hosts and a secret key of at least 50 characters"
+        "Production deployment requires explicit allowed hosts and a secret key of at least 50 characters"
     )
 AUTH_TRUSTED_PROXY_CIDRS = tuple(
     value.strip() for value in os.environ.get("AUTH_TRUSTED_PROXY_CIDRS", "").split(",") if value.strip()
@@ -131,7 +141,7 @@ CSRF_COOKIE_SECURE = HTTPS_ENABLED
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
-CSRF_TRUSTED_ORIGINS = [PUBLIC_BASE_URL] if HTTPS_ENABLED else []
+CSRF_TRUSTED_ORIGINS = [PUBLIC_BASE_URL] if PRODUCTION_ENABLED else []
 CSRF_USE_SESSIONS = True
 CSRF_FAILURE_VIEW = "booking.views.csrf_failure"
 SECURE_HSTS_SECONDS = 3600 if HTTPS_ENABLED else 0
@@ -162,7 +172,7 @@ if MAIL_MODE == "smtp":
         if EMAIL_READY
         else "booking.mail_backends.DisabledEmailBackend"
     )
-elif MAIL_MODE == "file" and not HTTPS_ENABLED:
+elif MAIL_MODE == "file" and not PRODUCTION_ENABLED:
     EMAIL_BACKEND = "django.core.mail.backends.filebased.EmailBackend"
     EMAIL_FILE_PATH = "/tmp/meeting-room-mail"
     DEFAULT_FROM_EMAIL = "Meeting Rooms <noreply@local.invalid>"

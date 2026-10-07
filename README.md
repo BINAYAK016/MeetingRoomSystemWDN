@@ -2,7 +2,7 @@
 
 **Transgate Tech | Binayak Bhandari**
 
-An internal meeting room application for employees with `wdn.com.np` or `transgate.com.np` email addresses. Django renders the employee and staff interface; PostgreSQL stores records, sessions, notification jobs, and audit history. A worker sends email and reconciles reminders, completed meetings, and missed check-ins. Docker Compose runs the application, worker, and persistent PostgreSQL database; production adds an HTTPS Nginx proxy on the company network.
+An internal meeting room application for employees with `wdn.com.np` or `transgate.com.np` email addresses. Django renders the employee and staff interface; PostgreSQL stores records, sessions, notification jobs, and audit history. A worker sends email and reconciles reminders, completed meetings, and missed check-ins. Docker Compose runs the application, worker, and persistent PostgreSQL database; production adds an Nginx proxy on the company network. Separate deployment profiles support HTTPS and the explicitly selected private-network HTTP installation.
 
 The interface uses the Transgate navy/red palette and logo, with Times New Roman as approved. Front Desk and Administrators have identical staff permissions. Staff use a password plus a company-email code; employees use a company-email link.
 
@@ -53,7 +53,7 @@ docker compose up -d web worker
 
 Protect the dump; backup archives are Git-ignored. Preserve `.env`, its database password, Django secret, and database volume. Existing confirmed meetings become approved; future employee requests require review.
 
-Open <http://127.0.0.1:8000/>. Local `.env.example` explicitly selects `DJANGO_EMAIL_BACKEND=file`; messages are written to a Docker volume and appear in the development inbox at <http://127.0.0.1:8000/dev/mail/>. This local convenience does not verify mailbox ownership. It is unavailable over HTTPS and must never be used for company rollout.
+Open <http://127.0.0.1:8000/>. Local `.env.example` explicitly selects `DJANGO_EMAIL_BACKEND=file`; messages are written to a Docker volume and appear in the development inbox at <http://127.0.0.1:8000/dev/mail/>. This local convenience does not verify mailbox ownership. It is unavailable in either production profile and must never be used for company rollout.
 
 Optional demonstration rooms, only in an empty local directory:
 
@@ -68,7 +68,7 @@ Stop containers and preserve data with `docker compose down`. Restart with `dock
 
 ## Environment and email
 
-`.env.example` describes local configuration. `.env.production.example` describes deployment configuration. Actual `.env*` files, certificate keys, and backup archives are excluded from Git and Docker build contexts.
+`.env.example` describes local configuration. `.env.production.example` describes HTTPS deployment; `.env.production.http.example` describes private-network HTTP deployment. Actual `.env*` files, certificate keys, and backup archives are excluded from Git and Docker build contexts.
 
 | Variable | Purpose |
 | --- | --- |
@@ -76,8 +76,10 @@ Stop containers and preserve data with `docker compose down`. Restart with `dock
 | `POSTGRES_APP_USER`, `POSTGRES_APP_PASSWORD` | Production application role with database data access and no superuser, role-creation, or database-creation privileges. |
 | `DJANGO_SECRET_KEY` | Independent generated secret; production requires at least 50 characters. Preserve across updates. |
 | `DJANGO_ALLOWED_HOSTS` | Allowed hostnames. Production proxy expects one internal hostname without scheme/port. |
-| `DJANGO_PUBLIC_BASE_URL` | Matching origin used in secure email links, e.g. `https://meetings.company.invalid`. |
-| `DJANGO_HTTPS` | Secure cookies and HTTPS redirect. Production Compose forces `true`. |
+| `DJANGO_PUBLIC_BASE_URL` | Matching origin used in email links, e.g. `https://meetings.company.invalid` or `http://mbs.wdn.com.np` for the selected HTTP profile. |
+| `DJANGO_PRODUCTION` | Both production Compose profiles force `true`; development inbox and demo seeding remain disabled independently of transport. |
+| `DJANGO_HTTPS` | Secure cookies and HTTPS redirect. `compose.prod.yaml` forces `true`; `compose.prod.http.yaml` forces `false`. |
+| `HTTP_BIND_IP` | HTTP profile only: required server office-interface IP. For this installation, `192.168.50.222`. |
 | `EMPLOYEE_EMAIL_DOMAINS` | Comma-separated local employee domains; defaults to `wdn.com.np,transgate.com.np`. Production allows these two domains. |
 | `DJANGO_EMAIL_BACKEND` | `file` for local HTTP development, `disabled` while unconfigured, or `smtp` for the approved relay. |
 | `AUTH_TRUSTED_PROXY_CIDRS` | Networks/IPs allowed to supply `X-Real-IP`; production trusts only its fixed proxy IP. |
@@ -109,7 +111,7 @@ Tests require PostgreSQL and cover email configuration/failure, secure authentic
 
 Development tools in `requirements-dev.txt` provide `ruff check .` and `ruff format --check .`; CI runs these alongside PostgreSQL tests, migration checks, Django checks, and the Docker build. Python syntax can also be checked with `python -m compileall -q booking config`. No separate static type checker is configured for this Django project. Run `pip-audit -r requirements.txt` to check the pinned application dependencies against public vulnerability advisories.
 
-Builds collect and fingerprint static assets, then run Gunicorn as a dedicated non-root account. The production web/worker containers use a read-only filesystem and temporary `/tmp`. The [deployment guide](docs/deployment.md) includes clean setup, restricted runtime database permissions, migrations, initial staff creation, TLS, verification, backups, and restore.
+Builds collect and fingerprint static assets, then run Gunicorn as a dedicated non-root account. The production web/worker containers use a read-only filesystem and temporary `/tmp`. The [HTTPS deployment guide](docs/deployment.md) includes clean setup, restricted runtime database permissions, migrations, initial staff creation, TLS, verification, backups, and restore. For the selected `mbs.wdn.com.np` installation on Oracle Linux, follow the [private-network HTTP guide](docs/deployment-http.md). It uses port 80 and requires no certificate or private CA; browsers show **Not secure** because browser traffic is unencrypted.
 
 The [verification report](docs/verification-report.md) records the production-branch test results, browser checks, deployment rehearsal, security fixes, and remaining deployment checks.
 

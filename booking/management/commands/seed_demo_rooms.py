@@ -10,7 +10,7 @@ class Command(BaseCommand):
     help = "Load local demonstration rooms into an empty room directory."
 
     def handle(self, *args, **options):
-        if settings.HTTPS_ENABLED or settings.MAIL_MODE != "file":
+        if settings.PRODUCTION_ENABLED or settings.HTTPS_ENABLED or settings.MAIL_MODE != "file":
             raise CommandError("Demonstration rooms are restricted to local file-email development")
         with transaction.atomic():
             if Room.objects.exists():

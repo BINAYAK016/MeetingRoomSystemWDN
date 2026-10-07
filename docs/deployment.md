@@ -1,8 +1,10 @@
-# Private-network deployment
+# Private-network HTTPS deployment
 
 **Transgate Tech | Binayak Bhandari**
 
-Use the IT-provided Linux server, an internal DNS name, and a certificate trusted by company devices. Restrict inbound HTTPS to the approved company network/VPN. The application can start with email disabled; employee/staff mailbox verification requires IT's SMTP configuration before rollout.
+This guide uses `compose.prod.yaml` for HTTPS with a certificate trusted by company devices. The selected office HTTP installation at `http://mbs.wdn.com.np` instead uses the [private-network HTTP guide](deployment-http.md) and `compose.prod.http.yaml`; it requires no certificate. Run one production profile for a given installation.
+
+For HTTPS, use the IT-provided Linux server, an internal DNS name, and a trusted certificate. Restrict inbound HTTPS to the approved company network/VPN. The application can start with email disabled; employee/staff mailbox verification requires IT's SMTP configuration before rollout.
 
 ## Prepare configuration
 
@@ -16,7 +18,7 @@ docker run --rm -v "$PWD:/workspace" -w /workspace python:3.12-slim python deplo
 
 The generator creates independent secrets and refuses to overwrite existing configuration. Edit `.env`: set the internal hostname in `DJANGO_ALLOWED_HOSTS` and matching HTTPS origin in `DJANGO_PUBLIC_BASE_URL`. Set `POSTGRES_DB` and distinct database administrator/application role names. Preserve administrator credentials on an existing database volume; changing image initialization variables does not change existing database credentials. Protect `.env` and the certificate key with mode 600.
 
-Production requires `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_APP_USER`, `POSTGRES_APP_PASSWORD`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, and `DJANGO_PUBLIC_BASE_URL`. Keep `DJANGO_EMAIL_BACKEND=disabled` until the SMTP relay is ready. Production Compose forces HTTPS and allows the `wdn.com.np` and `transgate.com.np` employee domains. File-email development mode is rejected over HTTPS.
+Production requires `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_APP_USER`, `POSTGRES_APP_PASSWORD`, `DJANGO_SECRET_KEY`, `DJANGO_ALLOWED_HOSTS`, and `DJANGO_PUBLIC_BASE_URL`. Keep `DJANGO_EMAIL_BACKEND=disabled` until the SMTP relay is ready. This HTTPS Compose profile forces `DJANGO_PRODUCTION=true` and `DJANGO_HTTPS=true`, and allows the `wdn.com.np` and `transgate.com.np` employee domains. File-email development mode is rejected in both production profiles.
 
 The proxy has fixed Docker address `172.29.16.14` within `172.29.16.0/28`; only this address may supply client IP headers. Automatic addresses use `172.29.16.0/29`, so they cannot collide with the proxy. If the subnet conflicts with another network, change `PROXY_NETWORK_SUBNET`, `PROXY_NETWORK_DYNAMIC_RANGE`, `PROXY_IP`, and `AUTH_TRUSTED_PROXY_CIDRS` together. Keep the proxy outside the dynamic range and inside the subnet. The proxy overwrites `X-Real-IP`; web and PostgreSQL expose no host ports. Do not grant trust to arbitrary client networks.
 
@@ -38,7 +40,7 @@ Migrations create the complete schema, `btree_gist` overlap protection, and defa
 
 The web readiness check requires PostgreSQL and a successful worker cycle in the last two minutes. Give the initial worker a few seconds to establish its heartbeat. Proxy waits for web readiness before starting. HTTP 503 during startup is a readiness failure rather than a successful launch.
 
-No sample accounts or demo rooms are loaded automatically. Enter real rooms, floor/location, capacities, equipment, descriptions, and instructions through staff controls. The local-only `seed_demo_rooms` command refuses HTTPS deployment and existing rooms. Staff add approved holidays and review booking rules after the first sign-in.
+No sample accounts or demo rooms are loaded automatically. Enter real rooms, floor/location, capacities, equipment, descriptions, and instructions through staff controls. The local-only `seed_demo_rooms` command refuses production deployment and existing rooms. Staff add approved holidays and review booking rules after the first sign-in.
 
 ## Enable email and initial staff
 
@@ -97,7 +99,7 @@ Preserve the Django secret, database administrator credentials, and PostgreSQL v
 
 `sh deploy/backup.sh` produces a custom-format PostgreSQL dump, verifies its archive listing, and writes private files in `deploy/backups/`. Schedule it on the Linux host; encrypt and copy backups to company-approved separate storage with retention under company policy. Monitor success and disk space. A same-server backup does not protect against server loss. Back up `.env` and TLS material separately in approved secret storage.
 
-The script accepts `ENV_FILE` (default `.env`) and `BACKUP_DIR` overrides. If using an explicitly named Compose project, pass the matching `COMPOSE_PROJECT_NAME` when backing up; the script must target the same project as the live services. Temporary dump filenames are unique and private, and incomplete dumps are removed on failure.
+The script accepts `COMPOSE_FILE` (default `compose.prod.yaml`), `ENV_FILE` (default `.env`), and `BACKUP_DIR` overrides. HTTP installations use `COMPOSE_FILE=compose.prod.http.yaml sh deploy/backup.sh`. If using an explicitly named Compose project, pass the matching `COMPOSE_PROJECT_NAME` when backing up; the script must target the same project as the live services. Temporary dump filenames are unique and private, and incomplete dumps are removed on failure.
 
 Restore drill into a new, isolated database:
 
