@@ -215,7 +215,7 @@ class NotificationDeliveryTests(TestCase):
 
     def test_zero_delivery_is_recorded_as_failed(self):
         notification = self.notification(event_type="confirmation", body="Confirmed")
-        with patch("booking.services.mail_delivery.send_mail", return_value=0):
+        with patch("booking.services.mail_delivery.EmailMultiAlternatives.send", return_value=0):
             self.assertEqual(send_due_notifications(), 0)
         notification.refresh_from_db()
         self.assertEqual(notification.status, "failed")

@@ -126,7 +126,7 @@ Open **Bookings** and filter by:
 - Room, including inactive rooms for historical records.
 - From/To: inclusive Nepal meeting start dates.
 
-General Bookings is latest meeting first; use filters for forthcoming work. Pagination keeps filters. Select a title for private detail. Verified staff can read all meeting notes/attendees; employees can only open their own organizer records.
+General Bookings is latest meeting first; use filters for forthcoming work. Pagination keeps filters. Select a title for private detail. Verified staff can read all meeting notes/attendees. Employees can read meetings they organize or are currently invited to; attendee sessions cannot edit/cancel/review or receive organizer check-in rights.
 
 ### Edit
 
@@ -311,6 +311,8 @@ Saving staff access does not automatically send this email. The button sends dir
 3. Clear Staff to keep an active employee without management powers, or clear Active to prevent normal account access.
 4. Save and check row status.
 
+Active approved-domain employee accounts also supply name/email suggestions in the booking Attendees field. First successful company-email sign-in registers a new employee; staff-created active accounts are also eligible. Inactive accounts disappear from suggestions. Directory participation is not staff access.
+
 An access change invalidates existing login sessions and pending sign-in challenges. Password changes invalidate existing sessions as well. Records/bookings/audit history remain; account deactivation does not cancel bookings automatically. You cannot remove your own staff role or deactivate your own account through People. There is no separate administrator-only permission tier or grant approval chain.
 
 ## 11. Generate reports and export Excel
@@ -352,6 +354,8 @@ The UI is read-only and displays 50 events per page. “System” means no actor
 Booking events are queued independently of saved reservation transactions. Login links, staff codes and setup messages are sent directly during the request, so their failure may appear in audit/logs rather than the Failed emails dashboard count.
 
 For queued booking mail, the worker attempts at most five deliveries, with backoff. Some Failed messages are awaiting automatic retry; exhausted failures need authorized IT retry after repairing the cause. Obsolete messages are superseded when bookings change. Relay acceptance is not proof of final mailbox delivery.
+
+Messages now provide branded HTML with a plain-text alternative. Organizer-approved mail includes a private Check in action; signed-in company attendees can read their meeting in My meetings but cannot use organizer check-in or manage it. External recipients and former participants with neither current participation nor active staff access are given Contact organizer. Intentional change notifications to former participants do not restore current meeting access. Email HTML/client display issues do not change saved booking status or extend the deadline.
 
 If users report missing mail:
 

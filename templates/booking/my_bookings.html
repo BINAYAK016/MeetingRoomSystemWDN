@@ -1,7 +1,38 @@
 {% extends "booking/base.html" %}
-{% block title %}My bookings{% endblock %}
-{% block content %}<div class="page-container app-page">
-<div class="page-heading"><div><p class="eyebrow">YOUR SCHEDULE</p><h1>My bookings</h1><p class="lead">Upcoming meetings and booking history · Nepal time.</p></div><a class="button button-primary" href="{% url 'booking-new' %}">New booking →</a></div>
-<nav class="filter-bar" aria-label="Booking period"><a class="button {% if period == 'upcoming' %}button-primary{% else %}button-quiet{% endif %}" href="?period=upcoming">Upcoming</a><a class="button {% if period == 'history' %}button-primary{% else %}button-quiet{% endif %}" href="?period=history">All bookings</a></nav>
-<div class="panel table-scroll"><table class="data-table"><thead><tr><th>Meeting</th><th>Room</th><th>When</th><th>Status</th><th>Action</th></tr></thead><tbody>{% for booking in bookings %}<tr><td><strong>{{ booking.title }}</strong></td><td>{{ booking.room.name }}</td><td>{{ booking.starts_at|date:'d M Y, H:i' }}–{{ booking.ends_at|date:'H:i' }}</td><td><span class="status status-{{ booking.status }}">{{ booking.get_status_display }}</span></td><td><a href="{% url 'booking-detail' booking.pk %}">Details →</a></td></tr>{% empty %}<tr><td colspan="5">No bookings in this view. <a href="{% url 'booking-new' %}">Create a booking</a>.</td></tr>{% endfor %}</tbody></table></div>
-{% include "booking/pagination.html" %}</div>{% endblock %}
+{% block title %}My meetings{% endblock %}
+{% block content %}
+{% include 'booking/_booking_icons.html' %}
+<div class="page-container app-page meetings-page">
+  <div class="page-heading"><div><p class="eyebrow">YOUR WORKDAY, TOGETHER</p><h1>My meetings</h1><p class="lead">Meetings you organize and meetings you’re invited to, in one place.</p></div><a class="button button-primary" href="{% url 'booking-new' %}">Book a room +</a></div>
+  <section class="meetings-summary" aria-label="Your upcoming meeting summary">
+    <article class="meetings-summary-card"><span class="meetings-summary-icon"><svg class="booking-icon" aria-hidden="true"><use href="#booking-calendar"/></svg></span><div><p>Upcoming meetings</p><strong>{{ summary.upcoming }}</strong><small>Including meetings in progress</small></div></article>
+    <article class="meetings-summary-card"><span class="meetings-summary-icon"><svg class="booking-icon" aria-hidden="true"><use href="#booking-profile"/></svg></span><div><p>You’re organizing</p><strong>{{ summary.organized }}</strong><small>Your upcoming bookings</small></div></article>
+    <article class="meetings-summary-card"><span class="meetings-summary-icon"><svg class="booking-icon" aria-hidden="true"><use href="#booking-users"/></svg></span><div><p>You’re invited</p><strong>{{ summary.invited }}</strong><small>Upcoming meetings with your team</small></div></article>
+    <article class="meetings-summary-card"><span class="meetings-summary-icon meetings-summary-pending"><svg class="booking-icon" aria-hidden="true"><use href="#booking-clock"/></svg></span><div><p>Awaiting approval</p><strong>{{ summary.pending }}</strong><small>Upcoming requests under review</small></div></article>
+  </section>
+  <section class="meetings-browser" aria-labelledby="meetings-results-heading">
+    <div class="meetings-browser-top"><nav class="meetings-tabs" aria-label="Meeting period"><a {% if period == 'upcoming' %}aria-current="page"{% endif %} href="?period=upcoming&amp;role={{ role }}&amp;q={{ search|urlencode }}&amp;status={{ status }}">Upcoming</a><a {% if period == 'history' %}aria-current="page"{% endif %} href="?period=history&amp;role={{ role }}&amp;q={{ search|urlencode }}&amp;status={{ status }}">History &amp; all meetings</a></nav><span class="meetings-timezone">Nepal time · UTC+05:45</span></div>
+    <form method="get" class="meetings-filters" role="search" aria-label="Find your meetings">
+      <input type="hidden" name="period" value="{{ period }}">
+      <div class="meetings-search"><label for="meeting-search">Search meetings</label><input id="meeting-search" type="search" name="q" value="{{ search }}" maxlength="100" placeholder="Meeting, room or organizer"></div>
+      <div><label for="meeting-role">Your role</label><select id="meeting-role" name="role"><option value="all" {% if role == 'all' %}selected{% endif %}>All my meetings</option><option value="organizer" {% if role == 'organizer' %}selected{% endif %}>I’m organizing</option><option value="attendee" {% if role == 'attendee' %}selected{% endif %}>I’m invited</option></select></div>
+      <div><label for="meeting-status">Status</label><select id="meeting-status" name="status"><option value="">Any status</option>{% for value,label in status_choices %}<option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+      <div class="meetings-filter-actions"><button class="button button-primary" type="submit">Find meetings</button><a class="button button-quiet" href="?period={{ period }}">Reset</a></div>
+    </form>
+    <div class="meetings-results-heading"><h2 id="meetings-results-heading">{% if period == 'upcoming' %}Coming up{% else %}Your meeting history{% endif %}</h2><span>{{ page_obj.paginator.count }} meeting{{ page_obj.paginator.count|pluralize }}</span></div>
+    <div class="meetings-list">
+      {% for booking in bookings %}
+      <article class="meeting-card">
+        <div class="meeting-date" aria-label="{{ booking.starts_at|date:'d F Y' }}"><span>{{ booking.starts_at|date:'M' }}</span><strong>{{ booking.starts_at|date:'d' }}</strong><small>{{ booking.starts_at|date:'D' }}</small></div>
+        <div class="meeting-card-body"><div class="meeting-card-badges"><span class="meeting-role {% if booking.is_organizer %}meeting-role-organizer{% endif %}">{% if booking.is_organizer %}You’re organizing{% else %}You’re invited{% endif %}</span><span class="status status-{{ booking.status }}">{{ booking.get_status_display }}</span>{% if booking.series %}<span class="meeting-repeat">{{ booking.series.get_frequency_display }} series</span>{% endif %}</div><h3><a href="{% url 'booking-detail' booking.pk %}">{{ booking.title }}</a></h3><div class="meeting-card-meta"><span><svg class="booking-icon" aria-hidden="true"><use href="#booking-clock"/></svg>{{ booking.starts_at|date:'H:i' }}–{{ booking.ends_at|date:'H:i' }} · {{ booking.starts_at|date:'d M Y' }}</span><span><svg class="booking-icon" aria-hidden="true"><use href="#booking-room"/></svg>{{ booking.room.name }} · {{ booking.room.location }} · Floor {{ booking.room.floor }}</span></div><p class="meeting-card-organizer">Organized by <strong>{{ booking.organizer.get_full_name|default:booking.organizer.email }}</strong>{% if booking.organizer.get_full_name %}<span> · {{ booking.organizer.email }}</span>{% endif %}</p></div>
+        <div class="meeting-card-action"><a class="button button-quiet" href="{% url 'booking-detail' booking.pk %}">View meeting →</a><small>{{ booking.get_meeting_type_display }}</small></div>
+      </article>
+      {% empty %}
+      <div class="meetings-empty"><span class="meetings-empty-icon"><svg class="booking-icon" aria-hidden="true"><use href="#booking-calendar"/></svg></span><h3>{% if search or status or role != 'all' %}No meetings match your filters.{% elif period == 'upcoming' %}Your next meeting starts here.{% else %}Your meetings will appear here.{% endif %}</h3><p>{% if search or status or role != 'all' %}Try a different search or clear your filters.{% else %}Book a room, or ask the organizer to include your signed-in email as an attendee.{% endif %}</p><a class="button button-quiet" href="{% if search or status or role != 'all' %}?period={{ period }}{% else %}{% url 'booking-new' %}{% endif %}">{% if search or status or role != 'all' %}Clear filters{% else %}Book a room →{% endif %}</a></div>
+      {% endfor %}
+    </div>
+    {% include 'booking/pagination.html' %}
+  </section>
+  <p class="meetings-help"><svg class="booking-icon" aria-hidden="true"><use href="#booking-info"/></svg><span>Invited meetings are linked to your signed-in email. Organizers manage bookings and check in using the button in their confirmation or reminder email.</span></p>
+</div>
+{% endblock %}

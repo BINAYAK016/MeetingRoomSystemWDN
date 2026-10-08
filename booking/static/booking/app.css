@@ -623,3 +623,128 @@ button:disabled { cursor: wait; opacity: .7; }
 .room-approval-save { font-size: 12px; min-height: 30px; padding: 6px 10px; }
 .room-approval-save[hidden] { display: none; }
 .room-approval-form[aria-busy=true] { opacity: .65; pointer-events: none; }
+
+/* Personal meetings include organized and invited reservations. */
+.meetings-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 28px 0; }
+.meetings-summary-card { display: flex; gap: 14px; align-items: flex-start; padding: 23px 19px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.meetings-summary-icon { width: 42px; height: 42px; display: grid; place-items: center; background: #edf4fa; color: var(--navy); border-radius: 11px; flex: 0 0 auto; }
+.meetings-summary-pending { background: #fff5e8; color: #986b27; }
+.meetings-summary-card p { font-size: 14px; margin: 0 0 6px; color: #486780; }
+.meetings-summary-card strong { display: block; font-size: 33px; line-height: 1; color: var(--navy); }
+.meetings-summary-card small { display: block; margin-top: 9px; font-size: 12px; color: #718699; }
+.meetings-browser { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 0 26px 20px; }
+.meetings-browser-top { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); gap: 12px; }
+.meetings-tabs { display: flex; gap: 28px; }
+.meetings-tabs a { padding: 23px 0 19px; text-decoration: none; color: #667f94; border-bottom: 3px solid transparent; font-size: 15px; }
+.meetings-tabs a[aria-current=page] { color: var(--navy); border-bottom-color: var(--navy); font-weight: bold; }
+.meetings-timezone { color: #718699; font-size: 12px; }
+.meetings-filters { display: grid; grid-template-columns: minmax(180px, 1.5fr) minmax(130px, 1fr) minmax(130px, 1fr) auto; gap: 14px; align-items: end; padding: 24px 0; }
+.meetings-filters label { display: block; font-size: 13px; margin-bottom: 8px; }
+.meetings-filters input, .meetings-filters select, .attendee-picker-input input { margin: 0; min-width: 0; width: 100%; padding: 11px 12px; min-height: 44px; border: 1px solid #cad9e6; border-radius: 7px; background: #fff; color: #294b68; font: 14px/1.4 "Times New Roman", Times, serif; }
+.meetings-filters input::placeholder, .attendee-picker-input input::placeholder { color: #8293a2; }
+.meetings-filters input:focus, .meetings-filters select:focus, .attendee-picker-input input:focus { border-color: var(--navy); }
+.meetings-filter-actions { display: flex; gap: 8px; }
+.meetings-filter-actions .button { min-height: 43px; padding: 10px 14px; font-size: 13px; white-space: nowrap; }
+.meetings-results-heading { display: flex; align-items: center; justify-content: space-between; margin: 5px 0 16px; }
+.meetings-results-heading h2 { font-size: 22px; margin: 0; }
+.meetings-results-heading > span { color: #718699; font-size: 13px; }
+.meetings-list { display: grid; gap: 14px; }
+.meeting-card { display: grid; grid-template-columns: 76px minmax(0, 1fr) auto; gap: 22px; padding: 24px; align-items: center; border: 1px solid #e2eaf1; border-radius: 10px; transition: border-color .15s, box-shadow .15s; }
+.meeting-card:hover { border-color: #b9ccdc; box-shadow: 0 5px 16px #163d6010; }
+.meeting-date { background: #f1f6fa; border-radius: 9px; padding: 12px 9px; text-align: center; }
+.meeting-date > span { display: block; text-transform: uppercase; letter-spacing: 1.3px; font-size: 12px; color: #607e96; }
+.meeting-date > strong { display: block; font-size: 33px; line-height: 1.1; margin: 5px 0; }
+.meeting-date > small { color: #607e96; font-size: 12px; }
+.meeting-card-badges { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+.meeting-card-badges .status, .meeting-role, .meeting-repeat { border-radius: 5px; font-size: 11px; padding: 4px 8px; line-height: 1.5; }
+.meeting-role { color: #547444; background: #f0f7ed; }
+.meeting-role-organizer { color: #366082; background: #edf4fa; }
+.meeting-repeat { color: #788397; background: #f5f6fa; }
+.meeting-card h3 { margin: 10px 0; font-size: 23px; overflow-wrap: anywhere; }
+.meeting-card h3 a { color: var(--navy); text-decoration: none; }
+.meeting-card-meta { display: flex; flex-wrap: wrap; gap: 8px 20px; color: #526f87; font-size: 13px; }
+.meeting-card-meta > span { display: inline-flex; align-items: center; gap: 6px; }
+.meeting-card-meta .booking-icon { width: 16px; height: 16px; }
+.meeting-card-organizer { margin: 12px 0 0; color: #7b8e9e; font-size: 12px; overflow-wrap: anywhere; }
+.meeting-card-organizer strong { color: #59758c; font-weight: normal; }
+.meeting-card-action { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.meeting-card-action .button { font-size: 13px; min-height: 39px; padding: 10px 15px; white-space: nowrap; }
+.meeting-card-action small { color: #7b8e9e; font-size: 12px; }
+.meetings-empty { padding: 38px 20px; text-align: center; }
+.meetings-empty-icon { display: inline-grid; place-items: center; width: 62px; height: 62px; color: #6e8ca3; background: #f0f5fa; border-radius: 16px; }
+.meetings-empty-icon .booking-icon { width: 28px; height: 28px; }
+.meetings-empty h3 { margin: 18px 0 8px; font-size: 23px; }
+.meetings-empty p { font-size: 15px; color: #718699; margin: 0 auto 20px; max-width: 470px; }
+.meetings-help { display: flex; align-items: flex-start; gap: 10px; margin: 22px 4px; color: #718699; font-size: 13px; }
+.meetings-help .booking-icon { flex: 0 0 auto; width: 17px; height: 17px; }
+.meeting-invitation-note { background: #f0f6fa; border: 1px solid #dfeaf2; padding: 18px; border-radius: 8px; color: #426781; font-size: 14px; }
+.meeting-invitation-note p { line-height: 1.6; margin-bottom: 0; overflow-wrap: anywhere; }
+
+/* Accessible employee suggestions, with the original textarea as fallback. */
+.attendee-picker { margin: 24px 0 10px; }
+.attendee-picker > label { display: block; margin-bottom: 9px; font-weight: bold; font-size: 14px; }
+.attendee-picker > label .muted { font-weight: normal; }
+.attendee-picker-control { display: flex; align-items: start; gap: 10px; }
+.attendee-picker-input { position: relative; flex: 1; min-width: 0; }
+.attendee-picker-input input { width: 100%; margin: 0; }
+.attendee-picker-control > .button { white-space: nowrap; min-height: 44px; font-size: 14px; padding: 11px 14px; }
+.attendee-picker > small { display: block; font-size: 12px; color: #718699; margin-top: 9px; line-height: 1.6; }
+.attendee-picker-message { min-height: 18px; color: #607c91; font-size: 12px; margin: 6px 0; }
+.attendee-picker-message.field-error { color: #af2935; }
+.attendee-suggestions { position: absolute; z-index: 10; top: calc(100% + 5px); left: 0; right: 0; max-height: 280px; overflow-y: auto; border-radius: 8px; border: 1px solid #ccdce9; background: #fff; box-shadow: 0 12px 28px #15395624; padding: 5px; }
+.attendee-suggestions > button { width: 100%; display: block; text-align: left; border: 0; background: #fff; border-radius: 4px; padding: 10px 12px; cursor: pointer; color: var(--navy); font-family: inherit; }
+.attendee-suggestions > button:hover, .attendee-suggestions > button[aria-selected=true] { background: #eef5fa; }
+.attendee-suggestions strong, .attendee-suggestions span { display: block; overflow-wrap: anywhere; }
+.attendee-suggestions strong { font-size: 14px; }
+.attendee-suggestions span { font-size: 12px; margin-top: 4px; color: #6c8397; }
+.booking-attendee-chip { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; }
+.booking-attendee-chip > span { overflow-wrap: anywhere; min-width: 0; }
+.attendee-remove { border: 0; padding: 0 2px; background: transparent; font-family: inherit; font-size: 21px; line-height: 1; color: #456883; cursor: pointer; }
+.attendee-remove:focus-visible { outline: 2px solid var(--navy); outline-offset: 3px; }
+.attendee-picker-enhanced #booking-attendee-source { display: none; }
+
+/* The email check-in action opens a deliberate browser confirmation. */
+.checkin-card { max-width: 580px; }
+.checkin-symbol { width: 66px; height: 66px; display: grid; place-items: center; background: #edf7f0; color: #3b8657; border-radius: 18px; margin-bottom: 28px; }
+.checkin-symbol .booking-icon { width: 33px; height: 33px; }
+.checkin-symbol-error { color: #bf3e48; background: #fff0f1; }
+.checkin-window { display: flex; gap: 12px; padding: 17px; border: 1px solid #dfebf3; border-radius: 8px; background: #f4f8fb; margin: 25px 0; text-align: left; }
+.checkin-window .booking-icon { flex: 0 0 auto; margin-top: 2px; }
+.checkin-window strong { display: block; font-size: 15px; margin-bottom: 7px; }
+.checkin-window span { color: #607c91; font-size: 14px; line-height: 1.6; }
+.checkin-action { margin: 22px 0 12px; }
+.checkin-action .button { justify-content: center; }
+.checkin-link-note { color: #8295a5; font-size: 12px; margin-bottom: 25px; }
+.checkin-meeting-summary { display: grid; gap: 9px; background: #f5f9fc; border: 1px solid #dfebf3; border-radius: 8px; padding: 20px; margin: 25px 0; }
+.checkin-meeting-summary strong { font-size: 19px; }
+.checkin-meeting-summary span { color: #607c91; font-size: 14px; }
+@media (max-width: 1050px) {
+  .meetings-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .meetings-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .meetings-filter-actions { justify-content: flex-end; }
+  .meeting-card { gap: 16px; padding: 20px 16px; }
+}
+@media (max-width: 650px) {
+  .meetings-summary { gap: 10px; }
+  .meetings-summary-card { padding: 16px 12px; flex-direction: column; gap: 12px; }
+  .meetings-summary-card p { font-size: 13px; }
+  .meetings-summary-card small { font-size: 11px; }
+  .meetings-browser { padding: 0 16px 18px; }
+  .meetings-timezone { display: none; }
+  .meetings-tabs { gap: 20px; }
+  .meetings-tabs a { font-size: 13px; }
+  .meetings-filters { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .meetings-filter-actions { justify-content: flex-start; }
+  .meeting-card { grid-template-columns: 54px minmax(0, 1fr); gap: 12px; padding: 17px 12px; align-items: start; }
+  .meeting-date { padding: 10px 5px; }
+  .meeting-date strong { font-size: 27px; }
+  .meeting-card h3 { font-size: 20px; }
+  .meeting-card-action { grid-column: 2; align-items: flex-start; }
+  .meeting-card-meta { flex-direction: column; font-size: 12px; }
+  .meeting-card-meta > span { align-items: flex-start; }
+  .meeting-card-meta .booking-icon { flex: 0 0 auto; }
+  .meeting-card-organizer > span { display: block; }
+  .meeting-card-action small { display: none; }
+  .attendee-picker-control { flex-direction: column; }
+  .attendee-picker-input { width: 100%; }
+}

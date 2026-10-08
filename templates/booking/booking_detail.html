@@ -2,7 +2,7 @@
 {% block title %}Booking details{% endblock %}
 {% block content %}
 <div class="page-container app-page">
-  <a class="back-link" href="{% if staff %}{% url 'staff-bookings' %}{% else %}{% url 'my-bookings' %}{% endif %}">← Back to bookings</a>
+  <a class="back-link" href="{% if staff %}{% url 'staff-bookings' %}{% else %}{% url 'my-bookings' %}{% endif %}">← Back to {% if staff %}bookings{% else %}my meetings{% endif %}</a>
   <div class="page-heading"><div><p class="eyebrow">BOOKING #{{ booking.pk }}</p><h1>{{ booking.title }}</h1><p class="lead">{{ booking.room.name }} · {{ booking.starts_at|date:'D, d M Y' }}</p></div><span class="status status-{{ booking.status }}">{{ booking.get_status_display }}</span></div>
   {% if booking.status == 'pending' %}<p class="notice" role="status">Booking request submitted. Waiting for administrator approval. This room and time are held while the request is reviewed.</p>{% elif booking.status == 'rejected' %}<div class="notice notice-error"><strong>Booking request rejected</strong><p>{{ booking.rejection_reason|linebreaksbr }}</p><p>This request no longer holds the room.</p></div>{% endif %}
   <div class="detail-grid">
@@ -24,7 +24,9 @@
         {% if booking.cancellation_reason %}<div><dt>Cancellation reason</dt><dd>{{ booking.cancellation_reason }}</dd></div>{% endif %}
       </dl>
     </section>
-    <aside class="panel"><h2>{% if can_review %}Review request{% else %}Manage booking{% endif %}</h2>
+    <aside class="panel"><h2>{% if can_review %}Review request{% elif can_manage %}Manage meeting{% else %}You’re invited{% endif %}</h2>
+      {% if not can_manage %}<div class="meeting-invitation-note"><strong>You’re part of this meeting.</strong><p>This meeting appears here because {{ request.user.email }} is listed as an attendee. Contact the organizer for changes. The organizer handles check-in.</p></div>{% endif %}
+      {% if is_organizer and booking.status == 'approved' %}<p class="notice">Use the <strong>Check in</strong> button in your confirmation or reminder email after the meeting starts. The link closes {{ check_in_minutes }} minutes after the scheduled start.</p>{% endif %}
       {% if can_review %}
         <p class="muted">Approval confirms this meeting and notifies the requester.</p>
         <form method="post" action="{% url 'staff-booking-approve' booking.pk %}" data-confirm="Approve this booking request?">{% csrf_token %}<button class="button button-primary button-wide" type="submit">Approve request</button></form>

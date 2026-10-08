@@ -12,6 +12,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.debug import sensitive_variables
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from booking.meeting_access import personal_meetings
 from booking.models import BookingPolicy, Reservation, Room
 from booking.services.email_login import consume_login_hash, request_login_link
 
@@ -44,14 +45,12 @@ def home(request):
         context["rooms"] = Room.objects.filter(is_active=True).order_by("location", "floor", "name")[:6]
         context["room_count"] = Room.objects.filter(is_active=True).count()
         context["policy"] = BookingPolicy.objects.filter(pk=1).first()
-        context["upcoming_count"] = Reservation.objects.filter(
-            organizer=request.user,
+        meetings = personal_meetings(request.user)
+        context["upcoming_count"] = meetings.filter(
             status__in=[Reservation.Status.APPROVED, Reservation.Status.CHECKED_IN],
             starts_at__gte=timezone.now(),
         ).count()
-        context["pending_count"] = Reservation.objects.filter(
-            organizer=request.user, status=Reservation.Status.PENDING
-        ).count()
+        context["pending_count"] = meetings.filter(status=Reservation.Status.PENDING).count()
     return render(request, "booking/home.html", context)
 
 

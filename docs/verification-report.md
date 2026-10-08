@@ -6,7 +6,7 @@
 
 Production work is on `mbs-prod`, created from clean `main` at `22caa31`. Earlier production review preserved the existing demo branch, running containers, database, SMTP settings and company accounts. The 8 October local upgrade is recorded separately below. The final commit IDs and remote push result are reported in the handover message. This report covers locally verified code and isolated deployment rehearsals. The owner has separately installed the company HTTP services; these local checks do not establish company-server acceptance.
 
-Inspection covered every URL pattern, templates/static assets, forms, identity and staff permissions, model relations/constraints/indexes, migrations, booking services, recurring occurrences, calendar, worker/outbox, reports/Excel, audit history, configuration, Docker/TLS/runtime database permissions, seed/bootstrap and backup tools. This application serves HTML forms, authenticated read-only availability JSON and readiness/liveness JSON; it has no public REST API.
+Inspection covered every URL pattern, templates/static assets, forms, identity and staff permissions, model relations/constraints/indexes, migrations, booking services, recurring occurrences, calendar, worker/outbox, reports/Excel, audit history, configuration, Docker/TLS/runtime database permissions, seed/bootstrap and backup tools. This application serves HTML forms, authenticated read-only availability/employee-suggestion JSON and readiness/liveness JSON; it has no public REST API.
 
 ## Approval workflow
 
@@ -42,15 +42,15 @@ Migration `0008_booking_approval` atomically maps existing confirmed records to 
 
 | Gate | Latest result / earlier evidence |
 | --- | --- |
-| Full PostgreSQL suite | **281 passed in 43.153 seconds on 8 October 2026**; separate test DB created and removed. Prior wizard/photo baseline: 244 passed in 40.439 seconds; earlier browser-CSRF baseline: 210 passed in 31.580 seconds; earlier HTTPS/HTTP support: 186/202 passed. |
+| Full PostgreSQL suite | **323 passed in 39.242 seconds on 8 October 2026**; separate test DB created and removed. Prior room-policy baseline: 281 passed in 43.153 seconds; prior wizard/photo baseline: 244 passed in 40.439 seconds; earlier browser-CSRF baseline: 210 passed in 31.580 seconds; earlier HTTPS/HTTP support: 186/202 passed. |
 | Fresh migration chain | All Django migrations and booking **0001–0011** passed; the existing local installation upgraded through 0011 without resetting records or booking statuses. |
 | Forward/reverse migration tests | Legacy data, new guards, rollback mail and re-upgrade passed |
 | Concurrency/transactions | Conflicting pending creates/edits, buffer/closure conflicts, atomic recurrence, competing decisions, access changes, login/code and check-in races passed |
-| Email | Disabled/configured backend, failures/zero delivery, retry/lease, request/rejection/approval/cancellation, revision/reminder checks and local fake SMTP relay passed; no company mail sent |
-| Ruff lint/format | Full repository `ruff check .` passed; `ruff format --check .` passed for **77 Python files** on 8 October 2026. |
+| Email | Multipart text/HTML, inline CID wordmark, escaped user content, authentication/event messages, organizer-only check-in, recipient actions and revision/state checks passed. Existing disabled/configured backend, retry/lease and local fake-relay coverage also passed; no company mail sent |
+| Ruff lint/format | Full repository `ruff check .` passed; `ruff format --check .` passed for **81 Python files** on 8 October 2026. |
 | Syntax/system checks | Current JavaScript syntax and Django system checks passed. Python compilation passed in the earlier recorded baseline. |
 | Migration drift | Current `makemigrations --check --dry-run` reported no changes. |
-| Docker build | Current room-approval build and collectstatic passed. Prior wizard/photo build: **135 static files copied, 401 post-processing outputs**. |
+| Docker build | Current invited-meeting/professional-email build and collectstatic passed. Prior wizard/photo build: **135 static files copied, 401 post-processing outputs**. |
 | Dependency audit | **Earlier 8 October 2026 wizard/photo release:** pip-audit 2.10.1 completed full application-requirement resolution, including Pillow 12.3.0, with exit 0 and no known vulnerabilities found at audit time. |
 | Earlier HTTPS production Django check | Exit 0; unsilenced W005/W021 for HSTS subdomains/preload, pending IT domain-wide policy |
 | Static type checker | Not configured; no formal type-check success is claimed |
@@ -212,3 +212,29 @@ An isolated QA instance used local file email. Staff completed password-plus-ema
 The laptop database was backed up in validated custom format, migrated through 0011 and web/worker recreated. Health returned HTTP 200; both services were healthy. Pre/post inventory matched: **five rooms, two bookings and three users**. Booking 1 remained Cancelled and booking 2 remained Pending; all five existing rooms defaulted to Requires approval checked. Local file email remained unchanged. No production server was accessed and no company email was sent.
 
 Documentation now explains both room policies, checkbox auto-save/Save fallback, review queue retention, substantive/no-op edits, confirmation/check-in, recurrence, audit and migration 0011. The feature directory covers all **46 configured routes**. The HTTP update example builds before the outage, stops writers, takes paired database/media snapshots with database running, applies migrations/runtime grants, then recreates services. Documented command syntax/link checks validate examples; they do not claim the production update or photo restore has run.
+
+
+## Invited meetings, attendee directory and professional email - 8 October 2026
+
+This release changes My bookings to **My meetings** for organized and invited meetings, adds registered colleague suggestions/removable attendee chips, and redesigns authentication/event messages as branded multipart HTML with a plain-text alternative. Current attendee email controls read access; organizers and verified staff retain management permissions. Organizer-only Check in opens the existing confirmation GET/explicit POST flow. External recipients and former participants with neither current participation nor active staff access get Contact organizer; intentional change notices do not restore current read access or promise employee sign-in. No additional schema migration is required; **0011 remains the latest**.
+
+### Automated verification
+
+- Final clean PostgreSQL run: **323 tests passed in 39.242 seconds**; Django system checks reported no issues. This includes attendee visibility/authorization, directory-prefix responses and multipart-email regressions alongside the existing booking, recurrence, conflict, approval and check-in coverage.
+- Tests cover current attendee case-insensitive detail/list/calendar/dashboard access, immediate loss after removal, organizer/attendee deduplication, unrelated privacy, attendee mutation denial, role/status/search/history filters and summary counts. Directory tests cover active approved-domain requester/results, GET-only/no-store, two-character threshold, 100-character bound, eight-result limit, prefix behavior and minimal email/name payloads.
+- Email tests inspect plain-text plus HTML, inline CID wordmark, user-content escaping, authentication/setup messages, booking-event metadata, organizer-only check-in and deadline behavior, attendee exclusion, current revision/state supersession and external and removed-recipient contact actions. A service-level edit-flow regression removes an attendee and reassigns the organizer, then asserts delivery/action content for all six intended recipients: former participants get Contact organizer with no private check-in or dead View meeting promise, while current participants/active staff retain the appropriate action. These establish message construction and application behavior, not receipt in a company mailbox.
+- Repository `ruff check .` and `ruff format --check .` passed for **81 Python files**. Node syntax checks passed for shared app, booking wizard and attendee picker scripts. Migration drift reported no changes; the committed graph still ends at 0011.
+
+### Actual browser checks
+
+An isolated local QA instance used file email and synthetic employee records; no company SMTP or production account was used. A separately signed-in employee in the Transgate domain saw their own meeting plus current Approved/Pending invitations in My meetings. The invited detail was read-only, role filtering worked, and the meeting page had no horizontal overflow at a **390-pixel** viewport. Organizer email showed the check-in action; attendee email omitted it. The HTML message also fitted the 390-pixel view.
+
+The browser also exercised name-prefix suggestions, keyboard selection, bulk address addition/deduplication, chip removal, headcount changes and valid pending-input addition on Next. A newly submitted automatically approved booking persisted its selected attendees. Browser testing caught an asynchronous suggestion response overwriting an input-validation error; that behavior was fixed and the error was verified to remain visible until correction. The attendee picker was also checked at a 390-pixel mobile viewport with a 375-pixel document width and no horizontal overflow. Desktop meeting, attendee-picker and organizer-email previews were captured. Server edge cases and confirmation POST security are tested separately; this record does not claim a real company mailbox or manual check-in through a live relay.
+
+### Laptop data and operational limits
+
+Before the local update, a validated **82,877-byte custom-format PostgreSQL backup** was taken. After the rebuilt web/worker were recreated, database/web/worker were healthy, `/healthz/` returned HTTP 200, `check_worker_health` returned ok and Django system checks reported no issues. The existing inventory remained **five rooms, two bookings and three users**; local file-email settings were preserved. No production server was accessed and no company email was sent. This release requires rebuilt/recreated web and worker to load UI/API/mail changes, without reseeding records or replacing `.env`, database or photo volumes.
+
+The maintained guides now cover all **47 configured routes**, organized/invited read versus management permissions, filter/count semantics, prefix suggestions/manual external addresses, chip behavior, multipart/CID rendering, organizer confirmation flow, external contact actions and targeted read-only troubleshooting. Syntax/link checks cover **13 Markdown documents, 113 local links, 94 Bash/sh blocks, 11 Python snippets and 12 PowerShell blocks**; those checks do not execute mutating deployment/retry examples. The printable handbook is regenerated from the maintained sources and its latest rendered pages are checked before handover.
+
+Company-server deployment, actual HCL/other mail-client rendering and delivery, employee-device DNS/routing, load and recovery arrangements remain office acceptance checks. Local QA construction/screenshots and automated tests do not establish those outcomes.

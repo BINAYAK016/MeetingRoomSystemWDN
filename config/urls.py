@@ -24,6 +24,7 @@ urlpatterns = [
     path("calendar/", booking_views.calendar_view, name="calendar"),
     path("bookings/new/", booking_views.booking_new, name="booking-new"),
     path("bookings/availability/", booking_views.booking_availability, name="booking-availability"),
+    path("bookings/attendees/suggestions/", booking_views.attendee_suggestions, name="attendee-suggestions"),
     path("bookings/mine/", booking_views.my_bookings, name="my-bookings"),
     path("bookings/<int:booking_id>/", booking_views.booking_detail, name="booking-detail"),
     path("bookings/<int:booking_id>/edit/", booking_views.booking_edit, name="booking-edit"),

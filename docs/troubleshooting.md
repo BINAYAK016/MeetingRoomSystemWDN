@@ -363,7 +363,15 @@ Replace 123 with the diagnosed notification ID. Output is `requeued=N superseded
 | Senior-management third-floor priority | Front Desk decides/moves/cancels manually with reasons/notifications; no automatic preemption. |
 | Deactivated room still has bookings | Deactivation prevents new reservations, not retroactive cancellation; staff reviews existing meetings. |
 | New holiday/policy leaves meetings unchanged | No retroactive cancellation; staff reviews affected records. Current check-in deadline applies to existing approved meetings. |
-| Other employee details denied | Ownership or verified staff required; expected privacy behavior. |
+| Other employee details denied | Must be organizer, current listed attendee or verified staff; unrelated details remain private. An invited attendee is read-only. |
+| Invited meeting missing from My meetings | Check signed-in email matches current saved attendee email, role/status/search filters and Upcoming versus History; reload after changes. Removed attendees lose access. |
+| Attendee has no Edit/Cancel | Expected read-only access; organizer or verified staff manages the booking. Invitation does not grant organizer check-in. |
+| No attendee suggestion | Type at least two letters in current token; account must exist, be active and use an approved domain. Already selected addresses/organizer are omitted; enter a full address manually if needed. |
+| New email still looks plain | A recipient may have selected plain text or blocked HTML; the fallback is expected. Confirm current image/worker and that this is a newly delivered message; an already received email is not redesigned retroactively. |
+| Check in button absent in attendee email | Intended: organizer recipient only, Approved revision and valid window. Use latest organizer email or authorized staff manual check-in. |
+| Email logo not displayed | The wordmark is an inline CID attachment. Check mail-client image preferences and gateway rewriting with IT; the text/details and action link should remain usable. No external logo download is required. |
+| Recipient sees Contact organizer | Intended for external guests or former participants with neither current participation nor active staff access. Change notices may still be sent to former participants, but do not restore meeting access. Current eligible participants/active staff have View meeting. |
+| Email button cannot reach MBS | Email links use the configured internal public origin. Connect to the office/approved network, verify DNS and hostname, and inspect the ordinary page path without sharing its private token. |
 | Only one room listed | Staff must configure actual active rooms; production never seeds demo data. |
 | Wizard shows unavailable for a free first date | All eligible recurring occurrences must be free, including gaps; inspect later dates in the preview/review. |
 | Selected Available room fails final submission | Preview does not hold space; final save detects intervening conflicts, inactive rooms and capacity/policy changes. Retain entries and choose a valid alternative. |
@@ -386,6 +394,35 @@ PY
 ```
 
 Inspect individual bookings/audit in Staff desk. Direct SQL status/time edits bypass locking, notifications, revisions and audit.
+
+### Invited meetings and attendee suggestions
+
+First check **My meetings** with All meetings, no status/search filter, and History if the record is no longer active. Confirm the organizer saved the correct full address. Request a current page rather than relying on an old tab or already delivered email. Adding/removing attendees is an organizer/staff booking edit and follows the room's approval policy; invitation itself creates no staff rights.
+
+The following is read-only. Substitute the employee's numeric user ID and the booking ID, taken from authorized Staff desk pages. It prints only IDs, status and authorization facts; it does not print attendee emails, private descriptions or tokens:
+
+```bash
+docker compose -f compose.prod.http.yaml exec -T web python manage.py shell <<'PY'
+from django.contrib.auth import get_user_model
+from django.conf import settings
+from booking.models import Reservation
+user_id, booking_id = 123, 456  # Replace both with diagnosed numeric IDs.
+user = get_user_model().objects.filter(pk=user_id).first()
+booking = Reservation.objects.filter(pk=booking_id, kind=Reservation.Kind.BOOKING).first()
+if user is None or booking is None:
+    print('user_or_booking_missing=True')
+else:
+    organizer = booking.organizer_id == user.pk
+    attendee = booking.attendees.filter(email__iexact=user.email).exists()
+    allowed_domain = user.email.rsplit('@', 1)[-1].lower() in settings.EMPLOYEE_EMAIL_DOMAINS
+    print({'user_id': user.pk, 'active': user.is_active, 'allowed_domain': allowed_domain,
+           'booking_id': booking.pk, 'status': booking.status,
+           'organizer': organizer, 'listed_attendee': attendee})
+PY
+docker compose -f compose.prod.http.yaml logs --since 10m --tail 80 web proxy
+```
+
+This is a diagnostic of saved data, not proof of a verified staff session or permission to mutate the booking. Do not amend attendee/ownership rows directly in SQL. For autocomplete, a signed-in browser's Network panel should show a successful GET to `/bookings/attendees/suggestions/` with the current prefix; anonymous access returns 401, and successful responses are no-store. Share HTTP status and error category, not the full directory response or typed personal addresses. A stale asset/API mismatch requires the supported rebuild/recreate update, then a fresh page.
 
 ### Room photo upload or display
 
@@ -426,7 +463,7 @@ Expected application UID is 1000 and the photo directory is writable. Existing n
 
 ### Check-in/release
 
-Check-in needs an approved meeting, at/after start and **before** the current deadline. Exactly start+15 minutes is too late under defaults. Opening a link displays confirmation; pressing the button changes status. The link proves organizer mailbox access and needs no earlier employee session. Expired/consumed/rescheduled/cancelled links fail.
+Check-in needs an approved meeting, at/after start and **before** the current deadline. Exactly start+15 minutes is too late under defaults. The HTML email Check in button, or plain-text private link, opens browser confirmation; only pressing Check in now there changes status. A mail preview does not check in anyone. The link proves organizer mailbox access and needs no earlier employee session. Expired/consumed/rescheduled/cancelled links fail.
 
 Verified staff can check in through the booking page within the same window; they cannot late-check-in a no-show. If a new meeting is needed, create a new eligible booking. Release sets `no_show`, keeps history and releases occupancy; it does not delete. Stale workers can delay release while late check-in is already rejected. Booking writes reconcile overdue records; calendar GETs do not. Check heartbeat/logs and do not promise an exact release second.
 

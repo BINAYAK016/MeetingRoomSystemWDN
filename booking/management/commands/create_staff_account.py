@@ -6,6 +6,7 @@ from django.utils.http import urlsafe_base64_encode
 
 from booking.models import AuditEvent, User
 from booking.services.email_login import employee_email_domain_label, normalized_employee_email
+from booking.services.email_templates import staff_setup_email_html
 from booking.services.mail_delivery import deliver_mail
 
 
@@ -34,6 +35,7 @@ class Command(BaseCommand):
                 "Set your WDN staff password",
                 f"Set your staff password using this link: {link}\nIf you did not expect this, contact IT.",
                 [email],
+                html_body=staff_setup_email_html(link),
             )
         except Exception as exc:
             raise CommandError(f"Staff enabled, but setup email failed: {type(exc).__name__}") from exc

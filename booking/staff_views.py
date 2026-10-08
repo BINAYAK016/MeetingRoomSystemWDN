@@ -40,6 +40,7 @@ from booking.models import (
 from booking.services.auth_security import staff_session_verified
 from booking.services.bookings import BookingError, approve_booking, reject_booking
 from booking.services.checkin import CheckInError, manual_checkin
+from booking.services.email_templates import staff_setup_email_html
 from booking.services.mail_delivery import deliver_mail
 from booking.services.reporting import report_data
 from booking.services.reservations import ReservationConflict, reserve_time
@@ -633,6 +634,7 @@ def send_staff_setup(request, user_id):
             "Set your WDN staff password",
             f"Use this link to set your staff password: {link}\nIf you did not expect this, contact IT.",
             [user.email],
+            html_body=staff_setup_email_html(link),
         )
     except Exception:
         AuditEvent.objects.create(

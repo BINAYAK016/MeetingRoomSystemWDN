@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Meeting Rooms</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f3f6fa;color:#193b5b;font-family:'Times New Roman',Times,serif;-webkit-text-size-adjust:100%;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#f3f6fa;mso-hide:all;">{{ preheader }}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f3f6fa;">
+    <tr><td align="center" style="padding:32px 12px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background-color:#ffffff;border:1px solid #dce5ef;border-radius:16px;overflow:hidden;">
+        <tr><td style="padding:30px 32px 24px;border-bottom:1px solid #e5ebf2;">
+          <img src="cid:{{ logo_cid }}" alt="Transgate" width="230" height="23" style="display:block;width:230px;max-width:100%;height:auto;border:0;">
+          <p style="margin:12px 0 0;font-size:14px;line-height:20px;color:#697a8b;">MEETING ROOMS &nbsp;·&nbsp; COMPANY WORKSPACE</p>
+        </td></tr>
+        <tr><td style="padding:30px 32px 8px;">
+          {% if status %}<span style="display:inline-block;padding:6px 11px;border-radius:6px;background-color:{{ badge_background }};color:{{ badge_color }};font-size:14px;font-weight:bold;line-height:20px;">{{ status }}</span>{% endif %}
+          <h1 style="margin:18px 0 12px;color:#153e64;font-size:32px;font-weight:bold;line-height:38px;">{{ heading }}</h1>
+          <p style="margin:0;color:#52677c;font-size:17px;line-height:26px;">{{ intro }}</p>
+        </td></tr>
+        {% if metadata %}
+        <tr><td style="padding:20px 32px 4px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:#f7f9fc;border:1px solid #e3eaf2;border-radius:10px;">
+            {% for row in metadata %}
+            <tr><td width="100" valign="top" style="padding:12px 16px;color:#687c91;font-size:15px;line-height:22px;{% if not forloop.last %}border-bottom:1px solid #e5ebf2;{% endif %}">{{ row.label }}</td><td valign="top" style="padding:12px 16px;color:#193b5b;font-size:16px;font-weight:bold;line-height:22px;word-break:break-word;{% if not forloop.last %}border-bottom:1px solid #e5ebf2;{% endif %}">{{ row.value }}</td></tr>
+            {% endfor %}
+          </table>
+        </td></tr>
+        {% endif %}
+        {% if code %}
+        <tr><td style="padding:24px 32px 4px;">
+          <div style="padding:22px 16px;border:1px solid #dce5ef;border-radius:10px;background-color:#f7f9fc;text-align:center;">
+            <p style="margin:0 0 8px;font-size:14px;line-height:20px;color:#697a8b;">YOUR SIGN-IN CODE</p>
+            <p style="margin:0;color:#153e64;font-size:38px;font-weight:bold;letter-spacing:6px;line-height:46px;font-family:Georgia,'Times New Roman',serif;">{{ code }}</p>
+          </div>
+        </td></tr>
+        {% endif %}
+        {% if paragraphs %}
+        <tr><td style="padding:16px 32px 0;">
+          {% for paragraph in paragraphs %}<p style="margin:0 0 12px;font-size:16px;color:#52677c;line-height:25px;white-space:pre-line;word-break:break-word;">{{ paragraph }}</p>{% endfor %}
+        </td></tr>
+        {% endif %}
+        {% if notice %}
+        <tr><td style="padding:18px 32px 0;">
+          <div style="padding:14px 16px;border-left:3px solid #e51b2b;border-radius:0 8px 8px 0;background-color:#f7f9fc;color:#52677c;font-size:16px;line-height:24px;">{{ notice }}</div>
+        </td></tr>
+        {% endif %}
+        {% if checkin_url %}
+        <tr><td style="padding:22px 32px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;background-color:#edf6f1;border:1px solid #cfe4d9;border-radius:10px;">
+            <tr><td style="padding:20px;">
+              <p style="margin:0 0 8px;color:#17633e;font-size:19px;font-weight:bold;line-height:26px;">Confirm your arrival</p>
+              <p style="margin:0 0 16px;color:#3d6351;font-size:16px;line-height:24px;">{{ checkin_window }}</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#17633e" style="border-radius:7px;"><a href="{{ checkin_url }}" style="display:inline-block;padding:13px 24px;border:1px solid #17633e;border-radius:7px;color:#ffffff;text-decoration:none;font-size:17px;font-weight:bold;line-height:22px;">&#10003; Check in</a></td></tr></table>
+              <p style="margin:14px 0 0;color:#3d6351;font-size:14px;line-height:21px;">{{ checkin_notice }}</p>
+              <p style="margin:8px 0 0;color:#3d6351;font-size:14px;line-height:21px;">The button opens a secure confirmation page. Please confirm there when your meeting starts. This link is for the organizer; do not forward it.</p>
+            </td></tr>
+          </table>
+        </td></tr>
+        {% endif %}
+        {% if action_url %}
+        <tr><td style="padding:24px 32px 0;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td bgcolor="#153e64" style="border-radius:7px;"><a href="{{ action_url }}" style="display:inline-block;padding:13px 24px;border:1px solid #153e64;border-radius:7px;color:#ffffff;text-decoration:none;font-size:17px;font-weight:bold;line-height:22px;">{{ action_label }} &rarr;</a></td></tr></table>
+          <p style="margin:16px 0 0;color:#7a8a9b;font-size:13px;line-height:20px;">If the button does not open, copy this address into your browser:<br><a href="{{ action_url }}" style="color:#153e64;word-break:break-all;text-decoration:underline;">{{ action_url }}</a></p>
+        </td></tr>
+        {% endif %}
+        {% if security_note %}<tr><td style="padding:18px 32px 0;"><p style="margin:0;color:#6a7d90;font-size:14px;line-height:22px;">{{ security_note }}</p></td></tr>{% endif %}
+        <tr><td style="padding:30px 32px 26px;"><p style="margin:0;color:#6a7d90;font-size:15px;line-height:22px;">Meeting Rooms<br><span style="font-size:13px;">Transgate Tech · Internal company use</span></p></td></tr>
+      </table>
+      <p style="margin:18px 12px 0;color:#8391a0;font-family:'Times New Roman',Times,serif;font-size:13px;line-height:20px;">Sent by your company Meeting Rooms workspace.<br><a href="{{ app_url }}" style="color:#62798f;text-decoration:underline;">Open Meeting Rooms</a> · All meeting times are shown in Nepal time.</p>
+    </td></tr>
+  </table>
+</body>
+</html>

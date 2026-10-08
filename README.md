@@ -20,7 +20,9 @@ Start with the [documentation index](docs/index.md). Detailed guides cover all f
 - Daily, weekly, and monthly recurrence within the two-week advance window. Later monthly dates are reserved manually.
 - Business hours, holidays, meeting duration, time slots, and room gap enforced on the server. PostgreSQL exclusion constraints prevent conflicting concurrent reservations, including room closures.
 - Request, approval, rejection, modification, cancellation, reminder, check-in, and no-show notifications for the organizer, attendees, and staff.
-- Organizer check-in links in confirmation, change, and reminder emails. Check-in opens at the start; the worker releases missed check-ins after 15 minutes.
+- Branded HTML and plain-text emails for authentication and meeting events, with clear schedule/details and relevant action buttons. Organizer-only **Check in** opens a secure browser confirmation; check-in opens at start and the worker releases missed check-ins after 15 minutes.
+- **My meetings** includes organized and invited meetings with role/status/search filters and read-only attendee detail access. Attendee visibility also applies to dashboard/calendar; management remains organizer or verified staff only.
+- Attendee autocomplete suggests up to eight active approved-domain employee accounts after two typed characters; external/manual addresses remain supported.
 - Staff room management, closures, employee/access management, booking on behalf of employees, reasoned rule overrides, audit history, statistics, and Excel export.
 
 Direct HCL/Outlook calendar integration remains a later phase. WDN third-floor senior-management priority is handled by Front Desk manually.
@@ -71,6 +73,8 @@ docker compose exec web python manage.py create_staff_account your.name@wdn.com.
 Open the staff setup link in the development inbox, set a password, and use `/staff/sign-in/`. Its email code appears in the same development inbox. Actual room data is entered through the staff interface.
 
 Stop containers and preserve data with `docker compose down`. Restart with `docker compose up -d web worker`. Database, optional room photos (`room_media`) and local email persist in named volumes. Never add `--volumes` to the stop command unless intentionally deleting the data.
+
+The invited-meeting, attendee-suggestion and professional-email update introduces no additional database migration beyond 0011. Rebuild and recreate both web and worker to load the new UI/API/mail templates; preserve database, media, `.env` and existing settings. The normal maintenance procedure still runs committed migrations and reapplies runtime permissions.
 
 ## Environment and email
 

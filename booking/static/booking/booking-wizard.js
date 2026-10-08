@@ -112,6 +112,7 @@
     error.textContent = message;
     error.hidden = false;
     error.tabIndex = -1;
+    if (target === attendees && form.classList.contains("attendee-picker-enhanced")) target = get("attendee-query");
     if (target) {
       const targetPane = target.closest("[data-wizard-pane]");
       if (targetPane && targetPane.hidden) displayStep(Number(targetPane.dataset.wizardPane), false);
@@ -282,7 +283,18 @@
     capacityError.hidden = !room || count <= room.capacity;
     capacityError.textContent = room && count > room.capacity ? `This room seats ${room.capacity}; your meeting lists ${count}. Reduce the headcount or choose a larger room.` : "";
     setText("attendee-room-summary", room ? `${room.name} · ${room.location} · Floor ${room.floor}` : "Your selected room will appear here.");
-    get("booking-attendee-chips").replaceChildren(...addresses().slice(0, 50).map(email => make("span", "booking-attendee-chip", email)));
+    get("booking-attendee-chips").replaceChildren(...addresses().slice(0, 50).map(email => {
+      const chip = make("span", "booking-attendee-chip");
+      chip.append(make("span", "", email));
+      if (form.classList.contains("attendee-picker-enhanced")) {
+        const remove = make("button", "attendee-remove", "×");
+        remove.type = "button";
+        remove.dataset.removeAttendee = email;
+        remove.setAttribute("aria-label", `Remove ${email}`);
+        chip.append(remove);
+      }
+      return chip;
+    }));
     form.querySelectorAll(".booking-room-card").forEach(card => {
       const ready = card.dataset.available !== undefined;
       const available = card.dataset.available === "true";
@@ -369,6 +381,7 @@
     return true;
   }
   function validateAttendees() {
+    if (!form.dispatchEvent(new Event("booking:commit-attendees", {cancelable: true}))) return false;
     if (!validateFields(panes[1])) return false;
     const items = addresses();
     const validator = document.createElement("input");
@@ -521,7 +534,7 @@
     const pane = input.closest("[data-wizard-pane]");
     if (pane) displayStep(Number(pane.dataset.wizardPane), false);
     if (input === roomField) roomOptions.querySelector("input:not(:disabled)")?.focus();
-    else { if (input.closest("#booking-manual-times")) manualTimes.hidden = false; if (input.closest("details")) input.closest("details").open = true; input.focus(); }
+    else { if (input === attendees && form.classList.contains("attendee-picker-enhanced")) { get("attendee-query").focus(); return; } if (input.closest("#booking-manual-times")) manualTimes.hidden = false; if (input.closest("details")) input.closest("details").open = true; input.focus(); }
   }));
   const errorPane = form.querySelector(".booking-field .field-error")?.closest("[data-wizard-pane]");
   displayStep(errorPane ? Number(errorPane.dataset.wizardPane) : 1, false);

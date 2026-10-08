@@ -59,9 +59,9 @@ Staff permissions are checked against the active account and the session's verif
 | Browse active rooms, facilities and instructions | Yes | Yes |
 | Day and week availability | Yes | Yes |
 | Month availability | No; a month request falls back to week | Yes |
-| See another organizer's private booking detail | No | Yes |
+| See a meeting organized by someone else | Read-only when your email is listed as attendee; unrelated details denied | Yes |
 | See occupancy of another employee's slot | Yes, as unavailable | Yes, with a link to detail |
-| Read own meeting title, attendees, notes and decisions | Yes | Yes |
+| Read organized/invited meeting title, attendees, notes and decisions | Yes; invited meetings are read-only | Yes |
 | Submit own booking request | Pending if selected room requires approval; otherwise Approved | Yes, staff creation starts Approved |
 | Book on behalf of another employee | No | Yes |
 | Edit/cancel another organizer's eligible booking | No | Yes |
@@ -72,7 +72,7 @@ Staff permissions are checked against the active account and the session's verif
 | View reports, Excel exports and audit log | No | Yes |
 | Use local test inbox on the office production server | No | No |
 
-An attendee's invitation does not grant access to the organizer's detail page or editing rights. Staff and organizer can read Front Desk notes; those notes are not a separate staff-private comment field.
+An attendee's saved email grants read-only access to that meeting, including title, attendees, notes and decisions. It never grants editing, cancellation, approval or organizer check-in rights. A removed attendee loses access on the next request. Front Desk notes are visible to people allowed to read the detail page; they are not a separate staff-private comment field.
 
 ## Page and feature directory
 
@@ -90,8 +90,9 @@ Paths below are relative to `http://mbs.wdn.com.np`. Numeric identifiers in `{br
 | `/bookings/new/` | Three-step meeting request or approved staff booking | Signed in |
 | `/bookings/availability/` | Read-only room availability for the full selected schedule/series | Signed in |
 | `/rooms/{room_id}/photo/` | Authenticated optional room photo | Signed in; active room, or verified staff for inactive room |
-| `/bookings/mine/` | Own Upcoming and History lists | Signed in |
-| `/bookings/{booking_id}/` | Private detail, decision and available management actions | Organizer or verified staff |
+| `/bookings/mine/` | My meetings: organized/invited Upcoming and History with role/status/search filters | Signed in |
+| `/bookings/attendees/suggestions/` | Read-only employee email/name prefix suggestions, after two characters | Signed in; active approved-domain accounts only |
+| `/bookings/{booking_id}/` | Meeting detail/decision; management actions remain restricted | Organizer, listed attendee (read-only), or verified staff |
 | `/bookings/{booking_id}/edit/` | Edit one future pending/approved occurrence | Organizer or verified staff |
 | `/check-in/confirm/` | Confirm arrival after opening emailed check-in link | Valid organizer link and browser session |
 | `/staff/sign-in/` | Staff password stage | Public |
@@ -140,7 +141,7 @@ These routes complement the page directory. Buttons/forms supply the required se
 
 ### Workspace overview
 
-After sign-in, the overview shows active room count, upcoming approved meetings, pending request count, booking-window length and office hours. It previews up to six active rooms and links to the full directory, calendar and booking form. The staff overview is a separate page with company-wide operational counts.
+After sign-in, the overview shows active room count, accessible upcoming organized/invited approved meetings, pending request count, booking-window length and office hours. It previews up to six active rooms and links to the full directory, calendar and booking form. The staff overview is a separate page with company-wide operational counts.
 
 ### Room directory and detail
 
@@ -159,7 +160,7 @@ Facilities are descriptive free-text labels such as “Projector” or “Whiteb
 
 All booking times are **Nepal time (Asia/Kathmandu, NPT)**. The day view displays one column per active room and one row per configured booking increment. A free cell offers **Available +**, which preselects room/date/start time on the booking form. The wizard keeps those selections, proposes a duration/end time under the current policy, and lets the organizer adjust them and complete the remaining fields.
 
-Calendar markings distinguish an available start, unavailable occupancy, the current user's own booking, and dates/times outside normal rules. Pending holds, approved bookings, checked-in/completed occupied intervals, room closures and meeting buffers can all make a cell unavailable. Other employees see generic occupancy. Organizers and verified staff can open booking detail links for accessible meetings.
+Calendar markings distinguish an available start, unavailable occupancy, the current user's organized/invited meeting, and dates/times outside normal rules. Pending holds, approved bookings, checked-in/completed occupied intervals, room closures and meeting buffers can all make a cell unavailable. Unrelated employees see generic occupancy. Organizers, current listed attendees and verified staff can open accessible meeting detail links; attendees retain read-only rights.
 
 Week view shows counts by day and room, with links to day view. Staff also get a month view. Counts cover active reservation records, including closures; they are not a count of approved meetings only. Day view marks closed weekends, holidays, past times, dates outside the horizon, insufficient time before closing, and insufficient time for a minimum meeting plus buffer before another reservation.
 
@@ -174,7 +175,7 @@ The booking page has workspace navigation and three steps:
 | Step | Actions | Before continuing |
 | --- | --- | --- |
 | Schedule & details | Choose date, duration/start or custom times; select a room; enter title, meeting type, department, purpose, guest company, refreshments and special requirements; choose recurrence when creating | Check required meeting details and current room/time availability |
-| Attendees | Add email addresses and additional guests without individual email entries; verified staff can set organizer for an employee | Check the displayed total against room capacity; organizer is already counted |
+| Attendees | Choose active employee directory suggestions after two letters, or enter complete company/external addresses and additional guests; verified staff can set organizer | Check the displayed total against room capacity; organizer is already counted |
 | Review & confirm | Review room, date/time, actual recurring occurrences, meeting information and attendees; use Edit/Back to correct values | Submit once; only successful saving holds the interval |
 
 Duration/time choices follow the current policy rather than a fixed quarter-hour rule. New booking defaults aim for a one-hour meeting within minimum/maximum duration and office hours, with an aligned future start on a working day. Room/date/start links from the calendar take precedence as selections; final validation still applies. An edit preserves its existing values and changes one occurrence only.
@@ -204,6 +205,18 @@ If JavaScript is unavailable, the underlying native form displays room/date/star
 | Until date | Required for recurring creation; cannot precede first date |
 | Organizer email | Verified staff only; blank means current staff user; otherwise eligible active employee |
 | Override reason | Verified staff only, at most 500 characters; a nonempty reason enables policy exceptions |
+
+### Employee directory suggestions
+
+`GET /bookings/attendees/suggestions/?q=PREFIX` returns at most eight active eligible employee account matches by email, first-name or last-name prefix, case-insensitively. Input is trimmed; fewer than two characters returns an empty list and more than 100 characters returns HTTP 400. Results are ordered case-insensitively by email, with no directory-dump pagination. Results contain only email and display name; no department, access flags, passwords, token data or full directory export is returned. The endpoint requires a signed-in active account in an approved employee domain, is GET-only and sends no-store caching headers. Anonymous requests return HTTP 401. It does not create accounts, update reservations or send mail.
+
+The wizard queries the current attendee token rather than the full field. A suggestion can be chosen with the mouse or Up/Down plus Enter; Escape closes it. The enhanced picker displays removable address chips; Add attendee +/Enter adds manual complete addresses and bulk comma/semicolon/whitespace-separated input. Deduplication and headcount update as chips change. Pressing Next commits valid pending input, while invalid input keeps the user in Attendees with its error. Already selected addresses and organizer are excluded from the choices. Manual entry remains available, including eligible colleagues not yet registered and external guests. Server email validation, deduplication and capacity remain authoritative. Suggestions do not check attendee availability.
+
+### My meetings and attendee visibility
+
+**My meetings** shows reservations where you organize the meeting or your signed-in email is listed in `booking_attendees`, matched case-insensitively. Upcoming retains the active Pending/Approved/Checked in end-time rule; History includes all accessible statuses, not exclusively past records. Role filters are All my meetings, I’m organizing and I’m invited. Search matches title, room name/location or organizer email, up to 100 characters. Status choices are the seven meeting states, excluding room closures; Find meetings applies them and Reset clears them. Pagination shows 25 meetings per page and retains the selected period/role/search/status. These filters narrow the current list; summary cards independently show all accessible active-upcoming totals, pending among those, and the organized/invited split. Invited excludes meetings you organize. Current role/status/search filters do not change those summary counts. A meeting is not duplicated when organizer is also listed.
+
+Listed attendees may read their current meeting detail and My meetings history, including pending/rejected/cancelled states. Upcoming dashboard/calendar displays follow their normal active-state rules and reveal accessible meeting links. An unrelated employee sees ordinary occupancy without private title/details. Removing an attendee removes read access immediately. Only organizers and verified staff can edit/cancel; verified staff control review/manual check-in; the email check-in token remains organizer-only. Attendee access is not an access-grant to other meetings or staff pages.
 
 Attendee addresses are normalized to lowercase and deduplicated. Attendees may use external domains; the company-domain restriction applies to account sign-in and organizer selection. The application does not check attendees' personal calendars. External attendee count represents additional people without individual listed addresses: avoid counting a person both in the email list and in the external count.
 
@@ -273,7 +286,7 @@ A substantive employee edit follows the **selected room's current policy**, even
 
 A form saved without substantive changes keeps its original status, including a Pending request whose room was later unchecked. Staff editing Approved keeps it Approved and queues changes. A substantive staff edit to Pending in a checked room leaves it Pending for a separate Approve action; in an unchecked room it becomes Approved automatically. A Pending-to-Approved edit queues confirmation; an Approved-to-Approved edit queues change notices. Changing the room setting alone does not rewrite any booking or queue approval mail.
 
-Availability, capacity and applicable policy are checked for the proposed new state. Failed edits do not discard the existing booking. Revision numbers prevent outdated pending email from being sent as if it described the current booking. Change messages for approved bookings include previous attendees/organizer when those recipients were removed or changed.
+Availability, capacity and applicable policy are checked for the proposed new state. Failed edits do not discard the existing booking. Revision numbers prevent outdated pending email from being sent as if it described the current booking. Change messages for approved bookings intentionally include previous attendees/organizer when those recipients were removed or changed. A removed internal recipient without remaining meeting/staff access gets Contact organizer instead of a dead View meeting action; the notice does not restore application read access.
 
 ### Cancellation and expiry
 
@@ -300,7 +313,7 @@ There is no automatic rolling creation, “cancel whole series”, series-wide e
 
 ## Check-in and automatic release
 
-The organizer's approved confirmation/change emails and reminder may include a **one-time check-in link**. Attendees and staff receive event notifications, but only the organizer recipient gets that link. The link opens a confirmation page; arrival is recorded only when **Check in now** is pressed.
+The organizer's approved confirmation/change emails and reminder may include a prominent **Check in** button backed by a one-time private link; the plain-text part includes that link. Attendees and staff receive event notifications, but only the organizer recipient gets the check-in action. The email button opens a confirmation page; arrival is recorded only when **Check in now** is pressed through the protected POST form. It is not a mail-client checkbox and a link preview cannot mark arrival.
 
 Check-in is allowed from scheduled start **inclusive** until the configured deadline **exclusive**. A 10:00 meeting with a 15-minute rule can be checked in at 10:00 through just before 10:15; at 10:15 it is too late. Early confirmation is rejected and can be retried from the same staged page after start.
 
@@ -328,7 +341,9 @@ Recipients are deduplicated by address. “Staff” below means every currently 
 | Reminder | Yes | Yes | Yes | Organizer recipient only while valid |
 | Conflict on failed create/edit | User who attempted action | No | No extra staff broadcast | No |
 
-Login links, staff codes and password setup emails are sent directly during their requests. Booking events use a separate database queue, so a saved meeting is not rolled back because subsequent SMTP delivery fails.
+Authentication and meeting messages are multipart email: a plain-text part for compatibility and a branded HTML alternative with an event heading, clear state, Nepal-time summary and relevant action. Organizer confirmation/change/reminder messages include Check in while eligible; current company-domain participants and active staff recipients get **View meeting** without the organizer's token. Manual external recipients and former participants with neither current participation nor active staff access instead get **Contact organizer** (`mailto:`) and a plain-text contact address. They are not promised company sign-in or current My meetings access, and an intentional change notice creates no new read permission. Email action URLs use the configured public site origin. HTML templates escape user-entered fields and avoid script, mail forms or third-party image requests. The exact supplied wordmark is packaged as an inline CID attachment, so the recipient's client can display it without downloading a remote logo or tracking pixel. Plain-text fallback remains usable if HTML is blocked.
+
+Login links, staff codes and password setup emails are sent directly during their requests. Booking events use a separate database queue, so a saved meeting is not rolled back because subsequent SMTP delivery fails. The existing plain-text/event snapshot is retained; HTML is rendered at delivery using the current booking under revision/state/lease checks. Private check-in URLs are generated for the outgoing organizer message, not stored as HTML snapshots.
 
 ### Timing and retry behavior
 
@@ -445,6 +460,9 @@ Examples assume an illustrative eight-seat room and default policy. Adjust dates
 | UC-29 | Confirm without staff review | Employee, free room with Requires approval unchecked | Submit valid team meeting → Approved immediately → confirmation and organizer check-in; normal capacity/conflict rules still apply |
 | UC-30 | Change room approval requirement | Verified staff, room has existing Pending/Approved records | Rooms → change checkbox → saved/audited; saved bookings keep status; future submissions follow new policy |
 | UC-31 | Resubmit a retained Pending request | Organizer/staff, future Pending in now-unchecked room | Unchanged save stays Pending; substantive valid edit becomes Approved and queues confirmation |
+| UC-32 | Attend a colleague's meeting | Active signed-in employee listed by email | My meetings → I’m invited → read detail/status; no edit, cancel or organizer check-in |
+| UC-33 | Select colleague address | Active colleague registered in MBS | Type at least two email/name letters → choose suggested full email → existing headcount/server validation applies |
+| UC-34 | Use HTML check-in action | Organizer, Approved meeting, current email | Check in in email → browser confirmation → deliberate Check in now during window; preview alone changes nothing |
 
 ## Implemented scope and limitations
 

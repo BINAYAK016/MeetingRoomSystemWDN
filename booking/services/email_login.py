@@ -15,6 +15,7 @@ from django.views.decorators.debug import sensitive_variables
 
 from booking.models import AuditEvent, EmailToken, User
 from booking.services.auth_security import allow_auth_request
+from booking.services.email_templates import login_email_html
 from booking.services.mail_delivery import deliver_mail
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,7 @@ def request_login_link(email, request):
             f"Use this link to sign in to the WDN meeting room system:\n\n{link}\n\n"
             "This link expires in 15 minutes and works once. If you did not request it, ignore this message.",
             [email],
+            html_body=login_email_html(link),
         )
     except Exception as exc:
         EmailToken.objects.filter(pk=token.pk).update(consumed_at=timezone.now())

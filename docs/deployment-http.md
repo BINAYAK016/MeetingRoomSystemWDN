@@ -142,12 +142,16 @@ Open **`http://mbs.wdn.com.np/`** using the HTTP prefix. Verify employee email s
 - Toggle a room containing an existing Pending request: its status stays Pending, and an unchanged edit stays Pending. A substantive valid edit in an unchecked room becomes Approved.
 - Organizer cancels an eligible booking; the slot becomes available.
 - Simultaneous requests for the same slot produce one reservation and one availability error.
-- Check-in link works during the valid window; missed check-in releases the slot after the deadline.
+- Branded HTML and plain-text authentication/meeting emails arrive and remain usable in company mail clients. Organizer Check in opens browser confirmation and works during the valid window; a preview performs no action and attendee emails contain no organizer token. Missed check-in releases the slot after the deadline.
+- A saved attendee signs in and sees the meeting in My meetings, overview/calendar and read-only detail. Role/status/search filters work; unrelated employees cannot read details. Attendee edit/cancel is denied and removal ends access.
+- Typing two letters in Attendees offers up to eight registered active company accounts with mouse/keyboard selection; manual external addresses remain valid.
 - Three-step booking, attendee headcount, Internal + External guest company, all-occurrence availability and native form fallback work.
 - Reports, audit history, recurring dates, holiday rules, closures, and room deactivation work with real office data.
 - Optional staff-uploaded room photos display only while authenticated, survive recreation, and restore from the matching media archive.
 
 Check that company laptops can reach the office IP and resolve the domain. Do not expose port 80 to the public internet. Existing HTTPS rehearsal results in `verification-report.md` remain evidence for that profile; verify this actual server's DNS, mail, firewall, and restore procedure before rollout.
+
+The invited-meeting, attendee-suggestion and professional-email update introduces no additional database migration beyond 0011. Rebuild and recreate both web and worker to load the new UI/API/mail templates; preserve database, media, `.env` and existing settings. The normal maintenance procedure still runs committed migrations and reapplies runtime permissions.
 
 ## Backups and updates
 

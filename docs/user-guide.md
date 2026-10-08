@@ -14,7 +14,7 @@ This guide explains employee use of **http://mbs.wdn.com.np** on the office netw
 4. Find a room using **Rooms** and a time using **Calendar**.
 5. Submit **New booking**. A room marked **Staff approval required** starts **Pending approval**; wait for staff. A room marked **Automatic approval** starts **Approved** immediately.
 6. At meeting start, open the organizer check-in link in the approved email and press **Check in now** before the deadline.
-7. Use **My bookings** for changes, cancellation, status and history.
+7. Use **My meetings** for meetings you organize or attend, status and history. Invited meetings are read-only.
 
 ## Navigation
 
@@ -23,7 +23,7 @@ This guide explains employee use of **http://mbs.wdn.com.np** on the office netw
 | [Overview](http://mbs.wdn.com.np/) | Room count, upcoming meetings, pending count and current booking window |
 | [Rooms](http://mbs.wdn.com.np/rooms/) | Search room, seat count, location and facilities; read instructions |
 | [Calendar](http://mbs.wdn.com.np/calendar/) | Day/week occupancy and available starts |
-| [My bookings](http://mbs.wdn.com.np/bookings/mine/) | Your Upcoming or History list |
+| [My meetings](http://mbs.wdn.com.np/bookings/mine/) | Upcoming or History for meetings you organize or attend; filter by role, status or search |
 | [New booking](http://mbs.wdn.com.np/bookings/new/) | Schedule & details → Attendees → Review & confirm for one meeting or recurring occurrences |
 | [My profile](http://mbs.wdn.com.np/profile/) | Your name and department |
 | Staff desk | Management interface; separate staff password/code authentication required |
@@ -88,11 +88,12 @@ Only active rooms are listed. A room's listed facility is a descriptive label; c
 | Calendar marking | Meaning |
 | --- | --- |
 | Available + | A permitted start for at least a minimum meeting and required buffer appears free at page load |
-| Your booking | Occupied by a meeting you organize; select to open details |
+| Your meeting | Occupied by a meeting you organize; select to open details |
+| Invited meeting | You are listed as an attendee; select for read-only details |
 | Unavailable | Another booking/request, closure or buffer occupies the interval; details remain private |
 | Outside rule / past / holiday explanation | This start cannot be booked normally; read the displayed reason |
 
-Calendar availability is checked again on submission. Another person may hold the slot after you load the page. Staff can see month view; employees use day/week. Other employees see occupancy without your meeting title, notes or attendee details. Being on someone else's attendee list does not grant access to their booking details.
+Calendar availability is checked again on submission. Another person may hold the slot after you load the page. Staff can see month view; employees use day/week. A signed-in employee listed as an attendee may open that meeting's details; unrelated employees see only occupancy without title, notes or attendee details. Invitation never grants editing, cancellation, approval or organizer check-in rights.
 
 ## 5. Request a single internal meeting
 
@@ -118,11 +119,17 @@ The following is an illustrative request. Choose a **future company working date
 2. In **Schedule & details**, choose a date, duration and start time. Use **Custom** for explicit start/end. All times are Nepal time; the choices follow current office rules.
 3. Wait for the room cards to update. Check capacity, location, facilities and any real photo; select a room marked available for the selected schedule.
 4. Enter meeting title and information, select **Internal**, set refreshments to Yes/No, and add special requirements. Keep Repeat meeting as **One meeting**.
-5. Select **Next: attendees**. Add colleague emails separated by commas or new lines. Duplicate addresses are normalized and removed; the organizer is already included. Enter `0` additional guests and check the displayed headcount fits the room.
+5. Select **Next: attendees**. Type at least two letters from the start of a colleague's email, first name or last name and choose a directory suggestion, or enter complete addresses manually separated by commas or new lines. Duplicate addresses are normalized and removed; the organizer is already included. Enter `0` additional guests and check the displayed headcount fits the room.
 6. Continue to **Review & confirm**. Read the room, date/time, meeting details and attendee list. Use **Edit** or **Back** to correct them without restarting.
 7. Press **Submit booking request** for a room requiring review, or **Confirm booking** for an automatically approved room, once. Availability and the current room policy are checked again while saving.
 8. On success, check the saved status. A room requiring approval shows **Pending approval** and holds the room/time; an unchecked room shows **Approved** immediately.
-9. If Pending, wait for staff approval before treating the meeting as confirmed. If Approved, read the confirmation/check-in instructions. Follow the status in **My bookings**.
+9. If Pending, wait for staff approval before treating the meeting as confirmed. If Approved, read the confirmation/check-in instructions. Follow the status in **My meetings**.
+
+### Choose attendees from the employee directory
+
+The Attendees field suggests active employee accounts registered in MBS after at least **two characters** are typed in the current address. Up to **eight matches** are displayed, with name and email. Choose with the mouse, or use Up/Down arrows and Enter; Escape closes the choices. Selection adds a removable attendee chip without submitting the booking. For an unlisted/external address, type the full address and press **Add attendee +** or Enter, or paste several separated addresses. Remove a chip with its remove control. Duplicate addresses and the organizer are counted once, and headcount updates immediately. A valid complete email still in the input is added when you press Next; an incomplete/invalid address blocks progression until corrected.
+
+The directory uses the approved company domains. A colleague who has not yet completed company-email sign-in may not appear; enter their full address manually or ask them to sign in. Deactivated accounts do not appear. External guest addresses can still be typed manually. Suggestions do not check a person's calendar, guarantee they are free or grant staff access. With JavaScript unavailable, use complete addresses in the normal text field.
 
 Room cards and the review screen show the room's approval requirement. Both reviewed and immediately confirmed bookings must satisfy the same capacity, availability and booking rules; staff creation uses its own verified staff path.
 
@@ -177,7 +184,7 @@ Example: organizer + two listed colleagues + three unlisted guests = **six peopl
 4. Wait for availability: each room must fit every eligible occurrence, not just the first. A conflict on a later date also makes that room unavailable.
 5. Add attendees, then review the actual occurrence dates/times in **Review & confirm**. Daily skips appear in the resulting list; no hidden later months are reserved.
 6. Submit; the detail page opens the first created occurrence.
-7. Open **My bookings** to inspect all occurrences. Each starts Pending if the selected room requires approval, otherwise Approved. Pending occurrences need individual review; every Approved occurrence has its own check-in.
+7. Open **My meetings** to inspect all occurrences. Each starts Pending if the selected room requires approval, otherwise Approved. Pending occurrences need individual review; every Approved occurrence has its own organizer check-in. Listed employees see the same occurrences as invited meetings.
 
 | Example | Expected behavior |
 | --- | --- |
@@ -192,7 +199,7 @@ At most **15 occurrences** are allowed in one creation. Monthly dates use the or
 
 ## 8. Follow approval and status
 
-Open **My bookings** and select the meeting title. The detail page shows room, date/time, requester, request time, department, guests, attendees, description, preparation notes, state and available actions.
+Open **My meetings** and select the meeting title. The detail page shows room, date/time, requester, request time, department, guests, attendees, description, preparation notes, state and available actions. A role label distinguishes **You’re organizing** from **You’re invited**. Listed attendees can read current details and decisions, including a Pending request, but cannot manage it.
 
 | State | Meaning / next step |
 | --- | --- |
@@ -204,7 +211,9 @@ Open **My bookings** and select the meeting title. The detail page shows room, d
 | Cancelled | Released by cancellation or approval-window expiry; reason shown |
 | No show | Deadline missed; room released; old check-in link cannot restore it |
 
-**Upcoming** lists active Pending/Approved/Checked in meetings whose end has not passed. **History** shows all your booking records, including future records in other states; it is not exclusively past meetings. You cannot open another organizer's private record, even if you know its ID or were invited.
+**Upcoming** lists active Pending/Approved/Checked in meetings whose end has not passed. **History & all meetings** shows all accessible meeting records, including future records in other states; it is not exclusively past meetings. Use **All my meetings**, **I’m organizing** or **I’m invited** to narrow your role, then search by meeting/room/location/organizer or filter by status. Press **Find meetings**; **Reset** clears those filters. The list shows 25 meetings per page and keeps the selected filters. Summary cards show all your upcoming active meetings, how many of those are pending, and the upcoming organized/invited split; changing the list filters does not change those cards. The same meeting is listed once if you are both organizer and listed attendee.
+
+Attendee visibility matches your signed-in email against the saved attendee list, ignoring capitalization. If the organizer adds you, the meeting appears when you reload; if they remove you, read access ends immediately. Emails already received are not recalled. An unrelated employee cannot open private details by guessing the booking ID. The organizer and verified staff retain management rights; being invited grants read-only access.
 
 A request still Pending at meeting start is automatically cancelled because its approval window expired. Staff changing the room to **Automatic approval** does not automatically approve saved Pending requests. They remain Pending until staff review or a substantive valid edit; an unchanged save keeps their state.
 
@@ -212,7 +221,7 @@ A request still Pending at meeting start is automatically cancelled because its 
 
 ### Edit
 
-1. Open your meeting from **My bookings**.
+1. Open a meeting you organize from **My meetings**.
 2. For a future Pending or Approved record, select **Edit booking**.
 3. Use the same three steps to adjust fields, review, and press **Save booking changes**. The original date/start/end, room and meeting information are prefilled; recurrence controls are omitted because this edits one occurrence.
 4. Check the resulting state and confirmation message.
@@ -230,20 +239,22 @@ The room is released; history remains and event emails are queued. Cancellation 
 
 ## 10. Check in at meeting start
 
-1. Find the organizer check-in link in the latest approved confirmation/change email or reminder.
+1. Find the **Check in** button in the latest approved confirmation/change email or reminder sent to the organizer. The plain-text version provides the same private link.
 2. Open it at the scheduled start time.
 3. Press **Check in now** before the configured deadline.
 4. Check the **You're all set** confirmation and meeting/room name.
 
 For a 10:00 meeting with the default rule, check-in opens at **10:00** and closes at **10:15**. The deadline is exclusive: at 10:15 it is too late. Opening the link before start is allowed, but confirming early is rejected; keep the page and use **Try check-in again** after start.
 
-Check-in uses possession of the emailed organizer link; a prior employee login is not required. It still requires browser cookies and the confirmation button. Attendees do not receive the organizer's private check-in link. A used or superseded link will fail, and a cancelled/rejected/No show booking cannot be checked in.
+The email button opens the secure confirmation flow; it does not record arrival inside the email itself. Confirm in the browser with **Check in now**. This deliberate second step prevents mail scanners or a preview from marking someone present. Check-in uses possession of the emailed organizer link; a prior employee login is not required. It still requires browser cookies and the confirmation button. Attendees do not receive the organizer's private check-in link or gain check-in permission from My meetings. A used or superseded link will fail, and a cancelled/rejected/No show booking cannot be checked in.
 
 If mail is missing while attendees have arrived, contact Front Desk **before the deadline**. Verified staff can perform Manual check-in during the same window. Email problems do not automatically extend it. A missed deadline marks the record No show and releases the room on the next successful worker reconciliation, normally about every 30 seconds.
 
 ## 11. Notifications and support
 
 You receive submission/decision/change/cancellation/check-in/no-show messages for your meetings. After approval, listed attendees and active staff receive the corresponding meeting events; unapproved submission and rejection are sent to organizer/staff, not attendees. Reminder scheduling begins within one hour of an Approved start and depends on worker/relay delivery; it is not guaranteed at precisely 60 minutes before.
+
+Messages provide a branded HTML layout with a clear event heading, meeting summary, Nepal-time schedule and relevant action. Mail clients that block or do not render HTML can use the plain-text alternative. Approved organizer messages show the private Check in action when valid; messages to current company-domain participants and active staff link to the meeting without that private action. External guests and former participants with neither current participation nor active staff access receive **Contact organizer** and the current organizer's email instead. A change notice does not restore a removed recipient's meeting access or make an external address eligible to sign in. The supplied Transgate wordmark is attached within the message rather than loaded from a tracking/external image server. Do not forward sign-in, password setup or organizer check-in links.
 
 A saved booking remains saved during a mail outage. Use the application state as the record of the meeting and ask staff/IT about missing email. HCL/Outlook calendar integration and calendar invitation files are deferred; an MBS email does not automatically create another calendar entry.
 

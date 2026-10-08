@@ -2,9 +2,11 @@ import hashlib
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.db.models import Count, Q
+from django.db.models.functions import Lower
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -13,7 +15,8 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from booking.forms import BookingForm, BookingScheduleForm
-from booking.models import ACTIVE_RESERVATION_STATUSES, BookingPolicy, CompanyHoliday, Reservation, Room
+from booking.meeting_access import personal_meetings, with_meeting_membership
+from booking.models import ACTIVE_RESERVATION_STATUSES, BookingPolicy, CompanyHoliday, Reservation, Room, User
 from booking.services.auth_security import staff_session_verified
 from booking.services.bookings import (
     BookingError,
@@ -23,6 +26,7 @@ from booking.services.bookings import (
     update_booking,
 )
 from booking.services.checkin import CheckInError, confirm_checkin_hash
+from booking.services.email_login import normalized_employee_email
 from booking.services.notifications import queue_conflict_notice
 from booking.ui import paginate
 
@@ -40,6 +44,7 @@ def _booking_form_context(request, *, booking=None):
         "availability_url": availability_url,
         "booking_ui": {
             "availability_url": availability_url,
+            "attendee_suggestions_url": reverse("attendee-suggestions"),
             "today": today.isoformat(),
             "latest_date": (today + timedelta(days=policy.advance_days)).isoformat(),
             "opens_at": policy.opens_at.strftime("%H:%M"),
@@ -123,7 +128,7 @@ def booking_availability(request):
         ):
             return JsonResponse({"ok": False, "error": "Choose a valid booking to edit."}, status=400)
         try:
-            editing = _visible_booking(request, int(booking_id))
+            editing = _visible_booking(request, int(booking_id), manage=True)
         except Http404:
             return JsonResponse({"ok": False, "error": "This booking is unavailable."}, status=404)
         if (
@@ -218,6 +223,44 @@ def booking_availability(request):
     )
 
 
+@never_cache
+@require_GET
+def attendee_suggestions(request):
+    if not request.user.is_authenticated or not request.user.is_active:
+        return JsonResponse({"ok": False, "error": "Sign in to find colleagues."}, status=401)
+    if normalized_employee_email(request.user.email) is None:
+        return JsonResponse({"ok": False, "error": "Company employee access is required."}, status=403)
+    query = request.GET.get("q", "").strip()
+    if len(query) > 100:
+        return JsonResponse({"ok": False, "error": "Enter up to 100 characters."}, status=400)
+    if len(query) < 2:
+        return JsonResponse({"ok": True, "results": []})
+    allowed_domain = Q(pk__in=[])
+    for domain in settings.EMPLOYEE_EMAIL_DOMAINS:
+        allowed_domain |= Q(email__iendswith=f"@{domain}")
+    matches = (
+        User.objects.filter(is_active=True)
+        .filter(allowed_domain)
+        .filter(
+            Q(email__istartswith=query) | Q(first_name__istartswith=query) | Q(last_name__istartswith=query)
+        )
+        .order_by(Lower("email"), "pk")
+        .values("email", "first_name", "last_name")[:8]
+    )
+    return JsonResponse(
+        {
+            "ok": True,
+            "results": [
+                {
+                    "email": item["email"].strip().lower(),
+                    "name": f"{item['first_name']} {item['last_name']}".strip(),
+                }
+                for item in matches
+            ],
+        }
+    )
+
+
 @login_required(login_url="sign-in")
 @require_GET
 def room_list(request):
@@ -303,11 +346,14 @@ def calendar_view(request):
         CompanyHoliday.objects.filter(date__gte=days[0], date__lt=last).values_list("date", "name")
     )
     bookings = list(
-        Reservation.objects.filter(
-            room_id__in=[room.pk for room in rooms],
-            occupied_from__lt=datetime.combine(last, datetime.min.time(), local_tz),
-            occupied_until__gt=datetime.combine(days[0], datetime.min.time(), local_tz),
-            status__in=ACTIVE_RESERVATION_STATUSES,
+        with_meeting_membership(
+            Reservation.objects.filter(
+                room_id__in=[room.pk for room in rooms],
+                occupied_from__lt=datetime.combine(last, datetime.min.time(), local_tz),
+                occupied_until__gt=datetime.combine(days[0], datetime.min.time(), local_tz),
+                status__in=ACTIVE_RESERVATION_STATUSES,
+            ),
+            request.user,
         ).select_related("room")
     )
     by_room = {room.pk: [] for room in rooms}
@@ -346,6 +392,7 @@ def calendar_view(request):
                     None,
                 )
                 own = bool(occupying and occupying.organizer_id == request.user.pk)
+                attending = bool(occupying and occupying.is_attendee)
                 reason = date_reason
                 if not reason and cursor <= now:
                     reason = "Start time has passed"
@@ -363,8 +410,11 @@ def calendar_view(request):
                         "room": room,
                         "occupied": occupying,
                         "own": own,
+                        "attending": attending,
                         "can_open": bool(
-                            occupying and occupying.kind == Reservation.Kind.BOOKING and (own or staff)
+                            occupying
+                            and occupying.kind == Reservation.Kind.BOOKING
+                            and (own or attending or staff)
                         ),
                         "unavailable_reason": reason,
                         "available": occupying is None and not reason,
@@ -445,15 +495,15 @@ def booking_new(request):
     return render(request, "booking/booking_form.html", context)
 
 
-def _visible_booking(request, booking_id):
+def _visible_booking(request, booking_id, *, manage=False):
     booking = get_object_or_404(
-        Reservation.objects.select_related(
-            "room", "organizer", "series", "approved_by", "rejected_by"
-        ).prefetch_related("attendees"),
+        with_meeting_membership(Reservation.objects.all(), request.user)
+        .select_related("room", "organizer", "series", "approved_by", "rejected_by")
+        .prefetch_related("attendees"),
         pk=booking_id,
         kind=Reservation.Kind.BOOKING,
     )
-    if not _staff(request) and booking.organizer_id != request.user.pk:
+    if not _staff(request) and not booking.is_organizer and (manage or not booking.is_attendee):
         raise Http404
     return booking
 
@@ -463,6 +513,7 @@ def _visible_booking(request, booking_id):
 def booking_detail(request, booking_id):
     booking = _visible_booking(request, booking_id)
     staff = _staff(request)
+    can_manage = staff or booking.is_organizer
     upcoming = booking.starts_at > timezone.now()
     return render(
         request,
@@ -470,9 +521,15 @@ def booking_detail(request, booking_id):
         {
             "booking": booking,
             "staff": staff,
-            "can_edit": upcoming
+            "is_organizer": booking.is_organizer,
+            "is_attendee": booking.is_attendee and not booking.is_organizer,
+            "can_manage": can_manage,
+            "check_in_minutes": BookingPolicy.objects.get(pk=1).check_in_minutes,
+            "can_edit": can_manage
+            and upcoming
             and booking.status in [Reservation.Status.PENDING, Reservation.Status.APPROVED],
-            "can_cancel": booking.status
+            "can_cancel": can_manage
+            and booking.status
             in [Reservation.Status.PENDING, Reservation.Status.APPROVED, Reservation.Status.CHECKED_IN],
             "can_review": staff and upcoming and booking.status == Reservation.Status.PENDING,
         },
@@ -482,7 +539,7 @@ def booking_detail(request, booking_id):
 @login_required(login_url="sign-in")
 @require_http_methods(["GET", "POST"])
 def booking_edit(request, booking_id):
-    booking = _visible_booking(request, booking_id)
+    booking = _visible_booking(request, booking_id, manage=True)
     if (
         booking.status not in [Reservation.Status.PENDING, Reservation.Status.APPROVED]
         or booking.starts_at <= timezone.now()
@@ -549,7 +606,7 @@ def booking_edit(request, booking_id):
 @login_required(login_url="sign-in")
 @require_POST
 def booking_cancel(request, booking_id):
-    _visible_booking(request, booking_id)
+    _visible_booking(request, booking_id, manage=True)
     try:
         cancel_booking(
             booking_id,
@@ -566,19 +623,59 @@ def booking_cancel(request, booking_id):
 @login_required(login_url="sign-in")
 @require_GET
 def my_bookings(request):
-    bookings = Reservation.objects.filter(
-        kind=Reservation.Kind.BOOKING, organizer=request.user
-    ).select_related("room")
+    now = timezone.now()
+    personal = personal_meetings(request.user)
+    upcoming = Q(ends_at__gte=now, status__in=["pending", "approved", "checked_in"])
+    summary = personal.aggregate(
+        upcoming=Count("pk", filter=upcoming),
+        pending=Count("pk", filter=upcoming & Q(status=Reservation.Status.PENDING)),
+        organized=Count("pk", filter=upcoming & Q(is_organizer=True)),
+        invited=Count("pk", filter=upcoming & Q(is_organizer=False, is_attendee=True)),
+    )
+    bookings = personal.select_related("room", "organizer", "series").prefetch_related("attendees")
     period = request.GET.get("period", "upcoming")
     if period == "upcoming":
-        bookings = bookings.filter(
-            ends_at__gte=timezone.now(), status__in=["pending", "approved", "checked_in"]
-        ).order_by("starts_at", "pk")
+        bookings = bookings.filter(upcoming).order_by("starts_at", "pk")
     else:
         period = "history"
         bookings = bookings.order_by("-starts_at", "-pk")
+    role = request.GET.get("role", "all")
+    if role == "organizer":
+        bookings = bookings.filter(is_organizer=True)
+    elif role == "attendee":
+        bookings = bookings.filter(is_organizer=False, is_attendee=True)
+    else:
+        role = "all"
+    search = request.GET.get("q", "").strip()[:100]
+    if search:
+        bookings = bookings.filter(
+            Q(title__icontains=search)
+            | Q(room__name__icontains=search)
+            | Q(room__location__icontains=search)
+            | Q(organizer__email__icontains=search)
+        )
+    status_choices = [
+        (value, label)
+        for value, label in Reservation.Status.choices
+        if value not in (Reservation.Status.BLOCKED, Reservation.Status.BLOCK_CANCELLED)
+    ]
+    status = request.GET.get("status", "")
+    if status in dict(status_choices):
+        bookings = bookings.filter(status=status)
+    else:
+        status = ""
     context = paginate(request, bookings)
-    context.update({"bookings": context["page_obj"], "period": period})
+    context.update(
+        {
+            "bookings": context["page_obj"],
+            "period": period,
+            "role": role,
+            "search": search,
+            "status": status,
+            "status_choices": status_choices,
+            "summary": summary,
+        }
+    )
     return render(request, "booking/my_bookings.html", context)
 
 

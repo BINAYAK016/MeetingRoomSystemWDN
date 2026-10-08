@@ -13,6 +13,7 @@ from django.views.decorators.debug import sensitive_variables
 from booking.models import AuditEvent, EmailToken, User
 from booking.services.auth_security import allow_auth_request
 from booking.services.email_login import normalized_employee_email
+from booking.services.email_templates import staff_code_email_html
 from booking.services.mail_delivery import deliver_mail
 
 logger = logging.getLogger(__name__)
@@ -62,6 +63,7 @@ def start_staff_login(email, password, request):
             "Your WDN staff sign-in code",
             f"Your one-time staff sign-in code is {code}. It expires in 10 minutes. If you did not request it, contact IT.",
             [user.email],
+            html_body=staff_code_email_html(code),
         )
     except Exception as exc:
         EmailToken.objects.filter(pk=token.pk).update(consumed_at=timezone.now())
