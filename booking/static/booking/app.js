@@ -65,6 +65,14 @@ window.addEventListener("pageshow", () => {
   });
 });
 
+// Room approval settings save when their checkbox changes; Save remains available without JavaScript.
+document.querySelectorAll("form[data-room-approval-form]").forEach((form) => {
+  const checkbox = form.querySelector('input[type="checkbox"][name="requires_approval"]');
+  if (!checkbox || typeof form.requestSubmit !== "function") return;
+  checkbox.addEventListener("change", () => form.requestSubmit());
+  form.querySelector('button[type="submit"]').hidden = true;
+});
+
 document.querySelectorAll(".app-nav a, .staff-nav a").forEach((link) => {
   if (new URL(link.href).pathname === window.location.pathname) {
     link.setAttribute("aria-current", "page");

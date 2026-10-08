@@ -1,1 +1,45 @@
-{% extends "booking/base.html" %}{% block title %}Manage rooms{% endblock %}{% block content %}<div class="page-container app-page"><div class="page-heading"><div><p class="eyebrow">STAFF DESK</p><h1>Rooms</h1></div><a class="button button-primary" href="{% url 'staff-room-new' %}">Add room +</a></div>{% include "booking/staff_nav.html" %}<section class="panel"><div class="table-scroll"><table><thead><tr><th>Photo</th><th>Room</th><th>Location</th><th>Seats</th><th>Facilities</th><th>Status</th><th></th></tr></thead><tbody>{% for room in rooms %}<tr><td>{% if room.photo %}<img class="room-photo-thumb" src="{% url 'room-photo' room.pk %}" alt="Photo of {{ room.name }}" width="72" height="48" loading="lazy">{% else %}<span class="muted">No photo</span>{% endif %}</td><td>{{ room.name }}</td><td>{{ room.location }} · {{ room.floor }}</td><td>{{ room.capacity }}</td><td>{% for facility in room.facilities.all %}{{ facility.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td><td>{{ room.is_active|yesno:'Active,Inactive' }}</td><td><a href="{% url 'staff-room-edit' room.pk %}">Edit</a></td></tr>{% empty %}<tr><td colspan="7">No rooms configured.</td></tr>{% endfor %}</tbody></table></div></section>{% include "booking/pagination.html" %}</div>{% endblock %}
+{% extends "booking/base.html" %}
+{% block title %}Manage rooms{% endblock %}
+{% block content %}
+<div class="page-container app-page">
+  <div class="page-heading">
+    <div><p class="eyebrow">STAFF DESK</p><h1>Rooms</h1></div>
+    <a class="button button-primary" href="{% url 'staff-room-new' %}">Add room +</a>
+  </div>
+  {% include "booking/staff_nav.html" %}
+  <p class="muted">Choose which rooms need approval for new and changed employee requests. Existing requests keep their current status.</p>
+  <section class="panel">
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Photo</th><th>Room</th><th>Location</th><th>Seats</th><th>Facilities</th><th>Requires approval</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          {% for room in rooms %}
+          <tr>
+            <td>{% if room.photo %}<img class="room-photo-thumb" src="{% url 'room-photo' room.pk %}" alt="Photo of {{ room.name }}" width="72" height="48" loading="lazy">{% else %}<span class="muted">No photo</span>{% endif %}</td>
+            <td>{{ room.name }}</td>
+            <td>{{ room.location }} · {{ room.floor }}</td>
+            <td>{{ room.capacity }}</td>
+            <td>{% for facility in room.facilities.all %}{{ facility.name }}{% if not forloop.last %}, {% endif %}{% empty %}—{% endfor %}</td>
+            <td>
+              <form method="post" action="{% url 'staff-room-approval' room.pk %}" class="room-approval-form" data-room-approval-form>
+                {% csrf_token %}
+                <input type="hidden" name="requires_approval" value="0">
+                <input type="hidden" name="page" value="{{ page_obj.number }}">
+                <label class="room-approval-control" for="room-approval-{{ room.pk }}">
+                  <input type="checkbox" id="room-approval-{{ room.pk }}" name="requires_approval" value="1" {% if room.requires_approval %}checked{% endif %} aria-label="Require approval for {{ room.name }}" autocomplete="off">
+                  <span>Required</span>
+                </label>
+                <button type="submit" class="button button-quiet room-approval-save">Save</button>
+              </form>
+            </td>
+            <td>{{ room.is_active|yesno:'Active,Inactive' }}</td>
+            <td><a href="{% url 'staff-room-edit' room.pk %}">Edit</a></td>
+          </tr>
+          {% empty %}<tr><td colspan="8">No rooms configured.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% include "booking/pagination.html" %}
+</div>
+{% endblock %}

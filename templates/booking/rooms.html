@@ -15,6 +15,7 @@
     <h2>{{ room.name }}</h2><p class="muted">{{ room.location }} · Floor {{ room.floor }}</p>
     {% if room.description %}<p>{{ room.description|truncatechars:200 }}</p>{% endif %}
     <div class="facility-list">{% for facility in room.facilities.all %}<span>{{ facility.name }}</span>{% empty %}<span>No equipment listed</span>{% endfor %}</div>
+    <p class="room-approval-summary">{% if room.requires_approval %}Staff approval required{% else %}Automatic approval{% endif %}</p>
     <a class="text-link" href="{% url 'room-detail' room.pk %}">Room details →</a>
   </article>{% empty %}<div class="panel empty-state"><h2>No rooms found</h2><p>Try changing the filters or contact Front Desk for help.</p></div>{% endfor %}</div>
   {% include "booking/pagination.html" %}

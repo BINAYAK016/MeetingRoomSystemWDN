@@ -19,7 +19,7 @@
         <div><dt>Attendees</dt><dd>{% for attendee in booking.attendees.all %}{{ attendee.email }}{% if not forloop.last %}, {% endif %}{% empty %}None listed{% endfor %}</dd></div>
         <div><dt>Description</dt><dd>{{ booking.description|default:'—'|linebreaksbr }}</dd></div>
         <div><dt>Front Desk notes</dt><dd>{{ booking.front_desk_notes|default:'—'|linebreaksbr }}</dd></div>
-        {% if booking.approved_at %}<div><dt>Approved</dt><dd>{{ booking.approved_at|date:'d M Y, H:i' }} NPT{% if staff %} · {{ booking.approved_by.get_full_name|default:booking.approved_by.email }}{% endif %}</dd></div>{% endif %}
+        {% if booking.approved_at %}<div><dt>Approved</dt><dd>{{ booking.approved_at|date:'d M Y, H:i' }} NPT{% if not booking.approved_by %} · Automatically{% elif staff %} · {{ booking.approved_by.get_full_name|default:booking.approved_by.email }}{% endif %}</dd></div>{% endif %}
         {% if booking.rejected_at %}<div><dt>Rejected</dt><dd>{{ booking.rejected_at|date:'d M Y, H:i' }} NPT</dd></div>{% endif %}
         {% if booking.cancellation_reason %}<div><dt>Cancellation reason</dt><dd>{{ booking.cancellation_reason }}</dd></div>{% endif %}
       </dl>
@@ -30,11 +30,11 @@
         <form method="post" action="{% url 'staff-booking-approve' booking.pk %}" data-confirm="Approve this booking request?">{% csrf_token %}<button class="button button-primary button-wide" type="submit">Approve request</button></form>
         <form method="post" action="{% url 'staff-booking-reject' booking.pk %}" class="stacked-action" data-confirm="Reject this request and release the room?">{% csrf_token %}<label for="rejection-reason">Rejection reason</label><textarea id="rejection-reason" name="reason" rows="3" maxlength="500" required aria-describedby="rejection-help"></textarea><small id="rejection-help" class="muted">Required. The requester will see your explanation.</small><button class="button button-danger button-wide" type="submit">Reject request</button></form>
       {% endif %}
-      {% if can_edit %}<p class="muted">Changes are checked against current availability.{% if not staff and booking.status == 'approved' %} Changing meeting details will require a new approval.{% endif %}</p><a class="button button-quiet button-wide" href="{% url 'booking-edit' booking.pk %}">Edit booking →</a>{% endif %}
+      {% if can_edit %}<p class="muted">Changes are checked against current availability.{% if not staff %} New approval is needed only when the selected room requires it. Saving without changes keeps the current status.{% endif %}</p><a class="button button-quiet button-wide" href="{% url 'booking-edit' booking.pk %}">Edit booking →</a>{% endif %}
       {% if can_cancel %}<form method="post" action="{% url 'booking-cancel' booking.pk %}" class="stacked-action" data-confirm="Cancel this booking and release the room?">{% csrf_token %}<label for="reason">Cancellation reason</label><input id="reason" name="reason" maxlength="240" value="Cancelled"><button class="button button-quiet button-wide" type="submit">Cancel booking</button></form>{% endif %}
       {% if staff and booking.status == 'approved' %}<form method="post" action="{% url 'staff-checkin' booking.pk %}" class="stacked-action" data-confirm="Check in this meeting now?">{% csrf_token %}<button class="button button-quiet button-wide" type="submit">Manual check-in</button></form>{% endif %}
       {% if not can_edit and not can_cancel and not can_review %}<p class="muted">This booking is {{ booking.get_status_display|lower }}.</p>{% endif %}
-      {% if booking.series %}<p class="muted">Part of a {{ booking.series.get_frequency_display|lower }} series. Each occurrence is reviewed and managed separately.</p>{% endif %}
+      {% if booking.series %}<p class="muted">Part of a {{ booking.series.get_frequency_display|lower }} series. Each occurrence is managed separately and uses its room’s approval setting for new or changed requests.</p>{% endif %}
     </aside>
   </div>
 </div>

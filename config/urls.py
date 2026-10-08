@@ -39,6 +39,7 @@ urlpatterns = [
     path("staff/rooms/", staff_views.rooms, name="staff-rooms"),
     path("staff/rooms/new/", staff_views.room_form, name="staff-room-new"),
     path("staff/rooms/<int:room_id>/", staff_views.room_form, name="staff-room-edit"),
+    path("staff/rooms/<int:room_id>/approval/", staff_views.room_approval, name="staff-room-approval"),
     path("staff/bookings/", staff_views.bookings, name="staff-bookings"),
     path(
         "staff/bookings/pending/",

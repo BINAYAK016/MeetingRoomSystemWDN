@@ -83,6 +83,30 @@
   const headcount = () => 1 + addresses().filter(email => email !== organizer()).length + (Number.parseInt(extraGuests.value, 10) || 0);
   const selectedRoom = () => roomData.find(room => String(room.id) === roomField.value);
 
+  function updateApprovalPolicy() {
+    const room = selectedRoom();
+    const editing = Boolean(config.booking_id);
+    let text = "Choose a room to see whether your booking needs staff approval.";
+    if (config.staff && !editing) {
+      text = "New staff bookings are approved immediately. Confirmation emails are queued after saving.";
+    } else if (room) {
+      if (config.staff && form.dataset.bookingStatus === "approved") {
+        text = "Your changes keep this staff-managed booking approved.";
+      } else if (room.requires_approval) {
+        text = editing && config.staff
+          ? "This pending request still needs approval from the Staff desk after you save changes."
+          : "This room requires staff approval. New or changed requests hold the room while Front Desk reviews them.";
+      } else {
+        text = "This room does not require staff approval. New or changed bookings are approved automatically, and confirmation emails are queued after saving.";
+      }
+      if (editing) text += " Saving without changes keeps the current booking status.";
+    }
+    text += ` Check in through your email within ${config.check_in_minutes} minutes of the approved start time.`;
+    setText("booking-approval-policy", text);
+    setText("booking-review-policy", `${text} Room availability and approval settings are checked again when you submit.`);
+    get("booking-submit-label").textContent = editing ? "Save booking changes" : config.staff || room?.requires_approval === false ? "Confirm booking" : "Submit booking request";
+  }
+
   function clearError() { error.hidden = true; error.textContent = ""; }
   function showError(message, target = null) {
     error.textContent = message;
@@ -172,7 +196,7 @@
     radio.type = "radio";
     radio.name = "room_choice";
     const info = make("span", "booking-room-info");
-    info.append(make("strong"), make("span", "booking-room-location"), make("span", "booking-room-seats"), make("span", "booking-room-facilities"));
+    info.append(make("strong"), make("span", "booking-room-location"), make("span", "booking-room-seats"), make("span", "booking-room-facilities"), make("span", "booking-room-approval"));
     const state = make("span", "booking-room-state");
     state.append(make("span", "booking-room-status"), make("span", "booking-room-conflict"));
     card.append(radio, make("span", "booking-room-photo"), info, state);
@@ -195,6 +219,9 @@
       card.querySelector(".booking-room-info > strong").textContent = room.name;
       card.querySelector(".booking-room-location").textContent = `${room.location} · Floor ${room.floor}`;
       card.querySelector(".booking-room-seats").replaceChildren(icon("users"), document.createTextNode(`${room.capacity} seats`));
+      const approval = card.querySelector(".booking-room-approval");
+      approval.textContent = room.requires_approval ? "Staff approval required" : "Automatic approval";
+      approval.dataset.requiresApproval = String(room.requires_approval);
       card.querySelector(".booking-room-facilities").replaceChildren(...(room.facilities.length ? room.facilities.map(name => {
         const span = make("span");
         let kind = "facility";
@@ -242,6 +269,7 @@
       card.dataset.selected = String(chosen);
       card.querySelector("input").checked = chosen;
     });
+    updateApprovalPolicy();
     clearError();
   }
   function updateHeadcount() {
@@ -473,8 +501,14 @@
     submit.disabled = true;
     clearError();
     try {
+      const reviewedApproval = selectedRoom()?.requires_approval;
       if (!await validateSchedule()) { displayStep(1, false); return; }
       if (!validateAttendees()) { displayStep(2, false); return; }
+      if (reviewedApproval !== selectedRoom()?.requires_approval) {
+        populateReview();
+        showError("The room’s approval setting changed. Review the updated information and submit again.");
+        return;
+      }
       verifiedSubmit = true;
       submit.disabled = false;
       form.requestSubmit(submit);

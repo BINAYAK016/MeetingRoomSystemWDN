@@ -137,12 +137,70 @@ def rooms(request):
     return render(request, "booking/staff_rooms.html", context)
 
 
+def _locked_verified_staff(request):
+    actor = User.objects.select_for_update(no_key=True).filter(pk=request.user.pk).first()
+    if (
+        actor is None
+        or not actor.is_active
+        or not actor.is_staff
+        or request.session.get("staff_verified") is not True
+        or request.session.get("staff_auth_version") != actor.auth_version
+    ):
+        return None
+    return actor
+
+
+@staff_required
+@require_POST
+@transaction.atomic
+def room_approval(request, room_id):
+    values = request.POST.getlist("requires_approval")
+    if values not in (["0"], ["1"], ["0", "1"]):
+        return HttpResponse("Choose a valid approval setting.", status=400)
+    pages = request.POST.getlist("page") or ["1"]
+    if (
+        len(pages) != 1
+        or len(pages[0]) > 6
+        or not pages[0].isascii()
+        or not pages[0].isdigit()
+        or int(pages[0]) < 1
+    ):
+        return HttpResponse("Choose a valid room directory page.", status=400)
+    actor = _locked_verified_staff(request)
+    if actor is None:
+        return redirect("staff-login")
+    room = get_object_or_404(Room.objects.select_for_update(), pk=room_id)
+    required = values[-1] == "1"
+    previous = room.requires_approval
+    if required != previous:
+        room.requires_approval = required
+        room.save(update_fields=["requires_approval", "updated_at"])
+        AuditEvent.objects.create(
+            actor=actor,
+            action="room_approval_changed",
+            target_type="room",
+            target_id=room.pk,
+            outcome="success",
+            details={"old_requires_approval": previous, "requires_approval": required},
+        )
+        messages.success(request, "Room approval setting saved. Existing requests keep their current status.")
+    url = reverse("staff-rooms")
+    page = int(pages[0])
+    return redirect(f"{url}?page={page}" if page > 1 else url)
+
+
 @staff_required
 @require_http_methods(["GET", "POST"])
 @transaction.atomic
 def room_form(request, room_id=None):
+    if request.method == "POST":
+        actor = _locked_verified_staff(request)
+        if actor is None:
+            return redirect("staff-login")
+        request.user = actor
     queryset = Room.objects.select_for_update() if request.method == "POST" else Room.objects.all()
     room = get_object_or_404(queryset, pk=room_id) if room_id else None
+    old_approval = room.requires_approval if room else None
     old_photo_name = room.photo.name if room else ""
     form = RoomForm(
         request.POST if request.method == "POST" else None,
@@ -171,8 +229,20 @@ def room_form(request, room_id=None):
                     target_type="room",
                     target_id=saved.pk,
                     outcome="success",
-                    details={"active": saved.is_active},
+                    details={"active": saved.is_active, "requires_approval": saved.requires_approval},
                 )
+                if old_approval is not None and old_approval != saved.requires_approval:
+                    AuditEvent.objects.create(
+                        actor=request.user,
+                        action="room_approval_changed",
+                        target_type="room",
+                        target_id=saved.pk,
+                        outcome="success",
+                        details={
+                            "old_requires_approval": old_approval,
+                            "requires_approval": saved.requires_approval,
+                        },
+                    )
                 if old_photo_name and old_photo_name != saved.photo.name:
                     transaction.on_commit(
                         lambda: delete_room_photo(saved.photo.storage, old_photo_name), robust=True

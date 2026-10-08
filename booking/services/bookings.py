@@ -245,6 +245,8 @@ def _create_booking(data, *, actor, staff):
     _capacity(room, data, organizer)
     policy = BookingPolicy.objects.get(pk=1)
     intervals = prepared_booking_intervals(data, policy, staff=staff)
+    automatically_approved = not staff and not room.requires_approval
+    approved = staff or automatically_approved
     series = None
     if data["recurrence"] != "none":
         series = BookingSeries.objects.create(
@@ -265,9 +267,9 @@ def _create_booking(data, *, actor, staff):
                 starts_at=start,
                 ends_at=end,
                 kind=Reservation.Kind.BOOKING,
-                status=Reservation.Status.APPROVED if staff else Reservation.Status.PENDING,
+                status=Reservation.Status.APPROVED if approved else Reservation.Status.PENDING,
                 approved_by=actor if staff else None,
-                approved_at=timezone.now() if staff else None,
+                approved_at=timezone.now() if approved else None,
                 organizer=organizer,
                 created_by=actor,
                 series=series,
@@ -278,14 +280,20 @@ def _create_booking(data, *, actor, staff):
                 f"Room unavailable on {timezone.localtime(start, LOCAL_TZ):%d %b %Y at %H:%M}"
             ) from exc
         _attendees(booking, data["attendees"])
-        queue_booking_event(booking, "confirmation" if staff else "request")
+        queue_booking_event(booking, "confirmation" if approved else "request")
         AuditEvent.objects.create(
             actor=actor,
             action="booking_created",
             target_type="reservation",
             target_id=booking.pk,
             outcome="success",
-            details={"room_id": room.pk, "on_behalf": organizer.pk != actor.pk, "status": booking.status},
+            details={
+                "room_id": room.pk,
+                "on_behalf": organizer.pk != actor.pk,
+                "status": booking.status,
+                "requires_approval": room.requires_approval,
+                "automatic_approval": automatically_approved,
+            },
         )
         created.append(booking)
     return created
@@ -369,11 +377,23 @@ def _update_booking(booking_id, data, *, actor, staff):
     ) != set(data["attendees"])
     if not substantive_change:
         return booking
+    previous_status = booking.status
+    automatically_approved = False
     booking.revision += 1
-    if not staff and booking.status == Reservation.Status.APPROVED:
-        booking.status = Reservation.Status.PENDING
+    if not staff:
+        booking.status = (
+            Reservation.Status.PENDING if new_room.requires_approval else Reservation.Status.APPROVED
+        )
+        # Approval applies to this revision. An automatic approval must not be
+        # attributed to the reviewer who approved a previous meeting revision.
         booking.approved_by = None
-        booking.approved_at = None
+        booking.approved_at = None if new_room.requires_approval else timezone.now()
+        automatically_approved = not new_room.requires_approval
+    elif booking.status == Reservation.Status.PENDING and not new_room.requires_approval:
+        booking.status = Reservation.Status.APPROVED
+        booking.approved_by = None
+        booking.approved_at = timezone.now()
+        automatically_approved = True
     for field, value in changes.items():
         setattr(booking, field, value)
     try:
@@ -385,7 +405,10 @@ def _update_booking(booking_id, data, *, actor, staff):
         raise
     _attendees(booking, data["attendees"])
     _supersede_booking_mail(booking)
-    event = "request" if booking.status == Reservation.Status.PENDING else "change"
+    if booking.status == Reservation.Status.PENDING:
+        event = "request"
+    else:
+        event = "confirmation" if previous_status == Reservation.Status.PENDING else "change"
     queue_booking_event(
         booking, event, extra_recipients=[*old_attendees, old_organizer_email] if event == "change" else ()
     )
@@ -395,7 +418,14 @@ def _update_booking(booking_id, data, *, actor, staff):
         target_type="reservation",
         target_id=booking.pk,
         outcome="success",
-        details={"room_id": new_room.pk, "on_behalf": organizer.pk != actor.pk},
+        details={
+            "room_id": new_room.pk,
+            "on_behalf": organizer.pk != actor.pk,
+            "previous_status": previous_status,
+            "status": booking.status,
+            "requires_approval": new_room.requires_approval,
+            "automatic_approval": automatically_approved,
+        },
     )
     return booking
 

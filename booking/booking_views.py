@@ -192,6 +192,7 @@ def booking_availability(request):
                 "location": room.location,
                 "floor": room.floor,
                 "capacity": room.capacity,
+                "requires_approval": room.requires_approval,
                 "description": room.description,
                 "instructions": room.instructions,
                 "facilities": [facility.name for facility in room.facilities.all()],
@@ -432,6 +433,10 @@ def booking_new(request):
         else:
             if staff:
                 messages.success(request, f"{len(bookings)} approved booking(s) created.")
+            elif bookings[0].status == Reservation.Status.APPROVED:
+                messages.success(
+                    request, "Booking confirmed. This room does not require administrator approval."
+                )
             else:
                 messages.success(request, "Booking request submitted. Waiting for administrator approval.")
             return redirect("booking-detail", booking_id=bookings[0].pk)
@@ -528,6 +533,11 @@ def booking_edit(request, booking_id):
         else:
             if updated.status == Reservation.Status.PENDING:
                 messages.success(request, "Booking request updated. Waiting for administrator approval.")
+            elif not staff and updated.revision != booking.revision and updated.approved_by_id is None:
+                messages.success(
+                    request,
+                    "Booking updated and confirmed. This room does not require administrator approval.",
+                )
             else:
                 messages.success(request, "Booking updated")
             return redirect("booking-detail", booking_id=booking.pk)

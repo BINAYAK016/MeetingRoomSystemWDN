@@ -74,6 +74,7 @@ class Room(models.Model):
     instructions = models.TextField(blank=True)
     photo = models.ImageField(upload_to="rooms/photos/", blank=True)
     is_active = models.BooleanField(default=True)
+    requires_approval = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

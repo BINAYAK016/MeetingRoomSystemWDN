@@ -141,6 +141,15 @@ class BookingForm(forms.Form):
 
 
 class RoomForm(forms.ModelForm):
+    requires_approval = forms.BooleanField(
+        required=False,
+        initial=True,
+        label="Requires approval",
+        help_text=(
+            "New and changed employee requests need Front Desk or Administrator approval when checked. "
+            "Staff-created bookings are approved immediately; existing requests keep their current status."
+        ),
+    )
     photo = forms.FileField(
         required=False,
         widget=forms.FileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}),
@@ -202,6 +211,7 @@ class RoomForm(forms.ModelForm):
             "description",
             "instructions",
             "photo",
+            "requires_approval",
             "is_active",
         ]
         widgets = {

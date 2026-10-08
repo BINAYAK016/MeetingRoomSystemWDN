@@ -612,3 +612,14 @@ button:disabled { cursor: wait; opacity: .7; }
 .room-photo-preview { margin: 12px 0 20px; }
 .room-photo-preview img { display: block; width: min(100%, 420px); max-height: 260px; object-fit: cover; border-radius: 9px; border: 1px solid var(--line); }
 .room-photo-thumb { width: 80px; height: 60px; object-fit: cover; border-radius: 6px; display: block; }
+
+/* Per-room approval policy is visible before a booking is submitted. */
+.booking-room-approval { display: inline-block; font-size: 11px; line-height: 1.4; margin-top: 7px; color: #8a6430; }
+.booking-room-approval[data-requires-approval=false] { color: #237848; }
+.room-approval-summary { color: #486780; font-size: 13px; margin: 16px 0 12px; }
+.room-approval-form { display: flex; align-items: center; gap: 8px; }
+.room-approval-control { display: inline-flex; align-items: center; gap: 7px; margin: 0; cursor: pointer; }
+.room-approval-control input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--navy); margin: 0; }
+.room-approval-save { font-size: 12px; min-height: 30px; padding: 6px 10px; }
+.room-approval-save[hidden] { display: none; }
+.room-approval-form[aria-busy=true] { opacity: .65; pointer-events: none; }
