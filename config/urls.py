@@ -2,6 +2,7 @@ from django.urls import path
 
 from booking import booking_views, error_views, profile_views, staff_views, views
 from booking.health import liveness, readiness
+from booking.room_media import room_photo
 
 handler400 = error_views.bad_request
 handler403 = error_views.permission_denied
@@ -19,8 +20,10 @@ urlpatterns = [
     path("dev/mail/", views.dev_mail, name="dev-mail"),
     path("rooms/", booking_views.room_list, name="rooms"),
     path("rooms/<int:room_id>/", booking_views.room_detail, name="room-detail"),
+    path("rooms/<int:room_id>/photo/", room_photo, name="room-photo"),
     path("calendar/", booking_views.calendar_view, name="calendar"),
     path("bookings/new/", booking_views.booking_new, name="booking-new"),
+    path("bookings/availability/", booking_views.booking_availability, name="booking-availability"),
     path("bookings/mine/", booking_views.my_bookings, name="my-bookings"),
     path("bookings/<int:booking_id>/", booking_views.booking_detail, name="booking-detail"),
     path("bookings/<int:booking_id>/edit/", booking_views.booking_edit, name="booking-edit"),

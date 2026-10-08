@@ -6,20 +6,64 @@ from django.core.validators import validate_email
 
 from booking.models import BookingPolicy, Reservation, Room
 from booking.services.email_login import employee_email_domain_label, normalized_employee_email
+from booking.services.room_photos import normalize_room_photo
+
+
+def _clean_recurrence(form, data):
+    if "recurrence" not in form.fields:
+        return
+    if data.get("recurrence") == "none":
+        # A previously selected repeat-until date is irrelevant after switching to one meeting.
+        data["until_date"] = None
+        form.errors.pop("until_date", None)
+        return
+    if data.get("recurrence") not in {"daily", "weekly", "monthly"}:
+        return
+    if not data.get("until_date"):
+        form.add_error("until_date", "Choose the last date for this series")
+    if data.get("until_date") and data.get("date") and data["until_date"] < data["date"]:
+        form.add_error("until_date", "The last date cannot be before the first date")
+
+
+class BookingScheduleForm(forms.Form):
+    date = forms.DateField()
+    start_time = forms.TimeField()
+    end_time = forms.TimeField()
+    recurrence = forms.ChoiceField(
+        choices=[("none", "One meeting"), ("daily", "Daily"), ("weekly", "Weekly"), ("monthly", "Monthly")],
+        required=False,
+    )
+    until_date = forms.DateField(required=False)
+    override_reason = forms.CharField(max_length=500, required=False)
+
+    def __init__(self, *args, staff=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not staff:
+            self.fields.pop("override_reason")
+
+    def clean(self):
+        data = super().clean()
+        if data.get("recurrence") == "":
+            data["recurrence"] = "none"
+        _clean_recurrence(self, data)
+        return data
 
 
 class BookingForm(forms.Form):
     room = forms.ModelChoiceField(queryset=Room.objects.none())
-    date = forms.DateField(widget=forms.DateInput(attrs={"type": "date"}))
+    date = forms.DateField(label="Meeting date", widget=forms.DateInput(attrs={"type": "date"}))
     start_time = forms.TimeField(widget=forms.TimeInput(attrs={"type": "time", "step": "900"}))
     end_time = forms.TimeField(widget=forms.TimeInput(attrs={"type": "time", "step": "900"}))
-    title = forms.CharField(max_length=200)
+    title = forms.CharField(label="Meeting title", max_length=200)
     description = forms.CharField(max_length=10000, required=False, widget=forms.Textarea(attrs={"rows": 3}))
     meeting_type = forms.ChoiceField(choices=Reservation.MeetingType.choices)
-    guest_company_name = forms.CharField(max_length=200, required=False)
-    external_attendee_count = forms.IntegerField(min_value=0, max_value=500, initial=0)
+    guest_company_name = forms.CharField(label="Guest company", max_length=200, required=False)
+    external_attendee_count = forms.IntegerField(
+        label="External guests", min_value=0, max_value=500, initial=0
+    )
     department = forms.CharField(max_length=120, required=False)
     attendees = forms.CharField(
+        label="Attendee email addresses",
         max_length=15000,
         required=False,
         widget=forms.Textarea(attrs={"rows": 3}),
@@ -53,7 +97,7 @@ class BookingForm(forms.Form):
         policy = BookingPolicy.objects.filter(pk=1).first()
         if policy:
             for field in ("start_time", "end_time"):
-                self.fields[field].widget.attrs["step"] = str(policy.slot_minutes * 60)
+                self.fields[field].widget.attrs["step"] = "60" if staff else str(policy.slot_minutes * 60)
             self.fields["until_date"].help_text = (
                 f"Every occurrence must stay within {policy.advance_days} days. "
                 "Reserve later months manually when they enter the booking window."
@@ -87,18 +131,22 @@ class BookingForm(forms.Form):
 
     def clean(self):
         data = super().clean()
-        if data.get("meeting_type") == Reservation.MeetingType.EXTERNAL and not data.get(
-            "guest_company_name"
-        ):
+        if data.get("meeting_type") in [
+            Reservation.MeetingType.EXTERNAL,
+            Reservation.MeetingType.MIXED,
+        ] and not data.get("guest_company_name"):
             self.add_error("guest_company_name", "Enter the guest company name")
-        if "recurrence" in self.fields and data.get("recurrence") != "none" and not data.get("until_date"):
-            self.add_error("until_date", "Choose the last date for this series")
-        if data.get("until_date") and data.get("date") and data["until_date"] < data["date"]:
-            self.add_error("until_date", "The last date cannot be before the first date")
+        _clean_recurrence(self, data)
         return data
 
 
 class RoomForm(forms.ModelForm):
+    photo = forms.FileField(
+        required=False,
+        widget=forms.FileInput(attrs={"accept": "image/jpeg,image/png,image/webp"}),
+        help_text="Optional real room photo: JPEG, PNG or WebP, at most 5 MB and 12 million pixels.",
+    )
+    remove_photo = forms.BooleanField(required=False, label="Remove current photo")
     description = forms.CharField(max_length=10000, required=False, widget=forms.Textarea(attrs={"rows": 3}))
     instructions = forms.CharField(max_length=10000, required=False, widget=forms.Textarea(attrs={"rows": 3}))
     facilities_text = forms.CharField(
@@ -107,6 +155,26 @@ class RoomForm(forms.ModelForm):
         help_text="One facility per line or separated by commas.",
         widget=forms.Textarea(attrs={"rows": 3}),
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.instance.photo:
+            self.fields.pop("remove_photo")
+
+    def clean_photo(self):
+        photo = self.cleaned_data.get("photo")
+        if not photo or "photo" not in self.files:
+            return photo
+        return normalize_room_photo(photo)
+
+    def clean(self):
+        data = super().clean()
+        if data.get("remove_photo"):
+            if self.files.get("photo"):
+                self.add_error("photo", "Choose a new photo or remove the current one, rather than both.")
+            else:
+                data["photo"] = False
+        return data
 
     def clean_facilities_text(self):
         names = []
@@ -126,7 +194,16 @@ class RoomForm(forms.ModelForm):
 
     class Meta:
         model = Room
-        fields = ["name", "location", "floor", "capacity", "description", "instructions", "is_active"]
+        fields = [
+            "name",
+            "location",
+            "floor",
+            "capacity",
+            "description",
+            "instructions",
+            "photo",
+            "is_active",
+        ]
         widgets = {
             "description": forms.Textarea(attrs={"rows": 3}),
             "instructions": forms.Textarea(attrs={"rows": 3}),

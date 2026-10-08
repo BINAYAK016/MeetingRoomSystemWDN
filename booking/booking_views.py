@@ -5,16 +5,23 @@ from zoneinfo import ZoneInfo
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.http import Http404
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
-from booking.forms import BookingForm
+from booking.forms import BookingForm, BookingScheduleForm
 from booking.models import ACTIVE_RESERVATION_STATUSES, BookingPolicy, CompanyHoliday, Reservation, Room
 from booking.services.auth_security import staff_session_verified
-from booking.services.bookings import BookingError, cancel_booking, create_booking, update_booking
+from booking.services.bookings import (
+    BookingError,
+    cancel_booking,
+    create_booking,
+    prepared_booking_intervals,
+    update_booking,
+)
 from booking.services.checkin import CheckInError, confirm_checkin_hash
 from booking.services.notifications import queue_conflict_notice
 from booking.ui import paginate
@@ -22,6 +29,192 @@ from booking.ui import paginate
 
 def _staff(request):
     return staff_session_verified(request)
+
+
+def _booking_form_context(request, *, booking=None):
+    policy = BookingPolicy.objects.get(pk=1)
+    local_now = timezone.localtime(timezone.now(), ZoneInfo("Asia/Kathmandu"))
+    today = local_now.date()
+    availability_url = reverse("booking-availability")
+    return {
+        "availability_url": availability_url,
+        "booking_ui": {
+            "availability_url": availability_url,
+            "today": today.isoformat(),
+            "latest_date": (today + timedelta(days=policy.advance_days)).isoformat(),
+            "opens_at": policy.opens_at.strftime("%H:%M"),
+            "closes_at": policy.closes_at.strftime("%H:%M"),
+            "minimum_minutes": policy.minimum_minutes,
+            "maximum_minutes": policy.maximum_minutes,
+            "slot_minutes": policy.slot_minutes,
+            "check_in_minutes": policy.check_in_minutes,
+            "advance_days": policy.advance_days,
+            "local_now": local_now.isoformat(),
+            "staff": _staff(request),
+            "booking_id": booking.pk if booking else None,
+            "actor_email": request.user.email,
+        },
+        "booking_rooms": Room.objects.filter(is_active=True)
+        .prefetch_related("facilities")
+        .order_by("location", "floor", "name"),
+    }
+
+
+def _new_booking_initial(request):
+    policy = BookingPolicy.objects.get(pk=1)
+    now = timezone.localtime(timezone.now(), ZoneInfo("Asia/Kathmandu"))
+    today = now.date()
+    step = policy.slot_minutes
+    opens = policy.opens_at.hour * 60 + policy.opens_at.minute
+    closes = policy.closes_at.hour * 60 + policy.closes_at.minute
+    duration = min(
+        policy.maximum_minutes, closes - opens, max(policy.minimum_minutes, ((60 + step - 1) // step) * step)
+    )
+    next_slot = ((now.hour * 60 + now.minute) // step + 1) * step
+    requested_date = request.GET.get("date", "")
+    try:
+        selected = datetime.strptime(requested_date, "%Y-%m-%d").date()
+    except ValueError:
+        selected = today
+    default_start = max(opens, next_slot) if selected == today else opens
+    if not requested_date:
+        holidays = set(
+            CompanyHoliday.objects.filter(
+                date__gte=today, date__lte=today + timedelta(days=policy.advance_days)
+            ).values_list("date", flat=True)
+        )
+        while selected < today + timedelta(days=policy.advance_days) and (
+            selected.weekday() >= 5 or selected in holidays or default_start + duration > closes
+        ):
+            selected += timedelta(days=1)
+            default_start = opens
+    start = request.GET.get("start") or f"{default_start // 60:02}:{default_start % 60:02}"
+    try:
+        start_clock = datetime.strptime(start, "%H:%M").time()
+        end_minutes = start_clock.hour * 60 + start_clock.minute + duration
+        end = f"{end_minutes // 60:02}:{end_minutes % 60:02}" if end_minutes < 1440 else ""
+    except ValueError:
+        end = ""
+    return {
+        "room": request.GET.get("room"),
+        "date": requested_date or selected.isoformat(),
+        "start_time": start,
+        "end_time": end,
+        "meeting_type": "internal",
+        "recurrence": "none",
+        "department": request.user.department,
+    }
+
+
+@never_cache
+@require_GET
+def booking_availability(request):
+    if not request.user.is_authenticated or not request.user.is_active:
+        return JsonResponse({"ok": False, "error": "Sign in to check room availability."}, status=401)
+    staff = _staff(request)
+    booking_id = request.GET.get("booking_id", "")
+    excluded_id = None
+    if booking_id:
+        if (
+            not booking_id.isascii()
+            or not booking_id.isdigit()
+            or len(booking_id) > 19
+            or int(booking_id) > 9223372036854775807
+        ):
+            return JsonResponse({"ok": False, "error": "Choose a valid booking to edit."}, status=400)
+        try:
+            editing = _visible_booking(request, int(booking_id))
+        except Http404:
+            return JsonResponse({"ok": False, "error": "This booking is unavailable."}, status=404)
+        if (
+            editing.status not in [Reservation.Status.PENDING, Reservation.Status.APPROVED]
+            or editing.starts_at <= timezone.now()
+        ):
+            return JsonResponse(
+                {"ok": False, "error": "Only upcoming pending or approved bookings can be edited."},
+                status=400,
+            )
+        excluded_id = editing.pk
+    query = request.GET.copy()
+    if excluded_id:
+        # The edit workflow changes one occurrence; submitted recurrence fields are ignored there too.
+        query["recurrence"] = "none"
+        query["until_date"] = ""
+    form = BookingScheduleForm(query, staff=staff)
+    if not form.is_valid():
+        errors = {field: list(messages) for field, messages in form.errors.items()}
+        field = next(iter(errors))
+        label = form.fields[field].label or field.replace("_", " ").capitalize()
+        return JsonResponse(
+            {"ok": False, "error": f"{label}: {errors[field][0]}", "fields": errors}, status=400
+        )
+    policy = BookingPolicy.objects.get(pk=1)
+    try:
+        intervals = prepared_booking_intervals(form.cleaned_data, policy, staff=staff)
+    except BookingError as exc:
+        return JsonResponse({"ok": False, "error": str(exc)}, status=400)
+    rooms = list(
+        Room.objects.filter(is_active=True)
+        .prefetch_related("facilities")
+        .order_by("location", "floor", "name")
+    )
+    reservations = Reservation.objects.filter(
+        room_id__in=[room.pk for room in rooms],
+        status__in=ACTIVE_RESERVATION_STATUSES,
+        occupied_from__lt=max(item[3] for item in intervals),
+        occupied_until__gt=min(item[2] for item in intervals),
+    )
+    if excluded_id:
+        reservations = reservations.exclude(pk=excluded_id)
+    occupied_by_room = {room.pk: [] for room in rooms}
+    for room_id, occupied_from, occupied_until in reservations.values_list(
+        "room_id", "occupied_from", "occupied_until"
+    ):
+        occupied_by_room[room_id].append((occupied_from, occupied_until))
+    local_tz = ZoneInfo("Asia/Kathmandu")
+    room_data = []
+    for room in rooms:
+        conflicts = []
+        for start, _end, occupied_from, occupied_until in intervals:
+            for busy_from, busy_until in occupied_by_room[room.pk]:
+                if busy_from < occupied_until and busy_until > occupied_from:
+                    conflicts.append(
+                        {
+                            "date": start.date().isoformat(),
+                            "occupied_from": timezone.localtime(busy_from, local_tz).isoformat(),
+                            "occupied_until": timezone.localtime(busy_until, local_tz).isoformat(),
+                        }
+                    )
+        room_data.append(
+            {
+                "id": room.pk,
+                "name": room.name,
+                "location": room.location,
+                "floor": room.floor,
+                "capacity": room.capacity,
+                "description": room.description,
+                "instructions": room.instructions,
+                "facilities": [facility.name for facility in room.facilities.all()],
+                "photo_url": reverse("room-photo", args=[room.pk]) if getattr(room, "photo", None) else "",
+                "available": not conflicts,
+                "conflicts": conflicts,
+            }
+        )
+    return JsonResponse(
+        {
+            "ok": True,
+            "timezone": "Asia/Kathmandu",
+            "occurrences": [
+                {
+                    "date": item[0].date().isoformat(),
+                    "starts_at": item[0].isoformat(),
+                    "ends_at": item[1].isoformat(),
+                }
+                for item in intervals
+            ],
+            "rooms": room_data,
+        }
+    )
 
 
 @login_required(login_url="sign-in")
@@ -218,14 +411,7 @@ def calendar_view(request):
 @require_http_methods(["GET", "POST"])
 def booking_new(request):
     staff = _staff(request)
-    initial = {
-        "room": request.GET.get("room"),
-        "date": request.GET.get("date"),
-        "start_time": request.GET.get("start"),
-        "meeting_type": "internal",
-        "recurrence": "none",
-        "department": request.user.department,
-    }
+    initial = _new_booking_initial(request) if request.method == "GET" else None
     form = BookingForm(
         request.POST if request.method == "POST" else None,
         initial=initial if request.method == "GET" else None,
@@ -249,7 +435,9 @@ def booking_new(request):
             else:
                 messages.success(request, "Booking request submitted. Waiting for administrator approval.")
             return redirect("booking-detail", booking_id=bookings[0].pk)
-    return render(request, "booking/booking_form.html", {"form": form, "editing": False, "staff": staff})
+    context = _booking_form_context(request)
+    context.update({"form": form, "editing": False, "staff": staff})
+    return render(request, "booking/booking_form.html", context)
 
 
 def _visible_booking(request, booking_id):
@@ -314,6 +502,7 @@ def booking_edit(request, booking_id):
         "front_desk_notes": booking.front_desk_notes,
         "recurrence": "none",
         "organizer_email": booking.organizer.email,
+        "override_reason": booking.override_reason,
     }
     form = BookingForm(
         request.POST if request.method == "POST" else None,
@@ -342,11 +531,9 @@ def booking_edit(request, booking_id):
             else:
                 messages.success(request, "Booking updated")
             return redirect("booking-detail", booking_id=booking.pk)
-    return render(
-        request,
-        "booking/booking_form.html",
-        {"form": form, "editing": True, "booking": booking, "staff": staff},
-    )
+    context = _booking_form_context(request, booking=booking)
+    context.update({"form": form, "editing": True, "booking": booking, "staff": staff})
+    return render(request, "booking/booking_form.html", context)
 
 
 @login_required(login_url="sign-in")

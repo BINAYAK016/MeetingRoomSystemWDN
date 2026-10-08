@@ -16,7 +16,7 @@ RUN DJANGO_SECRET_KEY=build-only DJANGO_ALLOWED_HOSTS=localhost DJANGO_PUBLIC_BA
     POSTGRES_PASSWORD=build-only POSTGRES_HOST=db \
     python manage.py collectstatic --noinput
 
-RUN useradd --uid 1000 --create-home appuser && chown -R appuser:appuser /app
+RUN mkdir -p /app/media/rooms/photos && useradd --uid 1000 --create-home appuser && chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8000

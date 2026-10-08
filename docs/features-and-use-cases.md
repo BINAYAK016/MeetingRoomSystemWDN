@@ -2,7 +2,7 @@
 
 **Meeting Booking System (MBS)**
 **Transgate Tech | Binayak Bhandari**
-Documentation checked against application source on **7 October 2026**.
+Documentation checked against application source on **8 October 2026**.
 
 This reference describes implemented behavior. The selected office deployment is **http://mbs.wdn.com.np**, bound to **192.168.50.222:80**, with PostgreSQL and Docker Compose. Both `@wdn.com.np` and `@transgate.com.np` are accepted employee domains in the production profile. Staff means Front Desk or Administrator: both have the same permissions.
 
@@ -26,7 +26,7 @@ Use the [employee guide](user-guide.md) for employee workflows, the [staff guide
 
 ## Branded web interface
 
-The application includes the Transgate logo, navy/red brand colors and the requested Times New Roman font (with Times/serif fallbacks). It provides responsive form/cards/table layouts, keyboard focus styling, a Skip to content link, named table regions, accessible status/error messages and confirmation dialogs for consequential form actions. Core pages/forms work without JavaScript; JavaScript adds confirmations and prevents repeated clicks during a submitted request. Wide calendar/report tables scroll horizontally on smaller screens. No external font installation, browser plug-in or webcam/location access is required.
+The application includes the Transgate logo, navy/red brand colors and the requested Times New Roman font (with Times/serif fallbacks). It provides responsive form/cards/table layouts, keyboard focus styling, a Skip to content link, named table regions, accessible status/error messages and confirmation dialogs for consequential form actions. Core pages/forms work without JavaScript; JavaScript adds the three-step booking wizard, room availability previews, confirmations and repeated-click prevention during a submitted request. Wide calendar/report tables scroll horizontally on smaller screens. No external font installation, browser plug-in or webcam/location access is required.
 
 ## Accounts, sessions and permissions
 
@@ -87,7 +87,9 @@ Paths below are relative to `http://mbs.wdn.com.np`. Numeric identifiers in `{br
 | `/rooms/` | Search/filter active room directory | Signed in |
 | `/rooms/{room_id}/` | Facilities, description and instructions | Signed in; active rooms |
 | `/calendar/` | Day/week availability; staff month view | Signed in |
-| `/bookings/new/` | Request a meeting or create approved staff booking | Signed in |
+| `/bookings/new/` | Three-step meeting request or approved staff booking | Signed in |
+| `/bookings/availability/` | Read-only room availability for the full selected schedule/series | Signed in |
+| `/rooms/{room_id}/photo/` | Authenticated optional room photo | Signed in; active room, or verified staff for inactive room |
 | `/bookings/mine/` | Own Upcoming and History lists | Signed in |
 | `/bookings/{booking_id}/` | Private detail, decision and available management actions | Organizer or verified staff |
 | `/bookings/{booking_id}/edit/` | Edit one future pending/approved occurrence | Organizer or verified staff |
@@ -147,14 +149,14 @@ The employee room directory supports:
 - Minimum seat count.
 - Exact location and facility filters selected from active room values.
 - Resetting filters and pagination, with **12 rooms per page**.
-- Room cards with name, location, floor, capacity and listed facilities.
+- Room cards with name, location, floor, capacity and listed facilities; staff can supply an optional real photo used by the booking wizard.
 - Detail pages with descriptions, instructions, equipment labels and **Book this room**.
 
 Facilities are descriptive free-text labels such as “Projector” or “Whiteboard”. They are not separate reservable inventory items. Minimum seats filters room capacity; it does not reserve seats or check attendee schedules. Only active rooms appear in employee search, detail and calendar views.
 
 ### Calendar
 
-All booking times are **Nepal time (Asia/Kathmandu, NPT)**. The day view displays one column per active room and one row per configured booking increment. A free cell offers **Available +**, which preselects room/date/start time on the booking form. The organizer still supplies end time and remaining fields.
+All booking times are **Nepal time (Asia/Kathmandu, NPT)**. The day view displays one column per active room and one row per configured booking increment. A free cell offers **Available +**, which preselects room/date/start time on the booking form. The wizard keeps those selections, proposes a duration/end time under the current policy, and lets the organizer adjust them and complete the remaining fields.
 
 Calendar markings distinguish an available start, unavailable occupancy, the current user's own booking, and dates/times outside normal rules. Pending holds, approved bookings, checked-in/completed occupied intervals, room closures and meeting buffers can all make a cell unavailable. Other employees see generic occupancy. Organizers and verified staff can open booking detail links for accessible meetings.
 
@@ -164,6 +166,24 @@ The calendar reflects the database when loaded. It is not a live push-updated fe
 
 ## Booking fields and validation
 
+### Three-step booking flow
+
+The booking page has workspace navigation and three steps:
+
+| Step | Actions | Before continuing |
+| --- | --- | --- |
+| Schedule & details | Choose date, duration/start or custom times; select a room; enter title, meeting type, department, purpose, guest company, refreshments and special requirements; choose recurrence when creating | Check required meeting details and current room/time availability |
+| Attendees | Add email addresses and additional guests without individual email entries; verified staff can set organizer for an employee | Check the displayed total against room capacity; organizer is already counted |
+| Review & confirm | Review room, date/time, actual recurring occurrences, meeting information and attendees; use Edit/Back to correct values | Submit once; only successful saving holds the interval |
+
+Duration/time choices follow the current policy rather than a fixed quarter-hour rule. New booking defaults aim for a one-hour meeting within minimum/maximum duration and office hours, with an aligned future start on a working day. Room/date/start links from the calendar take precedence as selections; final validation still applies. An edit preserves its existing values and changes one occurrence only.
+
+The room preview checks the **whole selected schedule**, including every eligible recurring occurrence, against Pending requests, approved/checked-in/completed occupied intervals, closures and required turnaround gaps. A room is available only if all the proposed occurrences fit. The review shows the actual occurrence list, including daily skips. Schedule changes refresh the preview. Preview is read-only: it neither holds a room nor sends invitations. The server repeats authoritative checks on final submission, so another user's intervening reservation can still produce an error.
+
+Availability reveals room metadata and occupied time ranges; it does not disclose another organizer's email, title, description, notes, booking state or closure reason. During an authorized edit it excludes the occurrence being edited, but keeps other occurrences in the same series. Attendee capacity is checked separately and again on save.
+
+If JavaScript is unavailable, the underlying native form displays room/date/start/end and meeting/attendee fields with the same Submit action. It retains server validation and the same request/approval behavior; live preview and staged review require JavaScript. A failed request displays field/general errors and retains entered values so they can be corrected.
+
 ### Fields
 
 | Field | Meaning / rule |
@@ -172,9 +192,9 @@ The calendar reflects the database when loaded. It is not a live push-updated fe
 | Date, start time, end time | Same-day future meeting in Nepal time; end after start |
 | Title | Required, at most 200 characters |
 | Description | Optional, at most 10,000 characters |
-| Meeting type | Internal or External |
-| Guest company name | Required for External; at most 200 characters |
-| External attendee count | Numeric value from 0 to 500; enter 0 when there are none |
+| Meeting type | Internal, External, or Internal + External (`mixed`) |
+| Guest company name | Required for External and Internal + External; at most 200 characters |
+| Additional guests without email addresses | Stored as external attendee count; numeric value from 0 to 500; do not double-count email-listed people |
 | Department | Optional, at most 120 characters; initially copied from profile |
 | Attendees | Up to 50 distinct valid email addresses; newline, comma, semicolon or whitespace separated |
 | Refreshments requested | A request flag visible to Front Desk, not a fulfilment or stock workflow |
@@ -321,7 +341,9 @@ Bookings filters by title/room/organizer search, status, room and inclusive star
 
 ### Rooms
 
-Staff add/edit room name, location, floor, positive capacity, description, instructions, facilities and Active state. The combination of name/location/floor must be unique. Facilities accept comma, semicolon or newline separators, up to 50 names of at most 120 characters, deduplicated case-insensitively.
+Staff add/edit room name, location, floor, positive capacity, description, instructions, facilities, optional real room photo and Active state. The combination of name/location/floor must be unique. Facilities accept comma, semicolon or newline separators, up to 50 names of at most 120 characters, deduplicated case-insensitively.
+
+Photo upload accepts a still JPEG, PNG or WebP up to 5 MiB and 12 million pixels. The server generates a JPEG no larger than 1920 pixels on its longest edge, removes supplied metadata and gives it a generated filename. Existing rooms without photos remain valid. Edit can replace a photo or select Remove current photo; selecting both is rejected. Replacement/removal deletes the previous file only after the database change commits. Photo delivery requires authentication; ordinary employees cannot fetch inactive room photos, while verified staff can preview them. No public media directory is served.
 
 Deactivation removes the room from employee discovery/new selection and prevents approval while inactive. It preserves bookings/history; it does not automatically cancel meetings or prevent a previously approved meeting reaching its check-in flow. Reconcile affected meetings before deactivating. There is no hard-delete room action. Edit the same record or deactivate it when its history should remain associated.
 
@@ -385,7 +407,7 @@ Examples assume an illustrative eight-seat room and default policy. Adjust dates
 | UC-04 | Staff uses employee login | Staff email, employee session | Employee functions available; management redirects to staff sign-in until MFA completed |
 | UC-05 | Find projector room for six | Signed-in employee | Rooms → seats 6 → Projector → instructions → calendar; no match means change filters/contact staff |
 | UC-06 | Reserve team meeting | Employee, room free | Future working Thursday, 10:00–11:00, Internal, “Team planning”, colleagues listed → Pending hold → review |
-| UC-07 | External client visit | Employee, adequate seats | External, “Example Partners”, three unlisted guests + two listed colleagues → six seats; missing company rejected |
+| UC-07 | External or mixed client visit | Employee, adequate seats | External or Internal + External, “Example Partners”, three unlisted guests + two listed colleagues → six seats; missing company rejected |
 | UC-08 | Concurrent same-time requests | Concurrent signed-in users | One transaction holds interval; other create fails without duplicate; choose another time/room |
 | UC-09 | Approve request | Future Pending, active room/organizer | Pending queue → detail → Approve → Approved, actor/time and confirmation mail |
 | UC-10 | Reject request | Pending | Reason “Use larger room for visitor count” → Reject → Rejected, slot free, reason visible |
@@ -410,7 +432,8 @@ Examples assume an illustrative eight-seat room and default policy. Adjust dates
 
 ## Implemented scope and limitations
 
-- First launch includes own calendar, recurring creation, approval, email notifications/check-in and staff administration.
+- First launch includes own calendar, the three-step booking flow with real schedule/series availability, internal/external/mixed meetings, recurring creation, approval, email notifications/check-in and staff administration.
+- Room photos are optional staff uploads. They persist in the `room_media` Docker volume; database dumps contain file references, not the photo files. IT backs up/restores both together.
 - HCL/Outlook/Exchange integration, calendar invitations/ICS and automatic sync are **deferred**. Email messages do not promise an entry in another calendar.
 - Employees use links; staff use password plus email code. SSO, SMS/TOTP and independent employee numeric-code entry are not implemented.
 - Recurrence is finite, limited to 15 occurrences; normal dates remain inside the horizon. No rolling monthly scheduler or bulk series action.

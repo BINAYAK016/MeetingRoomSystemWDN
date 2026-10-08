@@ -1,4 +1,5 @@
 import io
+import logging
 import re
 from datetime import date, datetime, timedelta
 from functools import wraps
@@ -42,8 +43,11 @@ from booking.services.checkin import CheckInError, manual_checkin
 from booking.services.mail_delivery import deliver_mail
 from booking.services.reporting import report_data
 from booking.services.reservations import ReservationConflict, reserve_time
+from booking.services.room_photos import delete_room_photo
 from booking.services.staff_auth import finish_staff_login, start_staff_login
 from booking.ui import paginate
+
+logger = logging.getLogger(__name__)
 
 
 def staff_required(view):
@@ -139,8 +143,10 @@ def rooms(request):
 def room_form(request, room_id=None):
     queryset = Room.objects.select_for_update() if request.method == "POST" else Room.objects.all()
     room = get_object_or_404(queryset, pk=room_id) if room_id else None
+    old_photo_name = room.photo.name if room else ""
     form = RoomForm(
         request.POST if request.method == "POST" else None,
+        request.FILES if request.method == "POST" else None,
         instance=room,
         initial={"facilities_text": "\n".join(room.facilities.values_list("name", flat=True))}
         if room and request.method == "GET"
@@ -167,16 +173,38 @@ def room_form(request, room_id=None):
                     outcome="success",
                     details={"active": saved.is_active},
                 )
+                if old_photo_name and old_photo_name != saved.photo.name:
+                    transaction.on_commit(
+                        lambda: delete_room_photo(saved.photo.storage, old_photo_name), robust=True
+                    )
         except IntegrityError:
+            if form.instance.photo.name != old_photo_name:
+                delete_room_photo(form.instance.photo.storage, form.instance.photo.name)
             form.add_error(
                 None,
                 "A room with this name, location and floor already exists. Please check the room directory.",
             )
+        except OSError as exc:
+            if form.instance.photo.name != old_photo_name:
+                delete_room_photo(form.instance.photo.storage, form.instance.photo.name)
+            logger.warning("Room photo storage unavailable (%s)", type(exc).__name__)
+            form.add_error("photo", "The photo could not be saved. Please try again or contact IT.")
+        except Exception:
+            if form.instance.photo.name != old_photo_name:
+                delete_room_photo(form.instance.photo.storage, form.instance.photo.name)
+            raise
         else:
             messages.success(request, "Room saved")
             return redirect("staff-rooms")
     return render(
-        request, "booking/staff_form.html", {"form": form, "heading": "Edit room" if room else "Add room"}
+        request,
+        "booking/staff_form.html",
+        {
+            "form": form,
+            "heading": "Edit room" if room else "Add room",
+            "room": room,
+            "has_room_photo": bool(old_photo_name),
+        },
     )
 
 

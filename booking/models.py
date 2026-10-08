@@ -72,6 +72,7 @@ class Room(models.Model):
     capacity = models.PositiveSmallIntegerField()
     description = models.TextField(blank=True)
     instructions = models.TextField(blank=True)
+    photo = models.ImageField(upload_to="rooms/photos/", blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -146,6 +147,7 @@ class Reservation(models.Model):
     class MeetingType(models.TextChoices):
         INTERNAL = "internal", "Internal"
         EXTERNAL = "external", "External"
+        MIXED = "mixed", "Internal + External"
 
     room = models.ForeignKey(Room, on_delete=models.PROTECT, related_name="reservations")
     series = models.ForeignKey(
@@ -233,7 +235,7 @@ class Reservation(models.Model):
             models.CheckConstraint(
                 condition=Q(kind="block")
                 | Q(meeting_type="internal")
-                | (Q(meeting_type="external") & ~Q(guest_company_name="")),
+                | (Q(meeting_type__in=["external", "mixed"]) & ~Q(guest_company_name="")),
                 name="external_meeting_has_company",
             ),
             ExclusionConstraint(

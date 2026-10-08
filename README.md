@@ -12,7 +12,9 @@ Start with the [documentation index](docs/index.md). Detailed guides cover all f
 
 ## Features
 
-- Room search, details, capacity/facilities, and availability calendar.
+- Room search, details, capacity/facilities, optional staff-managed real photos, and availability calendar.
+- Three-step booking flow: Schedule & details → Attendees → Review & confirm, with real room availability for every selected recurring occurrence. Native form fallback keeps booking usable without JavaScript.
+- Internal, External and Internal + External meetings; guest company is required for external/mixed meetings.
 - Own bookings and profile; booking requests, modification, and cancellation.
 - Employee requests require staff approval. Pending requests reserve the slot; approval confirms the meeting, rejection records a reason and releases the slot.
 - Daily, weekly, and monthly recurrence within the two-week advance window. Later monthly dates are reserved manually.
@@ -55,7 +57,7 @@ docker compose run --rm migrate
 docker compose up -d web worker
 ```
 
-Protect the dump; backup archives are Git-ignored. Preserve `.env`, its database password, Django secret, and database volume. Existing confirmed meetings become approved; future employee requests require review.
+Protect the dump; backup archives are Git-ignored. Preserve `.env`, its database password, Django secret, database volume and optional `room_media` volume. A database dump does not contain uploaded photos: back up/restore that volume alongside the matching database snapshot. Existing confirmed meetings become approved; future employee requests require review. Current upgrades apply `0009_mixed_meeting_type` and `0010_room_photo` after `0008`; they preserve existing rooms/bookings and do not seed rooms. See [photo backup/recovery](docs/operations-runbook.md#room-photo-backup-and-recovery) before updating an installation with uploads.
 
 Open <http://127.0.0.1:8000/>. Local `.env.example` explicitly selects `DJANGO_EMAIL_BACKEND=file`; messages are written to a Docker volume and appear in the development inbox at <http://127.0.0.1:8000/dev/mail/>. This local convenience does not verify mailbox ownership. It is unavailable in either production profile and must never be used for company rollout.
 
@@ -68,7 +70,7 @@ docker compose exec web python manage.py create_staff_account your.name@wdn.com.
 
 Open the staff setup link in the development inbox, set a password, and use `/staff/sign-in/`. Its email code appears in the same development inbox. Actual room data is entered through the staff interface.
 
-Stop containers and preserve data with `docker compose down`. Restart with `docker compose up -d web worker`. Database and local email persist in named volumes. Never add `--volumes` to the stop command unless intentionally deleting the data.
+Stop containers and preserve data with `docker compose down`. Restart with `docker compose up -d web worker`. Database, optional room photos (`room_media`) and local email persist in named volumes. Never add `--volumes` to the stop command unless intentionally deleting the data.
 
 ## Environment and email
 
@@ -115,13 +117,15 @@ Tests require PostgreSQL and cover email configuration/failure, secure authentic
 
 Development tools in `requirements-dev.txt` provide `ruff check .` and `ruff format --check .`; CI runs these alongside PostgreSQL tests, migration checks, Django checks, and the Docker build. Python syntax can also be checked with `python -m compileall -q booking config`. No separate static type checker is configured for this Django project. Run `pip-audit -r requirements.txt` to check the pinned application dependencies against public vulnerability advisories.
 
-Builds collect and fingerprint static assets, then run Gunicorn as a dedicated non-root account. The production web/worker containers use a read-only filesystem and temporary `/tmp`. The [HTTPS deployment guide](docs/deployment.md) includes clean setup, restricted runtime database permissions, migrations, initial staff creation, TLS, verification, backups, and restore. For the selected `mbs.wdn.com.np` installation on Oracle Linux, follow the [private-network HTTP guide](docs/deployment-http.md). It uses port 80 and requires no certificate or private CA; browsers show **Not secure** because browser traffic is unencrypted.
+Builds collect and fingerprint static assets, then run Gunicorn as a dedicated non-root account. The production web/worker containers use a read-only filesystem and temporary `/tmp`; web has a writable named `room_media` volume at `/app/media` for optional room photos (application UID/GID 1000). The [HTTPS deployment guide](docs/deployment.md) includes clean setup, restricted runtime database permissions, migrations, initial staff creation, TLS, verification, backups, and restore. For the selected `mbs.wdn.com.np` installation on Oracle Linux, follow the [private-network HTTP guide](docs/deployment-http.md). It uses port 80 and requires no certificate or private CA; browsers show **Not secure** because browser traffic is unencrypted.
 
 The [verification report](docs/verification-report.md) records the production-branch test results, browser checks, deployment rehearsal, security fixes, and remaining deployment checks.
 
 ## Approval and booking lifecycle
 
 Employees submit **Pending** requests. Pending requests hold the room and time, including the configured gap. Front Desk or Administrators open **Pending requests**, review details, and approve or reject. Rejection requires a reason visible to the requester. Approval is enforced by the backend and requires a verified staff session.
+
+The wizard checks date/time/recurrence availability without creating a reservation and submits one server-validated request at the final step. A selected available card is not a hold; final saving rechecks room activity, capacity, schedule and conflicts.
 
 Staff-created bookings are **Approved** immediately. Editing an approved booking through an employee session returns it to **Pending**; staff edits to approved meetings retain approval; edits to pending requests keep them pending. Each recurring occurrence is reviewed separately. Owners and staff may cancel eligible bookings; cancelled and rejected records remain in history but release occupancy. Pending requests that have not been approved by the meeting start are cancelled automatically. Approval cannot revive rejected, cancelled, or expired records. Approved meetings proceed through **Checked in**, **Completed**, or **No show** after a missed check-in deadline.
 

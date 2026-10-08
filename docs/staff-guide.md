@@ -2,7 +2,7 @@
 
 **Meeting Booking System (MBS)**
 **Transgate Tech | Binayak Bhandari**
-Checked against application source on **7 October 2026**.
+Checked against application source on **8 October 2026**.
 
 Front Desk and Administrators have **identical permissions**. The custom staff desk is the administration interface at **http://mbs.wdn.com.np/staff/**; there is no exposed `/admin/` page. Employee booking screens remain available, but staff powers require password-plus-email-code verification. All displayed meeting dates/times use **Nepal time**.
 
@@ -162,11 +162,11 @@ The worker normally reconciles every 30 seconds: Approved meetings missing the d
 ## 5. Book on behalf and manage exceptions
 
 1. From **Bookings**, select **Book for employee +**, or use **New booking** while in a verified staff session.
-2. Fill meeting details as in the employee guide.
-3. Enter **Organizer email** at `@wdn.com.np` or `@transgate.com.np`. Blank uses your own account.
-4. An eligible email not already registered creates an employee account; an inactive organizer is rejected.
-5. Enter an **Override reason** only for a justified exception.
-6. Press **Create approved booking**.
+2. Complete **Schedule & details** as in the employee guide: date/duration/start, an available room, title, type, department, purpose, refreshments and special requirements. External and Internal + External meetings require a guest company.
+3. For a justified policy exception, open **Staff booking options** and enter **Booking rule override reason**. Use custom/manual times for an exceptional schedule; preview and saving still enforce non-bypassable rules.
+4. In **Attendees**, enter **Book on behalf of an employee** at `@wdn.com.np` or `@transgate.com.np`. Blank uses your own account. An eligible email not already registered creates an employee account; an inactive organizer is rejected.
+5. Add email attendees/additional guests, check the headcount, and continue to **Review & confirm**. For recurrence, review every actual occurrence and its availability.
+6. Press **Create approved booking** once.
 7. Check Approved state and correct organizer; queued confirmation goes to that organizer/attendees/staff.
 
 A newly created staff booking is Approved without the employee Pending stage. It still needs check-in. New recurring staff bookings create Approved occurrences; existing Pending requests remain Pending until explicitly approved.
@@ -183,7 +183,7 @@ The following cannot be bypassed:
 - Conflicts with bookings, Pending holds, closures and buffers.
 - Recurring creation limits of 15 occurrences and at most 366 days.
 
-The configured post-meeting gap still applies. The calendar normally marks closed times as unavailable even for staff; an approved exception is entered through the booking form.
+The configured post-meeting gap still applies. The calendar normally marks closed times as unavailable even for staff; an approved exception is entered through the booking form. Staff edit values, including original custom times and override reason, are prefilled; editing a Pending record does not approve it. Without JavaScript, the native form supports the same fields/validation, including staff organizer and override fields.
 
 ### WDN third-floor senior-management priority
 
@@ -195,10 +195,22 @@ Priority is manual, with no automatic ranking/displacement. Review impacted meet
 2. Select **Add room +**, or **Edit** in an existing row.
 3. Enter name, location, floor, positive seat capacity, description and room instructions.
 4. Enter facility names separated by commas, semicolons or newlines, such as **Projector, Whiteboard, Video conferencing**.
-5. Select **Active** to offer it for bookings; clear Active to retire it.
-6. Save and check **Room saved**, updated row and employee directory when appropriate.
+5. Optionally choose a real room **Photo**. Use a still JPEG, PNG or WebP no larger than 5 MiB and 12 million pixels; no photo is required.
+6. Select **Active** to offer it for bookings; clear Active to retire it.
+7. Save and check **Room saved**, the updated row and room image in the booking wizard when appropriate.
 
 Example: name **Room 1**, location **Kantipat**, floor **3**, capacity **8**, instructions **Leave the room tidy and switch off the projector**. Use actual office data; example rooms are not automatically imported into production.
+
+Direct links: [staff room list](http://mbs.wdn.com.np/staff/rooms/) and [Add room](http://mbs.wdn.com.np/staff/rooms/new/). Room editing is on **Staff desk → Rooms → Edit**, not the employee Rooms page. It requires staff password/email-code sign-in.
+
+### Replace or remove a room photo
+
+1. Open an existing room's **Edit** form.
+2. To replace the photo, choose a new supported file. To remove it, select **Remove current photo** instead; do not select removal and upload together.
+3. Save and verify the new preview, or its absence after removal. A browser cannot retain a selected upload after a failed form submission; reselect the file if correcting an error.
+4. If the upload reports an unreadable, animated, oversized or unsupported file, choose a suitable still image. If saving reports a storage problem, ask IT to inspect the media volume; do not reset the database.
+
+The application converts accepted files to JPEG up to 1920 pixels on the longest edge, strips supplied metadata and generates filenames. Replacing/removing deletes the previous file only after the room change commits. Employees can view active room photos while signed in; verified staff can preview inactive room photos too. There is no public media URL or photo gallery. IT must back up the photo volume together with room records, because a database dump alone cannot restore photos.
 
 Name/location/floor must be unique together. Capacity must be positive. Facilities are free-text descriptive labels, up to 50 names and 120 characters each, deduplicated without case sensitivity. Description/instructions allow up to 10,000 characters. Changing a facility label changes search choices; it does not allocate inventory.
 

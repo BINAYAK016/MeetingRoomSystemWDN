@@ -18,3 +18,4 @@ deploy/backups
 .pytest_cache
 htmlcov
 staticfiles
+media

@@ -21,15 +21,19 @@ erDiagram
     USER o|--o{ BOOKING_POLICY : updates
 ```
 
+## Photo files and database boundaries
+
+`rooms.photo` stores an optional generated filename, not image bytes. Normalized JPEG files live under `/app/media/rooms/photos` in the web container's persistent `room_media` volume. Photo replacement/removal is tied to the database commit; after successful replacement the former file is removed. Migration `0010_room_photo` adds this optional field without seeding/resetting existing rooms. Database backups must be paired with photo archives from the same recovery point; a database dump alone cannot restore file contents. See [photo backup and recovery](operations-runbook.md#room-photo-backup-and-recovery).
+
 ## Tables and keys
 
 | Table | Key fields and relationships | Purpose |
 | --- | --- | --- |
 | `users` | `id` PK; `email` unique including case-insensitive constraint; `is_staff`, `is_active`, `auth_version`; name and department | One identity per company address. Authentication version participates in the session hash and invalidates existing sessions when access changes. |
-| `rooms` | `id` PK; unique `(location, floor, name)`; capacity, description, instructions, active flag | Company-configured rooms managed through staff controls; production does not seed sample records. Inactive rooms cannot receive new bookings. |
+| `rooms` | `id` PK; unique `(location, floor, name)`; capacity, description, instructions, optional photo filename, active flag | Company-configured rooms managed through staff controls; production does not seed sample records. Inactive rooms cannot receive new bookings. |
 | `room_facilities` | `id` PK; `room_id` FK; unique `(room_id, name)` | Room equipment and facilities. A simple room-specific list is sufficient for five rooms. |
 | `booking_series` | `id` PK; `room_id`, `organizer_id`, `created_by_id` FKs; frequency, first/last dates | Groups the actual occurrences of a daily, weekly, or monthly request within the two-week advance window. It is not a promise to reserve later dates. |
-| `reservations` | `id` PK; `room_id` FK; optional `series_id`, `organizer_id`, `created_by_id` FKs; kind, status, approval/rejection actor/timestamp/reason, revision, actual start/end, occupied start/end | Shared schedule for meetings and staff room closures. A meeting has organizer and title; a closure has a reason. Rejected, cancelled, and no-show meetings remain in history but release occupancy. |
+| `reservations` | `id` PK; `room_id` FK; optional `series_id`, `organizer_id`, `created_by_id` FKs; kind, status, meeting type, guest company, approval/rejection actor/timestamp/reason, revision, actual start/end, occupied start/end | Shared schedule for meetings and staff room closures. A meeting has organizer and title; a closure has a reason. Rejected, cancelled, and no-show meetings remain in history but release occupancy. |
 | `booking_attendees` | `id` PK; `reservation_id` FK; unique `(reservation_id, email)` | Email recipients and attendee count. Only meeting reservations may have attendees. |
 | `email_tokens` | `id` PK; optional `user_id`, `reservation_id` FKs; token hash unique, purpose, expiry, consumed time, attempts | Short-lived employee login, staff email code, or per-occurrence check-in. This table and pending session values store hashes. Staff challenge guesses are counted under a row lock. |
 | `authentication_throttles` | `id` PK; unique `(purpose, key)`; window start, attempts | Atomic account/IP limits with HMAC identity keys and indexed request windows. |
@@ -67,5 +71,7 @@ SMTP/email credentials must be supplied by the system administrator during produ
 ## Approval migration
 
 Migration `0008_booking_approval` runs in one PostgreSQL transaction: it replaces status/exclusion checks, maps existing `confirmed` bookings to `approved`, and installs the occupancy constraint with pending requests included. Existing approved records do not receive fabricated approval actors/timestamps. Notification snapshots start at revision 1. Each subsequent change increments the revision. Runtime permissions must be reapplied after migration.
+
+Migration `0009_mixed_meeting_type` adds Internal + External (`mixed`) and extends the guest-company constraint: both external and mixed meetings require a company. Existing internal/external records are retained; reversing 0009 maps mixed to external while retaining company information. Migration `0010_room_photo` then adds the optional room photo field. Apply both committed migrations during the supported upgrade; do not create migrations or reseed rooms on the server. Removing the photo field during rollback does not constitute a file-volume backup or recovery.
 
 Take a backup and stop writers before an update. Reversing 0008 maps approved back to confirmed and pending/rejected to cancelled; it releases unapproved requests rather than silently confirming them. Unsent request/rejection emails are superseded during reversal because the old worker does not support those states. Rollback changes request status and requires a reviewed restore plan; stop web and mail workers before changing either code or schema.

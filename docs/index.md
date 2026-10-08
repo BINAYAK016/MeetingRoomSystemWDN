@@ -1,7 +1,7 @@
 # MBS complete documentation
 
 **Transgate Tech | Binayak Bhandari**
-**Reviewed:** 7 October 2026. **Application branch:** `mbs-prod`.
+**Reviewed:** 8 October 2026. **Application branch:** `mbs-prod`.
 
 This is the documentation entry point for the existing Meeting Booking System: employee tasks, Front Desk/Administrator workflows, feature definitions, business examples, server operation, troubleshooting and recovery. It describes implemented behavior, including approval, rather than only the original requirements. The owner's later decisions take precedence over the questionnaire.
 
@@ -9,11 +9,11 @@ This is the documentation entry point for the existing Meeting Booking System: e
 
 | Document | Audience | What it contains |
 | --- | --- | --- |
-| [Employee guide](user-guide.md) | Employees and organizers | Sign-in, rooms/calendar, individual/recurring requests, edits, cancellation, check-in, profile and common questions. |
-| [Staff guide](staff-guide.md) | Front Desk and Administrators | Password/email-code sign-in, dashboard, approval/rejection, rooms, closures, on-behalf bookings, overrides, people, policy/holidays, reports and audit. |
+| [Employee guide](user-guide.md) | Employees and organizers | Sign-in, rooms/calendar, three-step internal/external/mixed requests, individual/recurring meetings, edits, cancellation, check-in, profile and common questions. |
+| [Staff guide](staff-guide.md) | Front Desk and Administrators | Password/email-code sign-in, dashboard, approval/rejection, rooms/photos, closures, on-behalf bookings, overrides, people, policy/holidays, reports and audit. |
 | [Feature catalogue and use cases](features-and-use-cases.md) | Product owner, staff, testers and developers | Permissions, rules, lifecycle, notifications, detailed success/failure examples and supported limits. |
 | [HTTP installation](deployment-http.md) | Linux operator | Selected Oracle Linux private-network installation, domain/IP/SMTP setup, build, migrations, initial staff and pilot. |
-| [Operations runbook](operations-runbook.md) | Linux operator and IT | Configuration, background operation, updates, safe SQL/health checks, email recovery, backup scheduling, isolated restore and controlled live recovery. |
+| [Operations runbook](operations-runbook.md) | Linux operator and IT | Configuration, background operation, updates, safe SQL/health checks, email recovery, backup scheduling, paired database/photo recovery, isolated restore and controlled live recovery. |
 | [Troubleshooting and logs](troubleshooting.md) | Support and IT | Symptoms, exact diagnostic commands, safe log capture, CSRF, SMTP, Docker, DNS, worker, database, booking/report issues and laptop differences. |
 | [Architecture](architecture.md) | Technical owner/developers | Components, transaction/occupancy design, authentication, privacy, worker, deployment and limitations. |
 | [Database design](database-design.md) | Developers and database operators | Tables, relationships, constraints, statuses, indexes, runtime permissions and migration/rollback behavior. |

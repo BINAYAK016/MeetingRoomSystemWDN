@@ -32,7 +32,7 @@
       </nav>
     </div>
   </header>
-  {% if request.user.is_authenticated %}<nav class="app-nav" aria-label="Workspace"><div class="app-nav-inner"><a href="{% url 'home' %}">Overview</a><a href="{% url 'rooms' %}">Rooms</a><a href="{% url 'calendar' %}">Calendar</a><a href="{% url 'my-bookings' %}">My bookings</a><a href="{% url 'booking-new' %}">New booking</a><a href="{% url 'profile' %}">My profile</a>{% if request.user.is_staff and request.session.staff_verified %}<a href="{% url 'staff-dashboard' %}">Staff desk</a>{% elif request.user.is_staff %}<a href="{% url 'staff-login' %}">Staff sign-in</a>{% endif %}</div></nav>{% endif %}
+  {% block workspace_nav %}{% if request.user.is_authenticated %}<nav class="app-nav" aria-label="Workspace"><div class="app-nav-inner"><a href="{% url 'home' %}">Overview</a><a href="{% url 'rooms' %}">Rooms</a><a href="{% url 'calendar' %}">Calendar</a><a href="{% url 'my-bookings' %}">My bookings</a><a href="{% url 'booking-new' %}">New booking</a><a href="{% url 'profile' %}">My profile</a>{% if request.user.is_staff and request.session.staff_verified %}<a href="{% url 'staff-dashboard' %}">Staff desk</a>{% elif request.user.is_staff %}<a href="{% url 'staff-login' %}">Staff sign-in</a>{% endif %}</div></nav>{% endif %}{% endblock %}
   {% if messages %}<div class="flash-stack" role="status">{% for message in messages %}<div class="flash flash-{{ message.tags }}">{{ message }}</div>{% endfor %}</div>{% endif %}
   <main id="main">{% block content %}{% endblock %}</main>
   <dialog id="action-confirmation" class="action-confirmation" aria-labelledby="confirmation-title" aria-describedby="confirmation-message">

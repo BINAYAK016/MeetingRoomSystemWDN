@@ -2,7 +2,7 @@
 
 **Meeting Booking System (MBS)**
 **Transgate Tech | Binayak Bhandari**
-Checked against application source on **7 October 2026**.
+Checked against application source on **8 October 2026**.
 
 This guide explains employee use of **http://mbs.wdn.com.np** on the office network. Use a company email ending in **@wdn.com.np** or **@transgate.com.np**. All displayed meeting times are **Nepal time (NPT)**. For the complete behavior reference see [Features and use cases](features-and-use-cases.md); staff workflows are in the [staff guide](staff-guide.md).
 
@@ -24,7 +24,7 @@ This guide explains employee use of **http://mbs.wdn.com.np** on the office netw
 | [Rooms](http://mbs.wdn.com.np/rooms/) | Search room, seat count, location and facilities; read instructions |
 | [Calendar](http://mbs.wdn.com.np/calendar/) | Day/week occupancy and available starts |
 | [My bookings](http://mbs.wdn.com.np/bookings/mine/) | Your Upcoming or History list |
-| [New booking](http://mbs.wdn.com.np/bookings/new/) | Request one meeting or recurring occurrences |
+| [New booking](http://mbs.wdn.com.np/bookings/new/) | Schedule & details → Attendees → Review & confirm for one meeting or recurring occurrences |
 | [My profile](http://mbs.wdn.com.np/profile/) | Your name and department |
 | Staff desk | Management interface; separate staff password/code authentication required |
 | Sign out | End this browser's session |
@@ -82,7 +82,7 @@ Only active rooms are listed. A room's listed facility is a descriptive label; c
 1. Open **Calendar**.
 2. Select a date and **Day** or **Week**, then press **Show**. **Today** resets the selected date.
 3. In day view, find the row/time and room column.
-4. **Available +** opens a booking form with room/date/start preselected. Enter end time yourself.
+4. **Available +** opens the booking wizard with room/date/start preselected. Check the proposed duration/end and adjust if needed.
 5. In week view, select a day to see its detailed slots.
 
 | Calendar marking | Meaning |
@@ -106,20 +106,27 @@ The following is an illustrative request. Choose a **future company working date
 | Title | Team planning |
 | Description | Review next week's work and outstanding actions |
 | Meeting type | Internal |
-| External attendee count | 0 |
+| Additional guests without email addresses | 0 |
 | Department | Operations |
 | Attendees | `colleague@wdn.com.np`, `teammate@transgate.com.np` (replace with real colleagues) |
 | Refreshments requested | Select only if needed |
-| Front Desk notes | Projector needed; please check remote batteries |
+| Special requirements | Projector needed; please check remote batteries |
 | Recurrence | One meeting |
 | Until date | Leave blank |
 
 1. Open **New booking**, or use the room/calendar link.
-2. Fill the fields. Separate attendee emails with commas or new lines. Duplicate email addresses are normalized and removed.
-3. Read errors beside fields and at the top before resubmitting.
-4. Press **Submit booking request** once.
-5. On success, the detail page shows **Pending approval** and that room/time are held.
-6. Wait for staff approval before treating the meeting as confirmed. Follow the status in **My bookings**.
+2. In **Schedule & details**, choose a date, duration and start time. Use **Custom** for explicit start/end. All times are Nepal time; the choices follow current office rules.
+3. Wait for the room cards to update. Check capacity, location, facilities and any real photo; select a room marked available for the selected schedule.
+4. Enter meeting title and information, select **Internal**, set refreshments to Yes/No, and add special requirements. Keep Repeat meeting as **One meeting**.
+5. Select **Next: attendees**. Add colleague emails separated by commas or new lines. Duplicate addresses are normalized and removed; the organizer is already included. Enter `0` additional guests and check the displayed headcount fits the room.
+6. Continue to **Review & confirm**. Read the room, date/time, meeting details and attendee list. Use **Edit** or **Back** to correct them without restarting.
+7. Press **Submit booking request** once. Availability is checked again while saving.
+8. On success, the detail page shows **Pending approval** and that room/time are held.
+9. Wait for staff approval before treating the meeting as confirmed. Follow the status in **My bookings**.
+
+The room preview does not reserve space. If the schedule changes, wait for its updated result; an intervening booking can still be rejected at final submission. Field/general errors preserve your entries so you can correct and retry. A photo is optional; a room without a photo can be booked normally.
+
+With JavaScript disabled or unavailable, the page presents one native form with room/date/start/end and all meeting/attendee fields. Enter end time explicitly and submit the same request; server rules and approval still apply. The three steps, duration buttons and live availability preview require JavaScript.
 
 ### Normal initial rules
 
@@ -150,23 +157,25 @@ A 10:00–11:00 meeting holds the room until 11:15 under the default gap. The or
 
 A failed submission does not create a booking. On a failed edit, the previously saved booking remains. Refresh the calendar when correcting a conflict; do not create repeated duplicate requests for the same planned meeting.
 
-## 6. Request an external meeting
+## 6. Request an external or mixed meeting
 
-1. Select **External** as meeting type.
+1. In Schedule & details, select **External** for a guest meeting, or **Internal + External** for a mixed meeting. Both require a guest company name.
 2. Enter guest company name, for example **Example Partners**.
-3. Enter the number of additional external people who are not individually listed as email attendees.
+3. In Attendees, enter the number of additional guests who are not individually listed by email.
 4. List colleague/guest email addresses that should receive approved meeting notifications.
-5. Enter refreshment or preparation requirements in the relevant fields and submit.
+5. Select refreshments if needed and enter preparation needs in **Special requirements**, review, then submit.
 
 Example: organizer + two listed colleagues + three unlisted guests = **six people**. If a guest has already been counted as a listed email attendee, do not count them again as an unlisted external attendee. External addresses may receive attendee notifications, but cannot use account sign-in unless their domain is in the employee allowlist. Refreshments are a request for Front Desk to handle manually, not an automatically fulfilled order.
 
 ## 7. Create a recurring series
 
-1. Enter room, first date, time and common meeting details.
-2. Set Recurrence to **Daily**, **Weekly** or **Monthly**.
-3. Choose an inclusive **Until date** inside the current booking horizon.
-4. Submit; the detail page opens the first created occurrence.
-5. Open **My bookings** to inspect all occurrences. Every employee occurrence starts Pending and requires its own approval/check-in.
+1. In Schedule & details, enter first date, time and common meeting details.
+2. Set **Repeat meeting** to **Daily**, **Weekly** or **Monthly**.
+3. Choose an inclusive **Last date in series** inside the current booking horizon.
+4. Wait for availability: each room must fit every eligible occurrence, not just the first. A conflict on a later date also makes that room unavailable.
+5. Add attendees, then review the actual occurrence dates/times in **Review & confirm**. Daily skips appear in the resulting list; no hidden later months are reserved.
+6. Submit; the detail page opens the first created occurrence.
+7. Open **My bookings** to inspect all occurrences. Every employee occurrence starts Pending and requires its own approval/check-in.
 
 | Example | Expected behavior |
 | --- | --- |
@@ -203,7 +212,7 @@ A request still Pending at meeting start is automatically cancelled because its 
 
 1. Open your meeting from **My bookings**.
 2. For a future Pending or Approved record, select **Edit booking**.
-3. Adjust fields and press **Save changes**.
+3. Use the same three steps to adjust fields, review, and press **Save booking changes**. The original date/start/end, room and meeting information are prefilled; recurrence controls are omitted because this edits one occurrence.
 4. Check the resulting state and confirmation message.
 
 A substantive employee edit of Approved returns it to **Pending** for another review and invalidates earlier check-in links. An unchanged save retains the state. Current room capacity, availability and policy apply to edits. Started, Checked in, Completed, Rejected, Cancelled and No show records cannot be edited through normal workflow.

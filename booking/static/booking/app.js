@@ -23,6 +23,7 @@ if (confirmation) {
 
 // Prevent repeated submissions after the user confirms a valid form.
 document.addEventListener("submit", (event) => {
+  if (event.defaultPrevented) return;
   const form = event.target;
   if (form.method.toLowerCase() !== "post") return;
   if (form.dataset.submitting === "true") {

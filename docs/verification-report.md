@@ -1,10 +1,10 @@
-# Production verification — 7 October 2026
+# Production verification — updated 8 October 2026
 
 **Transgate Tech | Binayak Bhandari**
 
 ## Delivery and scope
 
-Production work is on `mbs-prod`, created from clean `main` at `22caa31`. The existing demo branch, running demo containers, database, SMTP settings, and company accounts were preserved. The final commit IDs and remote push result are reported in the handover message. This report covers locally verified code and an isolated production deployment rehearsal; company-server deployment has not occurred.
+Production work is on `mbs-prod`, created from clean `main` at `22caa31`. Earlier production review preserved the existing demo branch, running containers, database, SMTP settings and company accounts. The 8 October local upgrade is recorded separately below. The final commit IDs and remote push result are reported in the handover message. This report covers locally verified code and isolated deployment rehearsals. The owner has separately installed the company HTTP services; these local checks do not establish company-server acceptance.
 
 Inspection covered every URL pattern, templates/static assets, forms, identity and staff permissions, model relations/constraints/indexes, migrations, booking services, recurring occurrences, calendar, worker/outbox, reports/Excel, audit history, configuration, Docker/TLS/runtime database permissions, seed/bootstrap and backup tools. This application serves HTML forms plus readiness/liveness JSON; it has no public REST API.
 
@@ -40,18 +40,18 @@ Migration `0008_booking_approval` atomically maps existing confirmed records to 
 
 ## Automated gates
 
-| Gate | Final result |
+| Gate | Latest result / earlier evidence |
 | --- | --- |
-| Full PostgreSQL suite | **210 passed**, 31.580 seconds on the final browser-CSRF fix image; separate test DB created and removed. Earlier HTTPS/HTTP support suites passed 186/202 tests. |
-| Fresh migration chain | All Django migrations and booking 0001–0008 passed |
+| Full PostgreSQL suite | **244 passed in 40.439 seconds on 8 October 2026**; separate test DB created and removed. Earlier browser-CSRF baseline: 210 passed in 31.580 seconds; earlier HTTPS/HTTP support: 186/202 passed. |
+| Fresh migration chain | All Django migrations and booking **0001–0010** passed; existing local installation also upgraded through 0009/0010 without resetting data. |
 | Forward/reverse migration tests | Legacy data, new guards, rollback mail and re-upgrade passed |
 | Concurrency/transactions | Conflicting pending creates/edits, buffer/closure conflicts, atomic recurrence, competing decisions, access changes, login/code and check-in races passed |
 | Email | Disabled/configured backend, failures/zero delivery, retry/lease, request/rejection/approval/cancellation, revision/reminder checks and local fake SMTP relay passed; no company mail sent |
-| Ruff lint/format | Passed; 65 Python files formatted |
-| Syntax/system checks | Python compilation, JavaScript syntax, Django system checks passed |
-| Migration drift | No changes detected |
-| Docker build | Passed; 130 static files copied, 388 post-processing outputs |
-| Dependency audit | pip-audit 2.10.1: no known vulnerabilities in pinned application requirements at audit time |
+| Ruff lint/format | Full repository `ruff check .` passed; `ruff format --check .` passed for **75 Python files** on 8 October 2026. |
+| Syntax/system checks | Current JavaScript syntax and Django system checks passed. Python compilation passed in the earlier recorded baseline. |
+| Migration drift | Current `makemigrations --check --dry-run` reported no changes. |
+| Docker build | Current build passed; **135 static files copied, 401 post-processing outputs**. |
+| Dependency audit | **8 October 2026:** pip-audit 2.10.1 completed full application-requirement resolution, including Pillow 12.3.0, with exit 0 and no known vulnerabilities found at audit time. |
 | Earlier HTTPS production Django check | Exit 0; unsilenced W005/W021 for HSTS subdomains/preload, pending IT domain-wide policy |
 | Static type checker | Not configured; no formal type-check success is claimed |
 | GitHub Actions | CI workflow covers lint, migrations, tests, audit and build; hosted runner result is separate from this local report |
@@ -144,7 +144,7 @@ See [deployment](deployment.md) for exact updates, mail enablement, setup, monit
 
 Company-server DNS, firewall/VPN, actual SMTP authorization and both domains' mailbox delivery, backup storage/retention, an on-server restore drill and representative office load await operator verification. The server OS, internal domain and office-interface IP have been supplied; the isolated local rehearsal does not prove those company-server checks. The specific earlier intermittent incident remains unattributed. No company deployment or sustained capacity benchmark is claimed. Direct HCL/Outlook integration remains deferred by agreement. Single-server failure, periodic worker release and possible duplicate SMTP delivery after an ambiguous response remain documented operating limits. For the optional HTTPS profile, HSTS domain-wide flags require IT approval.
 
-## Documentation release verification - 7 October 2026
+## Documentation-only release verification - 7 October 2026
 
 This release changes documentation and adds an optional ReportLab handbook builder, with no application behavior or database migration changes. Existing application test evidence above remains the baseline; the full application suite was not rerun for prose changes.
 
@@ -158,3 +158,34 @@ This release changes documentation and adds an optional ReportLab handbook build
 - Generated the complete handbook from 11 maintained guides, rendered its pages and checked contents/bookmarks, tables, diagrams, command displays, margins and glyphs. Long command displays wrap for print; Markdown remains the copyable source.
 
 The optional documentation dependency is separate from application requirements. Rebuild the handbook after source-guide changes and review the latest rendered pages before committing it. Company-side acceptance, monitoring and recovery arrangements remain the operator's responsibility.
+
+## Booking wizard and room photos - 8 October 2026
+
+This release changes application behavior as well as documentation: Schedule & details → Attendees → Review & confirm, real whole-series room availability, Internal + External meetings, and optional staff-managed room photos. Committed migrations `0009_mixed_meeting_type` and `0010_room_photo` preserve existing records. No room reseeding is part of the upgrade. A local database backup was taken before upgrading the existing laptop installation.
+
+### Automated verification
+
+- Final clean PostgreSQL run: **244 tests passed in 40.439 seconds**; Django system check reported no issues. Early runs exposed historical migration-test cleanup that restored only schema 0008, leaving later photo-model tests on an incomplete schema; cleanup now restores the current migration graph leaf. The final result is the clean rerun, not those earlier failed attempts.
+- Availability coverage checks authenticated GET-only access, active room metadata, generic occupied ranges without private meeting content, all occupying/released statuses, both meeting buffers, every recurrence occurrence, working-day skips, edit ownership/state and single-occurrence exclusion, staff verification/overrides, read-only behavior, page configuration/prefills, short-office-hour defaults and final-save revalidation after preview.
+- Mixed meeting coverage requires guest company in form, service and database. Switching recurrence back to One meeting ignores a stale until date instead of rejecting an otherwise valid single meeting.
+- Photo coverage checks optional upload, authenticated viewing, staff second factor, inactive-room privacy, supported/corrupt/animated/oversized images, metadata removal and image resizing, replace/remove commit cleanup, new-file cleanup on database failure, preservation on storage failure, conflicting remove/upload, and arbitrary-path/symlink escape rejection.
+- Full repository `ruff check .` passed and `ruff format --check .` passed for 75 Python files. `node --check` passed for wizard and shared application JavaScript. The current pip-audit 2.10.1 run resolved the full application requirements, including Pillow 12.3.0, and reported no known vulnerabilities with exit 0.
+
+### Actual browser and persistence checks
+
+A separate local QA instance used file-email login; no company SMTP relay or production account was used. Browser actions verified:
+
+1. Schedule initialization and required-title/guest-company validation; selecting Internal + External and refreshments Yes.
+2. Invalid attendee email blocked progression. Organizer addresses and duplicates were counted once; nine people in an eight-seat room were rejected, while three people were accepted.
+3. One final submission created a Pending request with the entered meeting information. Edit preserved mixed type, guest company and attendees, displayed the no-photo placeholder, and excluded its own occupied slot from availability.
+4. Daily Friday 9 October through Tuesday 13 October previewed exactly Friday, Monday and Tuesday, skipping the weekend. Switching back to One meeting removed the additional dates from review.
+5. All three steps were inspected at 390 × 844 after the mobile-grid correction; page width was 375 pixels, within the 390-pixel viewport. Desktop was inspected at 1500 × 1100 against the supplied layout reference.
+6. A write probe in the isolated named `room_media` volume survived web-container recreation, then was removed. This establishes volume persistence for that local QA project; it is not a production photo backup/restore rehearsal.
+
+### Existing laptop upgrade
+
+The current local installation was backed up, rebuilt and migrated through 0009/0010. Pre/post counts matched: **five rooms, two bookings and three users**. Database, web and worker were healthy; `/healthz/` returned HTTP 200, and media storage was writable. The existing local file-email backend remained unchanged. Employee file-email login succeeded against the updated local instance; the desktop booking screen was captured at 1500 pixels, with no browser-console errors. Migration drift reported no changes; Git whitespace checks passed. QA was signed out/closed and the temporary viewport override was reset. These checks concern the laptop installation, not the company server.
+
+The guides now cover all 45 configured routes, native-form fallback, real preview limitations, staff photo paths, media ownership/persistence, paired database/photo backups and migrations 0009/0010. Syntax checks of documented archive/extraction commands do not claim an executed photo restore. Actual staff photo upload is covered by integration tests; the browser review used existing rooms with no photo and does not claim a manual uploaded-photo walkthrough.
+
+Company-server deployment of this release, actual mailbox delivery, employee-device behavior, representative load and a paired database/photo restore drill still require IT's acceptance checks. The local QA data and evidence do not establish those outcomes. Rebuild/recreate and migrate the company installation through the documented maintenance procedure; preserve existing database and media volumes.

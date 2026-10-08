@@ -52,6 +52,7 @@ services:
       - "127.0.0.1:8000:8000"
     volumes:
       - local_mail:/tmp/meeting-room-mail
+      - room_media:/app/media
     restart: unless-stopped
     init: true
     healthcheck:
@@ -105,3 +106,4 @@ services:
 volumes:
   postgres_data:
   local_mail:
+  room_media:

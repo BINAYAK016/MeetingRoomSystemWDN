@@ -12,6 +12,7 @@ htmlcov/
 .idea/
 .vscode/
 staticfiles/
+media/
 deploy/certs/*
 !deploy/certs/.gitkeep
 deploy/backups/

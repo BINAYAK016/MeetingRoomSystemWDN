@@ -529,7 +529,7 @@ def main():
                 STYLES["body"],
             ),
             Paragraph(
-                "Documentation reviewed 7 October 2026. Application verification baseline: 392dfa5. No application behavior changes are introduced by this documentation release.",
+                "Documentation updated 8 October 2026. See Verification evidence for tested behavior and remaining deployment checks.",
                 STYLES["small"],
             ),
             Paragraph("Transgate Tech | Binayak Bhandari", STYLES["body"]),

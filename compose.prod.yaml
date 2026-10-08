@@ -40,6 +40,8 @@ services:
       SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
       SMTP_USE_SSL: ${SMTP_USE_SSL:-false}
     networks: [database, frontend]
+    volumes:
+      - room_media:/app/media
     depends_on:
       db:
         condition: service_healthy
@@ -141,3 +143,4 @@ networks:
 
 volumes:
   postgres_data:
+  room_media:

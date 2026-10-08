@@ -362,6 +362,11 @@ Replace 123 with the diagnosed notification ID. Output is `requeued=N superseded
 | New holiday/policy leaves meetings unchanged | No retroactive cancellation; staff reviews affected records. Current check-in deadline applies to existing approved meetings. |
 | Other employee details denied | Ownership or verified staff required; expected privacy behavior. |
 | Only one room listed | Staff must configure actual active rooms; production never seeds demo data. |
+| Wizard shows unavailable for a free first date | All eligible recurring occurrences must be free, including gaps; inspect later dates in the preview/review. |
+| Selected Available room fails final submission | Preview does not hold space; final save detects intervening conflicts, inactive rooms and capacity/policy changes. Retain entries and choose a valid alternative. |
+| External or Internal + External rejected | Guest company is required for both; count email-listed people and additional no-email guests once each. |
+| Wizard controls absent or room cards never update | Native form remains usable. Inspect browser console/Network for the static wizard asset and `/bookings/availability/` response; rebuild/recreate a stale image and load a fresh page. Share status/error text, not full request values. |
+| Invalid form cannot be retried | Load current assets; client validation must not leave a prevented submission locked. Server errors retain data for correction. |
 
 Read-only current policy/status totals:
 
@@ -378,6 +383,43 @@ PY
 ```
 
 Inspect individual bookings/audit in Staff desk. Direct SQL status/time edits bypass locking, notifications, revisions and audit.
+
+### Room photo upload or display
+
+| Symptom | Check |
+| --- | --- |
+| Upload rejected | Still JPEG/PNG/WebP only; at most 5 MiB and 12 million pixels. An extension alone does not prove readable image contents. |
+| Form correction loses selected file | Browsers do not retain the file picker selection; select the upload again before resubmitting. |
+| Replace/remove error | Choose a new upload or Remove current photo, not both. |
+| Photo save reports storage problem | Check named `room_media` volume mounted at `/app/media`, directory ownership UID/GID 1000 and writable volume; application root remains read-only. |
+| Photo request redirects to sign-in | Images require an authenticated session. Ordinary employee sessions cannot view inactive room photos. |
+| Room has no photo | Optional and valid; staff can add one under Staff desk → Rooms → Edit. |
+| Stored photo returns 404 after recovery | Database has only a filename; restore the matching photo archive, not only the dump. Missing files are not recreated from room records. |
+| New schema field/endpoint fails after upgrade | Apply committed 0009/0010 using the maintenance workflow, rerun `db_setup`, rebuild/recreate services; do not reseed rooms. |
+
+Read-only storage diagnosis (no photo bytes or credentials printed):
+
+```bash
+docker compose -f compose.prod.http.yaml exec -T web python manage.py shell <<'PY'
+import os
+from pathlib import Path
+from django.conf import settings
+from booking.models import Room
+root = Path(settings.MEDIA_ROOT)
+photos = root / 'rooms' / 'photos'
+print('process_uid_gid=', (os.getuid(), os.getgid()))
+print('media_root=', str(root), 'photos_directory_exists=', photos.is_dir(), 'writable=', os.access(photos, os.W_OK))
+if photos.exists():
+    info = photos.stat()
+    print('directory_uid_gid_mode=', (info.st_uid, info.st_gid, oct(info.st_mode & 0o777)))
+references = list(Room.objects.exclude(photo='').values_list('photo', flat=True))
+print('room_photo_references=', len(references))
+print('missing_photo_files=', sum(not (root / name).is_file() for name in references))
+PY
+docker compose -f compose.prod.http.yaml logs --since 10m --tail 80 web
+```
+
+Expected application UID is 1000 and the photo directory is writable. Existing named volumes retain their own permissions; rebuilding the image cannot repair a separately misowned volume. Have IT inspect the selected project/volume and restore ownership through its reviewed maintenance process. Keep writers stopped during recovery; do not delete/reset the volume. See [photo backup and recovery](operations-runbook.md#room-photo-backup-and-recovery).
 
 ### Check-in/release
 

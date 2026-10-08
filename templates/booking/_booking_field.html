@@ -1,0 +1,8 @@
+{% if field %}
+<div class="booking-field {% if wide %}booking-field-wide{% endif %}" {% if field_id %}id="{{ field_id }}"{% endif %}>
+  <label for="{{ field.id_for_label }}">{{ label|default:field.label }}{% if field.field.required %}<span class="required-mark" aria-hidden="true">*</span>{% else %}{% if optional %}<span class="field-optional"> (optional)</span>{% endif %}{% endif %}</label>
+  {{ field }}
+  {% if field.help_text %}<small class="booking-field-help">{{ field.help_text }}</small>{% endif %}
+  {% for error in field.errors %}<p class="field-error" role="alert">{{ error }}</p>{% endfor %}
+</div>
+{% endif %}

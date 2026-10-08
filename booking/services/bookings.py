@@ -84,11 +84,51 @@ def policy_intervals(data, date, policy, *, override=False):
         if data["start_time"] < policy.opens_at or data["end_time"] > policy.closes_at:
             raise BookingError("Choose a time within office hours")
         if any(
-            (value.hour * 60 + value.minute) % policy.slot_minutes or value.second
+            (value.hour * 60 + value.minute) % policy.slot_minutes or value.second or value.microsecond
             for value in (data["start_time"], data["end_time"])
         ):
             raise BookingError(f"Times must use {policy.slot_minutes}-minute increments")
-    return start_local, end_local, start_local, end_local + timedelta(minutes=policy.gap_minutes)
+    try:
+        occupied_until = end_local + timedelta(minutes=policy.gap_minutes)
+    except OverflowError as exc:
+        raise BookingError("Choose a date within the supported calendar range") from exc
+    return start_local, end_local, start_local, occupied_until
+
+
+def prepared_booking_intervals(data, policy, *, staff=False):
+    """Validate the same schedule for availability previews and authoritative writes."""
+    last = data["until_date"] if data["recurrence"] != "none" else data["date"]
+    if last is None:
+        raise BookingError("Choose the last date for this series")
+    override = staff and bool(data.get("override_reason"))
+    if (
+        last > timezone.localtime(timezone.now(), LOCAL_TZ).date() + timedelta(days=policy.advance_days)
+        and not override
+    ):
+        raise BookingError(f"Occurrences must stay within the {policy.advance_days}-day booking window")
+    dates = occurrence_dates(data["date"], last, data["recurrence"])
+    if data["recurrence"] == "daily" and not override:
+        holidays = set(
+            CompanyHoliday.objects.filter(date__gte=data["date"], date__lte=last).values_list(
+                "date", flat=True
+            )
+        )
+        dates = [day for day in dates if day.weekday() < 5 and day not in holidays]
+    if not dates:
+        raise BookingError("This series contains no company working days")
+    if len(dates) > 15:
+        raise BookingError("This series has too many occurrences")
+    return [policy_intervals(data, day, policy, override=override) for day in dates]
+
+
+def _validate_meeting_type(data):
+    if data.get("meeting_type") not in Reservation.MeetingType.values:
+        raise BookingError("Choose a supported meeting type")
+    if (
+        data["meeting_type"] in [Reservation.MeetingType.EXTERNAL, Reservation.MeetingType.MIXED]
+        and not data.get("guest_company_name", "").strip()
+    ):
+        raise BookingError("Enter the guest company name")
 
 
 def _organizer(actor, data, *, staff):
@@ -184,6 +224,7 @@ def create_booking(data, *, actor, staff=False):
     from booking.services.checkin import release_due_no_shows
 
     _require_actor(actor, staff=staff)
+    _validate_meeting_type(data)
     release_due_no_shows()
     return _create_booking(data, actor=actor, staff=staff)
 
@@ -203,26 +244,7 @@ def _create_booking(data, *, actor, staff):
         raise BookingError("This room is inactive")
     _capacity(room, data, organizer)
     policy = BookingPolicy.objects.get(pk=1)
-    last = data["until_date"] if data["recurrence"] != "none" else data["date"]
-    override = staff and bool(data.get("override_reason"))
-    if (
-        last > timezone.localtime(timezone.now(), LOCAL_TZ).date() + timedelta(days=policy.advance_days)
-        and not override
-    ):
-        raise BookingError(f"Occurrences must stay within the {policy.advance_days}-day booking window")
-    dates = occurrence_dates(data["date"], last, data["recurrence"])
-    if data["recurrence"] == "daily" and not override:
-        holidays = set(
-            CompanyHoliday.objects.filter(date__gte=data["date"], date__lte=last).values_list(
-                "date", flat=True
-            )
-        )
-        dates = [day for day in dates if day.weekday() < 5 and day not in holidays]
-    if not dates:
-        raise BookingError("This series contains no company working days")
-    if len(dates) > 15:
-        raise BookingError("This series has too many occurrences")
-    intervals = [policy_intervals(data, day, policy, override=override) for day in dates]
+    intervals = prepared_booking_intervals(data, policy, staff=staff)
     series = None
     if data["recurrence"] != "none":
         series = BookingSeries.objects.create(
@@ -230,8 +252,8 @@ def _create_booking(data, *, actor, staff):
             organizer=organizer,
             created_by=actor,
             frequency=data["recurrence"],
-            first_date=dates[0],
-            last_date=dates[-1],
+            first_date=intervals[0][0].date(),
+            last_date=intervals[-1][0].date(),
         )
     created = []
     for start, end, occupied_from, occupied_until in intervals:
@@ -273,6 +295,7 @@ def update_booking(booking_id, data, *, actor, staff=False):
     from booking.services.checkin import release_due_no_shows
 
     _require_actor(actor, staff=staff)
+    _validate_meeting_type(data)
     release_due_no_shows()
     return _update_booking(booking_id, data, actor=actor, staff=staff)
 

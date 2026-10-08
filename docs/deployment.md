@@ -91,11 +91,15 @@ docker compose -f compose.prod.yaml up -d web worker proxy
 curl --fail https://YOUR-INTERNAL-HOST/healthz/
 ```
 
-Migration 0008 preserves existing confirmed meetings as approved and adds pending request occupancy. Reversing it cancels pending/rejected requests; use a reviewed rollback/restore plan. Stop all writers during migration, then reapply runtime grants.
+Current updates apply `0009_mixed_meeting_type` and `0010_room_photo` after the approval schema; they preserve existing records and do not reseed rooms. Take paired database/photo backups for an installation with uploaded files, using [Room photo backup and recovery](operations-runbook.md#room-photo-backup-and-recovery) with the HTTPS Compose profile. Migration 0008 preserves existing confirmed meetings as approved and adds pending request occupancy. Reversing it cancels pending/rejected requests; use a reviewed rollback/restore plan. Stop all writers during migration, then reapply runtime grants.
 
-Preserve the Django secret, database administrator credentials, and PostgreSQL volume across updates. Review migrations before applying them; restore planning is required for schema rollback. Stop with `docker compose -f compose.prod.yaml down` to preserve database storage. Never use `down --volumes` on production unless intentionally destroying its data.
+Preserve the Django secret, database administrator credentials, PostgreSQL volume and `room_media` photo volume across updates. Review migrations before applying them; restore planning is required for schema rollback. Stop with `docker compose -f compose.prod.yaml down` to preserve database storage. Never use `down --volumes` on production unless intentionally destroying its data.
 
 ## Backup and restore
+
+Optional room photos are stored in the persistent `room_media` Docker volume mounted at `/app/media` in web, for both HTTPS and HTTP production profiles. Staff upload real room photos through **Rooms → Add/Edit room**; supported JPEG/PNG/WebP files are limited to 5 MiB and 12 million pixels, converted to JPEG without supplied metadata, and served only to authenticated users. Existing rooms without photos remain valid. There is no public `/media/` file server.
+
+The database dump does not contain photo files. Back up the `room_media` volume alongside the database, using company-approved Docker volume backup tooling and separate storage. Stop web during a paired database/media backup to avoid photo replacement during the copy. Preserve the original volume ownership (UID/GID 1000) on restore. Restore photos under `/app/media/rooms/photos` together with the database room records; recreating containers preserves the named volume, while `down --volumes` destroys it. Include photo upload, viewing and restoration in the restore drill. [Room photo backup and recovery](operations-runbook.md#room-photo-backup-and-recovery) provides archive/extraction commands; substitute `compose.prod.yaml` for the selected HTTP profile when operating this HTTPS installation.
 
 `sh deploy/backup.sh` produces a custom-format PostgreSQL dump, verifies its archive listing, and writes private files in `deploy/backups/`. Schedule it on the Linux host; encrypt and copy backups to company-approved separate storage with retention under company policy. Monitor success and disk space. A same-server backup does not protect against server loss. Back up `.env` and TLS material separately in approved secret storage.
 

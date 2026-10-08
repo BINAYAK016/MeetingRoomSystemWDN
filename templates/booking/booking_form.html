@@ -1,13 +1,87 @@
 {% extends "booking/base.html" %}
-{% block title %}{% if editing %}Edit booking{% else %}Request a room{% endif %}{% endblock %}
+{% load static %}
+{% block title %}{% if editing %}Edit booking{% else %}Book a meeting room{% endif %}{% endblock %}
+{% block workspace_nav %}{% endblock %}
 {% block content %}
-<div class="page-container app-page">
-  <div class="page-heading"><div><p class="eyebrow">MEETING DETAILS</p><h1>{% if editing %}Edit booking{% elif staff %}Book a meeting room{% else %}Request a meeting room{% endif %}</h1><p class="lead">All times use Nepal time. Availability is checked when you submit.</p></div></div>
-  <p class="notice">{% if staff %}Staff can create approved bookings on behalf of employees. Existing pending requests still require explicit approval.{% elif editing and booking.status == 'approved' %}Changes to meeting details return this booking to Pending for administrator approval.{% else %}Your request will be Pending until an administrator approves it. The room and time will be held during review.{% endif %}</p>
-  <form method="post" class="panel app-form">
-    {% csrf_token %}{% if form.non_field_errors %}<div class="form-errors" role="alert">{{ form.non_field_errors }}</div>{% endif %}
-    <div class="form-grid">{% for field in form %}<div class="form-field {% if field.name == 'description' or field.name == 'attendees' or field.name == 'front_desk_notes' %}form-wide{% endif %}"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}{% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>{% endfor %}</div>
-    <div class="form-actions"><button class="button button-primary" type="submit">{% if editing %}Save changes{% elif staff %}Create approved booking{% else %}Submit booking request{% endif %} →</button><a class="button button-quiet" href="{% if editing %}{% url 'booking-detail' booking.pk %}{% else %}{% url 'calendar' %}{% endif %}">Cancel</a></div>
-  </form>
+{% include 'booking/_booking_icons.html' %}
+<div class="booking-workspace">
+  <aside class="booking-sidebar" aria-label="Workspace navigation">
+    <a href="{% url 'home' %}" class="booking-sidebar-title">Meeting workspace<span>Transgate Tech</span></a>
+    <nav class="booking-side-nav">
+      <a href="{% url 'booking-new' %}" aria-current="page"><svg class="booking-icon" aria-hidden="true"><use href="#booking-room"/></svg>Book a room</a>
+      <a href="{% url 'my-bookings' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-clock"/></svg>My bookings</a>
+      <a href="{% url 'calendar' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-calendar"/></svg>Calendar view</a>
+      <a href="{% url 'rooms' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-room"/></svg>Rooms</a>
+      {% if staff %}<a href="{% url 'staff-reports' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-report"/></svg>Reports</a><a href="{% url 'staff-dashboard' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-users"/></svg>Staff desk</a>{% endif %}
+      <a href="{% url 'profile' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-profile"/></svg>My profile</a>
+    </nav>
+    <div class="booking-sidebar-note"><svg class="booking-icon" aria-hidden="true"><use href="#booking-info"/></svg><p>Plan together.<br>Make room for better work.</p></div>
+  </aside>
+  <div class="booking-main">
+    <div class="booking-page-heading"><div><p class="eyebrow">YOUR NEXT MEETING</p><h1>{% if editing %}Edit your meeting{% else %}Book a meeting room{% endif %}</h1><p>Choose a time, find your space, and bring everyone together.</p></div><span class="booking-timezone"><svg class="booking-icon" aria-hidden="true"><use href="#booking-clock"/></svg>Nepal time</span></div>
+    <form method="post" id="booking-wizard" class="booking-wizard" novalidate>
+      {% csrf_token %}
+      <ol class="booking-stepper" aria-label="Booking steps">
+        <li><button type="button" data-wizard-goto="1" aria-current="step"><span class="step-number">1</span><span>Schedule &amp; details</span></button></li>
+        <li><button type="button" data-wizard-goto="2"><span class="step-number">2</span><span>Attendees</span></button></li>
+        <li><button type="button" data-wizard-goto="3"><span class="step-number">3</span><span>Review &amp; confirm</span></button></li>
+      </ol>
+      <div class="booking-policy-note"><svg class="booking-icon" aria-hidden="true"><use href="#booking-info"/></svg><span>{% if staff and editing %}An existing pending request stays pending until you approve it from the Staff desk.{% elif staff %}New staff bookings are approved immediately.{% elif editing and booking.status == 'approved' %}Changes to meeting details return this booking to Pending for staff approval.{% else %}Your request holds the room while Front Desk reviews it. Check in through your email within {{ booking_ui.check_in_minutes }} minutes of the approved start time.{% endif %}</span></div>
+      {% if form.errors %}<div class="booking-error-summary" id="booking-server-errors" role="alert"><strong>Please check your booking.</strong>{{ form.non_field_errors }}{% for field in form %}{% for error in field.errors %}<p><a href="#{{ field.id_for_label }}">{{ field.label }}: {{ error }}</a></p>{% endfor %}{% endfor %}</div>{% endif %}
+      <p id="booking-wizard-error" class="booking-inline-alert" role="alert" hidden></p>
+      <div data-wizard-pane="1" class="booking-stage booking-schedule-stage">
+        <div class="booking-details-panel">
+          <section class="booking-section" aria-labelledby="schedule-heading">
+            <h2 id="schedule-heading">1. Date &amp; time</h2>
+            <div class="booking-schedule-top">
+              {% include 'booking/_booking_field.html' with field=form.date label='Date' %}
+              <div class="booking-duration-control booking-js-only"><span class="booking-control-label" id="duration-label">Duration</span><div class="duration-options" role="group" aria-labelledby="duration-label"><button type="button" data-duration="30">30 min</button><button type="button" data-duration="60">1 hour</button><button type="button" data-duration="90">1.5 hours</button><button type="button" data-duration="120">2 hours</button><button type="button" data-duration="custom">Custom</button></div></div>
+            </div>
+            <div class="booking-time-control booking-js-only"><div class="booking-control-heading"><span class="booking-control-label" id="start-slots-label">Start time</span><div class="time-page-controls"><button type="button" id="time-page-previous" aria-label="Earlier start times">←</button><span id="time-page-label"></span><button type="button" id="time-page-next" aria-label="Later start times">→</button></div></div><div id="booking-time-slots" class="booking-time-slots" role="group" aria-labelledby="start-slots-label"></div></div>
+            <div class="booking-manual-times" id="booking-manual-times">{% include 'booking/_booking_field.html' with field=form.start_time label='Start time' %}{% include 'booking/_booking_field.html' with field=form.end_time label='End time' %}</div>
+            <div class="booking-selected-time booking-js-only"><svg class="booking-icon" aria-hidden="true"><use href="#booking-clock"/></svg><div><span>Selected time</span><strong id="selected-time-label">Choose a start time</strong><small id="selected-date-label"></small></div><button type="button" id="clear-booking-time" class="booking-text-button">Clear</button></div>
+            {% if form.recurrence %}<div class="booking-recurrence">{% include 'booking/_booking_field.html' with field=form.recurrence label='Repeat meeting' %}{% include 'booking/_booking_field.html' with field=form.until_date label='Last date in series' field_id='booking-until-field' %}</div>{% endif %}
+            <p class="booking-section-help">Bookings use your office’s working hours and booking window. Every recurring occurrence must fit within that window.</p>
+          </section>
+          <section class="booking-section booking-meeting-section" aria-labelledby="meeting-info-heading">
+            <h2 id="meeting-info-heading">3. Meeting information</h2>
+            <div class="booking-meeting-grid">
+              {% include 'booking/_booking_field.html' with field=form.title label='Meeting title' %}
+              <div class="booking-field"><label for="{{ form.meeting_type.id_for_label }}">Meeting type<span class="required-mark" aria-hidden="true">*</span></label><div class="booking-native-meeting-type">{{ form.meeting_type }}</div><div class="meeting-type-options booking-js-only" role="group" aria-label="Meeting type">{% for value,label in form.meeting_type.field.choices %}<button type="button" data-meeting-type="{{ value }}"><span class="choice-dot" aria-hidden="true"></span>{{ label }}</button>{% endfor %}</div>{% for error in form.meeting_type.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+              {% include 'booking/_booking_field.html' with field=form.department label='Department' optional=True %}
+              {% include 'booking/_booking_field.html' with field=form.description label='Purpose / description' optional=True %}
+              {% include 'booking/_booking_field.html' with field=form.guest_company_name label='Guest company name' field_id='booking-guest-company-field' %}
+              <div class="booking-meeting-end booking-field-wide">
+                <div class="booking-field booking-refreshments"><label for="{{ form.refreshments_requested.id_for_label }}">Refreshments required?</label><div class="booking-native-refreshments">{{ form.refreshments_requested }}<span>Request refreshments</span></div><div class="refreshment-options booking-js-only" role="group" aria-label="Refreshments required"><button type="button" data-refreshments="yes"><span class="choice-dot" aria-hidden="true"></span>Yes</button><button type="button" data-refreshments="no"><span class="choice-dot" aria-hidden="true"></span>No</button></div>{% for error in form.refreshments_requested.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
+                {% include 'booking/_booking_field.html' with field=form.front_desk_notes label='Special requirements' optional=True %}
+              </div>
+            </div>
+            {% if form.override_reason %}<details class="booking-staff-options" {% if form.override_reason.value %}open{% endif %}><summary>Staff booking options</summary>{% include 'booking/_booking_field.html' with field=form.override_reason label='Booking rule override reason' optional=True %}</details>{% endif %}
+          </section>
+        </div>
+        <section class="booking-rooms-panel" aria-labelledby="available-rooms-heading">
+          <div class="booking-rooms-heading"><h2 id="available-rooms-heading">2. Available rooms</h2><p id="availability-summary" aria-live="polite">Choose a date and time to check room availability.</p></div>
+          <div id="booking-availability-message" class="booking-availability-message" hidden></div>
+          <div class="booking-native-room">{% include 'booking/_booking_field.html' with field=form.room label='Meeting room' %}</div>
+          <div id="booking-room-options" class="booking-room-options booking-js-only" aria-label="Choose a meeting room">
+            {% for room in booking_rooms %}<label class="booking-room-card" data-room-id="{{ room.pk }}" data-room-capacity="{{ room.capacity }}" data-room-name="{{ room.name }}" data-room-location="{{ room.location }}" data-room-floor="{{ room.floor }}"><input type="radio" name="room_choice" value="{{ room.pk }}" aria-label="{{ room.name }} at {{ room.location }}, floor {{ room.floor }}"><span class="booking-room-photo">{% if room.photo %}<img src="{% url 'room-photo' room.pk %}" alt="{{ room.name }}" loading="lazy" width="96" height="80">{% else %}<svg class="booking-icon" aria-hidden="true"><use href="#booking-room"/></svg><span>Room photo</span>{% endif %}</span><span class="booking-room-info"><strong>{{ room.name }}</strong><span class="booking-room-location">{{ room.location }} · Floor {{ room.floor }}</span><span class="booking-room-seats"><svg class="booking-icon" aria-hidden="true"><use href="#booking-users"/></svg>{{ room.capacity }} seats</span><span class="booking-room-facilities">{% for facility in room.facilities.all %}<span><svg class="booking-icon" aria-hidden="true"><use href="#booking-facility"/></svg>{{ facility.name }}</span>{% empty %}<span class="booking-no-facilities">Facilities not listed</span>{% endfor %}</span></span><span class="booking-room-state"><span class="booking-room-status">Choose time</span><span class="booking-room-conflict"></span></span></label>{% empty %}<div class="booking-empty-rooms"><svg class="booking-icon" aria-hidden="true"><use href="#booking-room"/></svg><h3>Rooms are being prepared</h3><p>Front Desk can add meeting rooms and their photos from the Staff desk.</p></div>{% endfor %}
+          </div>
+          <p class="booking-rooms-footnote"><svg class="booking-icon" aria-hidden="true"><use href="#booking-info"/></svg>Availability includes pending requests, approved meetings, room closures and turnaround time.</p>
+        </section>
+      </div>
+      <section data-wizard-pane="2" class="booking-stage booking-attendees-stage" aria-labelledby="attendees-heading">
+        <div class="booking-attendees-panel"><p class="booking-stage-eyebrow">BRING YOUR TEAM</p><h2 id="attendees-heading">Who’s joining the meeting?</h2><p class="booking-stage-intro">Add attendee email addresses. The organizer is already included in the headcount.</p><div class="booking-organizer-card"><svg class="booking-icon" aria-hidden="true"><use href="#booking-profile"/></svg><div><span>Meeting organizer</span><strong id="booking-organizer-label">{% if editing %}{{ booking.organizer.email }}{% else %}{{ request.user.email }}{% endif %}</strong></div><span class="booking-organizer-badge">Organizer</span></div>{% if form.organizer_email %}{% include 'booking/_booking_field.html' with field=form.organizer_email label='Book on behalf of an employee' optional=True %}{% endif %}{% include 'booking/_booking_field.html' with field=form.attendees label='Attendee email addresses' optional=True %}<div id="booking-attendee-chips" class="booking-attendee-chips booking-js-only" aria-live="polite"></div>{% include 'booking/_booking_field.html' with field=form.external_attendee_count label='Additional guests without email addresses' %}<p class="booking-section-help">Count each person once. Additional guests are people who are not already listed by email.</p>{% if editing and booking.series_id %}<p class="booking-section-help">You’re editing this occurrence only. Other meetings in the recurring series stay unchanged.</p>{% endif %}</div>
+        <aside class="booking-attendee-summary"><svg class="booking-icon" aria-hidden="true"><use href="#booking-users"/></svg><h3>Make sure everyone fits.</h3><strong id="booking-headcount">1 person</strong><p id="booking-capacity-label">Choose a room to see its capacity.</p><p id="booking-capacity-error" class="field-error" hidden></p><div id="attendee-room-summary"></div></aside>
+      </section>
+      <section data-wizard-pane="3" class="booking-stage booking-review-stage booking-js-only" aria-labelledby="review-heading">
+        <div class="booking-review-heading"><p class="booking-stage-eyebrow">ONE LAST LOOK</p><h2 id="review-heading">Review your meeting</h2><p class="booking-stage-intro">Check the details before {% if editing %}saving your changes{% elif staff %}creating the approved booking{% else %}sending your request to Front Desk{% endif %}.</p></div>
+        <div class="booking-review-grid"><section class="booking-review-panel"><div class="booking-review-title"><h3>Schedule &amp; room</h3><button type="button" class="booking-text-button" data-wizard-goto="1">Edit</button></div><div id="review-room" class="booking-review-room"></div><dl class="booking-review-details"><div><dt>Date</dt><dd id="review-date"></dd></div><div><dt>Time</dt><dd id="review-time"></dd></div><div><dt>Repeat</dt><dd id="review-recurrence"></dd></div></dl><div id="review-occurrences" class="booking-review-occurrences"></div></section><section class="booking-review-panel"><div class="booking-review-title"><h3>Meeting details</h3><button type="button" class="booking-text-button" data-wizard-goto="1">Edit</button></div><dl class="booking-review-details"><div><dt>Title</dt><dd id="review-title"></dd></div><div><dt>Type</dt><dd id="review-meeting-type"></dd></div><div><dt>Department</dt><dd id="review-department"></dd></div><div><dt>Purpose</dt><dd id="review-description"></dd></div><div id="review-guest-company-row"><dt>Guest company</dt><dd id="review-guest-company"></dd></div><div><dt>Refreshments</dt><dd id="review-refreshments"></dd></div><div><dt>Special requirements</dt><dd id="review-notes"></dd></div>{% if staff %}<div><dt>Staff rule override</dt><dd id="review-override"></dd></div>{% endif %}</dl></section><section class="booking-review-panel booking-review-attendees"><div class="booking-review-title"><h3>Attendees</h3><button type="button" class="booking-text-button" data-wizard-goto="2">Edit</button></div><p id="review-organizer"></p><ul id="review-attendees"></ul><p id="review-headcount"></p></section></div>
+        <div class="booking-review-notice"><svg class="booking-icon" aria-hidden="true"><use href="#booking-check"/></svg><p>{% if staff and editing %}Your changes will be saved. A pending request still needs explicit approval from the Staff desk.{% elif staff %}This booking will be approved immediately. Confirmation emails will be queued after it is saved.{% elif editing %}Changes may require staff approval again. Your booking details will show the updated status.{% else %}Your request will be pending approval. Once approved, use the check-in link in your email within {{ booking_ui.check_in_minutes }} minutes of the start time.{% endif %} Room availability is checked again when you submit.</p></div>
+      </section>
+      <div class="booking-wizard-actions"><a class="button button-quiet" href="{% if editing %}{% url 'booking-detail' booking.pk %}{% else %}{% url 'calendar' %}{% endif %}">Cancel</a><div><button type="button" class="button button-quiet booking-js-only" id="booking-step-back" hidden>← Back</button><button type="button" class="button button-primary booking-js-only" id="booking-step-next">Next: attendees <svg class="booking-icon" aria-hidden="true"><use href="#booking-arrow"/></svg></button><button type="submit" class="button button-primary" id="booking-submit">{% if editing %}Save booking changes{% elif staff %}Create approved booking{% else %}Submit booking request{% endif %}<svg class="booking-icon" aria-hidden="true"><use href="#booking-arrow"/></svg></button></div></div>
+    </form>
+    {{ booking_ui|json_script:'booking-ui-config' }}
+    <script src="{% static 'booking/booking-wizard.js' %}" defer></script>
+  </div>
 </div>
 {% endblock %}

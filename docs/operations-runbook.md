@@ -63,7 +63,7 @@ flowchart LR
 | `migrate` | Applies committed Django migrations with database administrator rights | One-off command; tools profile |
 | `db_setup` | Creates/updates application role and grants current-schema privileges | One-off command; tools profile |
 
-Web and worker run as the image's non-root `appuser` (UID 1000), with read-only root filesystems, writable `/tmp`, dropped capabilities, and `no-new-privileges`. Static files are collected during the image build and served by WhiteNoise. Editing source on the server does not change an already-running image.
+Web and worker run as the image's non-root `appuser` (UID 1000), with read-only root filesystems, writable `/tmp`, dropped capabilities, and `no-new-privileges`. Web additionally has the writable persistent `room_media` volume at `/app/media`; uploads do not require write access to the application root. Static files are collected during the image build and served by WhiteNoise. Editing source on the server does not change an already-running image.
 
 The production database network is internal. Web/worker also join the frontend network for SMTP access. Default frontend subnet `172.29.16.0/28` reserves `172.29.16.14` for the proxy outside the dynamic allocation range `172.29.16.0/29`. Only `172.29.16.14/32` is trusted for client-IP headers. Review all four network settings together if a company route overlaps this range.
 
@@ -280,7 +280,9 @@ mbs ps
 curl --fail --show-error http://mbs.wdn.com.np/healthz/
 ```
 
-Record the previous commit, new commit, backup filename, migration results, and acceptance checks. `git pull --ff-only` deliberately stops if local commits/history conflict; review instead of forcing Git history. Preserve `.env`, secret storage, and the PostgreSQL volume.
+If room photos exist, take a paired database/photo backup from [Room photo backup and recovery](#room-photo-backup-and-recovery) before the update; the database-only command above does not include files. Current releases add `0009_mixed_meeting_type` and `0010_room_photo`; apply both before starting new web code, then reapply `db_setup`. They preserve existing records and do not import/reset room inventory. Web now mounts the named `room_media` volume, initialized for application UID/GID 1000.
+
+Record the previous commit, new commit, backup filenames, migration results, and acceptance checks. `git pull --ff-only` deliberately stops if local commits/history conflict; review instead of forcing Git history. Preserve `.env`, secret storage, and the PostgreSQL volume.
 
 Migrations must come from reviewed source control. Do not run `makemigrations` on production as a response to a missing table. Migrations use the administrator tool service, not the restricted web role. Migration 0008 preserves legacy confirmed meetings as approved; reversing it cancels pending/rejected records. A code rollback is not automatically a database rollback. Restore a tested compatible database and release together if rollback requires schema reversal.
 
@@ -401,7 +403,7 @@ mbs exec web python manage.py showmigrations booking
 mbs exec web python manage.py migrate --plan
 ```
 
-All committed booking migrations, including 0008, should be marked applied on a deployed current release. If changes are needed, follow the maintenance workflow using `mbs run --rm migrate` and `mbs run --rm db_setup`.
+All committed booking migrations, including `0008_booking_approval`, `0009_mixed_meeting_type` and `0010_room_photo`, should be marked applied on a deployed current release. If changes are needed, follow the maintenance workflow using `mbs run --rm migrate` and `mbs run --rm db_setup`.
 
 ### Runtime identity and privileges
 
@@ -505,7 +507,7 @@ Avoid running an extra `run_booking_worker --once` as a read-only test. It can s
 
 `deploy/backup.sh` dumps the selected database in PostgreSQL custom format, verifies `pg_restore --list`, and writes a private file under `deploy/backups/`. It uses a unique `.partial` file, removes it if the operation fails, sets directory mode 700/file mode 600, then atomically renames a verified archive to `.dump`. Database dumps contain company data and authentication/session records; protect them like production data.
 
-A database dump does not include PostgreSQL cluster roles/passwords, `.env`, Git source, Docker images, host DNS/firewall settings, or future certificate files. Keep `.env` separately in company-approved secret storage; keep release commit identifiers and installation instructions with recovery records. Store original administrator credentials for an existing volume and current runtime credentials for role recreation. `db_setup` can recreate the application role in a recovered cluster.
+A database dump does not include uploaded room photos, PostgreSQL cluster roles/passwords, `.env`, Git source, Docker images, host DNS/firewall settings, or future certificate files. Photo files require a separate matching `room_media` archive as described below. Keep `.env` separately in company-approved secret storage; keep release commit identifiers and installation instructions with recovery records. Store original administrator credentials for an existing volume and current runtime credentials for role recreation. `db_setup` can recreate the application role in a recovered cluster.
 
 ### Create and verify a backup
 
@@ -527,6 +529,42 @@ sha256sum "$MBS_BACKUP"
 Stop if any check fails. Archive-list success is structural validation, not proof that the archive restores. Perform the separate-database drill below.
 
 `pg_dump` obtains a consistent database snapshot while normal transactions continue. Live record counts taken afterward can legitimately differ from its snapshot. For an exact count comparison, use a maintenance window with web/worker stopped and capture counts alongside that backup. Account for externally connected approved administrative tools as writers too.
+
+### Room photo backup and recovery
+
+The web service mounts named volume **`room_media`** at **`/app/media`**; accepted images are stored under `rooms/photos/`. Local, HTTP and HTTPS Compose profiles all preserve this volume across container recreation/ordinary `down`. The actual Docker volume name includes the existing Compose project prefix. Keep the same project identity and never use `down --volumes` as a repair. Worker/database containers do not store the files.
+
+The image initializes media directories for application UID/GID **1000**; normal uploads use directory mode **0750** and file mode **0640**. Do not replace the named volume with an empty host directory or run application uploads as root to work around an ownership problem. A database row with a missing photo file cannot recreate the image.
+
+For a paired snapshot, pause staff uploads by stopping web and stop worker while taking the matching database snapshot. Use the current checkout/image and the `mbs` function from section 2. Commands below run a one-off `tar` process with the normal web volume; they do not start the application or send mail. Stop if any step fails and preserve the partial archive for diagnosis rather than calling it a verified backup.
+
+```bash
+mbs stop proxy web worker
+COMPOSE_FILE=compose.prod.http.yaml sh deploy/backup.sh
+umask 077
+MBS_MEDIA_BACKUP="$(mktemp "$(pwd)/deploy/backups/room_media_$(date -u +%Y%m%dT%H%M%SZ).XXXXXX.tar.gz")"
+mbs run --rm --no-deps -T --entrypoint tar web -C /app/media -czf - rooms > "$MBS_MEDIA_BACKUP"
+test -s "$MBS_MEDIA_BACKUP"
+tar -tzf "$MBS_MEDIA_BACKUP" > /dev/null
+chmod 600 "$MBS_MEDIA_BACKUP"
+sha256sum "$MBS_MEDIA_BACKUP"
+mbs up -d --wait --wait-timeout 180 web worker proxy
+```
+
+Record the printed database dump filename, photo archive filename/checksum and release commit as **one recovery point**, then copy both to approved separate storage. Archive-list success is structural validation; a restore drill must verify that restored room rows resolve to visible restored photos. The database-only backup scheduler below does not archive media automatically; IT must include this additional snapshot/copy step in its approved complete-backup process.
+
+For an actual approved recovery, restore the matching database according to sections 9–10 and keep proxy/web/worker stopped. Restore only a trusted MBS archive into the intended recovery installation's media volume. The following extraction writes files; use a separate recovery project/volume for a drill, never the live project's volume. Substitute the exact selected archive, review its `rooms/photos/` entries and preserve the existing volume before recovery:
+
+```bash
+MBS_MEDIA_BACKUP='/opt/mbs/MeetingRoomSystemWDN/deploy/backups/REPLACE_WITH_ACTUAL_PHOTO_ARCHIVE.tar.gz'
+test -f "$MBS_MEDIA_BACKUP"
+test -s "$MBS_MEDIA_BACKUP"
+tar -tzf "$MBS_MEDIA_BACKUP"
+mbs run --rm --no-deps -T --entrypoint tar web --no-same-owner -xzf - -C /app/media < "$MBS_MEDIA_BACKUP"
+mbs run --rm --no-deps -T --entrypoint sh web -c 'id; test -w /app/media/rooms/photos'
+```
+
+Extraction runs as UID 1000, so newly restored files belong to the application. It does not remove unrelated existing files; use a reviewed clean recovery volume when a precise full recovery is required. Restore the database and photo archive from the same point, then check each restored photo through staff/booking screens before reopening. If ownership/extraction fails, keep writers stopped and investigate the selected volume rather than deleting it. Replaced/removed photos are deleted after a successful room change; an older database snapshot can refer to a file that no longer exists in today's volume, which is why the matching archive is required.
 
 ### Copy and retention
 
@@ -753,7 +791,7 @@ nano .env
 
 Set **only** `POSTGRES_DB` to the verified recovery database's exact name. Preserve administrator/runtime usernames/passwords, Django secret, selected HTTP settings, and mail settings. Remove duplicates. Do not change the database role credentials as part of a restore unless the reviewed recovery plan requires it.
 
-6. Validate/recreate DB service configuration against the same existing named volume, then run the compatible release's committed migrations and grants with writers still stopped:
+6. Restore the matching photo archive to the intended recovery `room_media` volume as described in section 8, with writers stopped. Keep the original volume/paired backup available for investigation; a database switch alone cannot recover missing photo files. Then validate/recreate DB service configuration against the same existing named volume and run the compatible release's committed migrations and grants:
 
 ```bash
 mbs config --quiet
@@ -812,7 +850,8 @@ If rollback is needed, stop every writer again and review which database has acc
 - Stop all writers for migrations, apply committed migrations, rerun runtime grants.
 - All health checks return expected status; inspect safe startup/error logs.
 - Employee can request/confirm a login; staff can authenticate with password/code.
-- Room search/details/calendar work; staff can edit rooms under Staff desk → Rooms.
+- Room search/details/calendar work; the booking wizard previews every selected occurrence and preserves edit values. Staff can add/edit room photos under Staff desk → Rooms.
+- Existing inventory remains; migrations 0009/0010 are applied and named media volume is writable by UID 1000. Paired database/photo restore has been checked when photos exist.
 - Submit one approved test workflow: pending hold → approval/rejection, edit approval behavior, cancellation, recurring occurrence horizon, valid check-in/no-show handling.
 - Confirm reports/audit/access controls and actual mailbox delivery; do not infer all this from HTTP 200 alone.
 - Keep test meetings distinguishable and cancel eligible test bookings through the UI after verification.

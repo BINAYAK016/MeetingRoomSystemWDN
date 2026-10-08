@@ -441,8 +441,16 @@ class ApprovalMigrationTests(TransactionTestCase):
     migrate_from = [("booking", "0007_notification_leases_worker_heartbeat")]
     migrate_to = [("booking", "0008_booking_approval")]
 
+    def setUp(self):
+        super().setUp()
+        executor = MigrationExecutor(connection)
+        self.latest_schema = executor.loader.graph.leaf_nodes()
+        self.addCleanup(self.restore_latest_schema)
+
+    def restore_latest_schema(self):
+        MigrationExecutor(connection).migrate(self.latest_schema)
+
     def test_existing_confirmed_booking_and_notification_are_preserved(self):
-        self.addCleanup(lambda: MigrationExecutor(connection).migrate(self.migrate_to))
         executor = MigrationExecutor(connection)
         executor.migrate(self.migrate_from)
         old = executor.loader.project_state(self.migrate_from).apps
@@ -504,8 +512,8 @@ class ApprovalMigrationTests(TransactionTestCase):
             )
 
     def test_rollback_releases_unapproved_requests_and_supersedes_new_event_jobs(self):
-        self.addCleanup(lambda: MigrationExecutor(connection).migrate(self.migrate_to))
         executor = MigrationExecutor(connection)
+        executor.migrate(self.migrate_to)
         current = executor.loader.project_state(self.migrate_to).apps
         users = current.get_model("booking", "User")
         reservations = current.get_model("booking", "Reservation")
@@ -558,6 +566,8 @@ class ApprovalMigrationTests(TransactionTestCase):
             body="Approved meeting",
             next_attempt_at=NOW,
         )
+        # The earlier rollback changed the recorder; reload the executor's cached applied-migration set.
+        executor = MigrationExecutor(connection)
         executor.migrate(self.migrate_from)
         old = executor.loader.project_state(self.migrate_from).apps
         old_reservations = old.get_model("booking", "Reservation")
@@ -575,10 +585,14 @@ class ApprovalMigrationTests(TransactionTestCase):
         self.assertEqual(old_notifications.objects.get(pk=confirmation.pk).status, "pending")
         executor = MigrationExecutor(connection)
         executor.migrate(self.migrate_to)
+        current = executor.loader.project_state(self.migrate_to).apps
+        current_reservations = current.get_model("booking", "Reservation")
+        current_notifications = current.get_model("booking", "Notification")
+        self.assertEqual(current_reservations.objects.get(pk=booking_ids["approved"]).status, "approved")
+        self.assertEqual(current_reservations.objects.filter(status="cancelled").count(), 2)
         self.assertEqual(
-            Reservation.objects.get(pk=booking_ids["approved"]).status, Reservation.Status.APPROVED
-        )
-        self.assertEqual(Reservation.objects.filter(status=Reservation.Status.CANCELLED).count(), 2)
-        self.assertEqual(
-            Notification.objects.filter(event_type__in=["request", "rejection"], status="skipped").count(), 6
+            current_notifications.objects.filter(
+                event_type__in=["request", "rejection"], status="skipped"
+            ).count(),
+            6,
         )
