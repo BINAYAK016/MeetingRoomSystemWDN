@@ -8,6 +8,7 @@
   <meta name="application-name" content="Transgate Tech | Binayak Bhandari">
   <meta name="description" content="Company meeting room requests, approvals, availability and check-in.">
   <title>{% block title %}Meeting Rooms{% endblock %} · Transgate Tech | Binayak Bhandari</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'booking/transgate-symbol.svg' %}">
   <link rel="stylesheet" href="{% static 'booking/app.css' %}">
   <script src="{% static 'booking/app.js' %}" defer></script>
 </head>
@@ -16,7 +17,7 @@
   <header class="site-header">
     <div class="header-inner">
       <a class="brand" href="{% url 'home' %}" aria-label="Transgate meeting rooms home">
-        <img src="{% static 'booking/transgate-logo.png' %}" alt="Transgate" width="205" height="27">
+        <img src="{% static 'booking/transgate-logo.svg' %}" alt="Transgate" width="205" height="20">
         <span class="brand-divider" aria-hidden="true"></span>
         <span class="brand-product">Meeting Rooms<br><small>Transgate Tech | Binayak Bhandari</small></span>
       </a>

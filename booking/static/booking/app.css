@@ -103,7 +103,8 @@ button { cursor: pointer; }
 .auth-aside > p:not(.eyebrow) { position: relative; z-index: 1; color: #c7dae8; font-size: 18px; max-width: 370px; }
 .auth-aside-foot { display: flex; align-items: center; gap: 11px; margin-top: auto; position: relative; z-index: 1; line-height: 1.1; font-weight: 700; }
 .auth-aside-foot small { display: block; color: #bbd0e0; font-weight: 400; font-size: 13px; margin-top: 5px; }
-.aside-monogram { display: grid; place-items: center; width: 36px; height: 36px; background: var(--red); color: white; clip-path: polygon(50% 0, 100% 32%, 100% 100%, 50% 78%, 0 100%, 0 32%); }
+.aside-logo { display: grid; place-items: center; flex: 0 0 auto; padding: 8px; border-radius: 7px; background: white; }
+.aside-logo img { display: block; width: 36px; height: auto; }
 .auth-form-panel { padding: 45px clamp(35px, 6vw, 90px); display: flex; flex-direction: column; }
 .back-link { color: #6d7b89; font-size: 15px; text-decoration: none; }
 .auth-form-content { width: min(100%, 455px); margin: auto 0; padding: 45px 0; }
@@ -150,7 +151,8 @@ button { cursor: pointer; }
 .hero-ring { position: absolute; border: 1px solid rgb(255 255 255 / 12%); border-radius: 50%; }
 .ring-one { width: 350px; height: 350px; right: -20px; top: -45px; }
 .ring-two { width: 490px; height: 490px; right: -90px; top: -110px; }
-.hero-mark { position: absolute; right: 105px; top: 36px; font-size: 160px; font-weight: 700; color: rgb(255 255 255 / 7%); }
+.hero-mark { position: absolute; right: 65px; top: 60px; padding: 22px; border-radius: 22px; background: white; box-shadow: 0 12px 36px rgb(0 0 0 / 10%); }
+.hero-mark img { display: block; width: 112px; height: auto; }
 .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 20px 0 27px; }
 .metric-card { position: relative; min-height: 165px; padding: 23px 26px; background: white; border: 1px solid var(--line); border-radius: 11px; box-shadow: 0 8px 24px rgb(27 54 78 / 3%); }
 .metric-icon { position: absolute; right: 22px; top: 22px; display: grid; place-items: center; width: 35px; height: 35px; border-radius: 8px; color: var(--navy); background: var(--soft-blue); font-size: 20px; }
@@ -237,7 +239,7 @@ button { cursor: pointer; }
   .page-heading { display: block; }
   .date-chip { display: inline-block; margin-top: 14px; }
   .dashboard-hero { padding: 33px 28px; min-height: 250px; }
-  .hero-decoration { opacity: .45; }
+  .hero-decoration { display: none; }
   .metric-grid { gap: 10px; }
   .metric-card { min-height: 130px; }
   .panel { padding: 22px 20px; }

@@ -1,4 +1,5 @@
 {% extends "booking/base.html" %}
+{% load static %}
 {% block title %}Overview{% endblock %}
 {% block content %}
 {% if request.user.is_authenticated %}
@@ -6,7 +7,7 @@
   <div class="page-heading"><div><p class="eyebrow">WDN WORKSPACE / OVERVIEW</p><h1>Your meeting room workspace</h1><p class="lead">A clear place to plan the conversations that matter.</p></div><span class="date-chip">{% now "l, j F Y" %}</span></div>
   <section class="dashboard-hero" aria-labelledby="dashboard-hero-title">
     <div class="hero-copy"><p class="hero-kicker"><span class="live-dot"></span> WDN WORKSPACE</p><h2 id="dashboard-hero-title">Make room for better work.</h2><p>See live availability, reserve a space, and manage your meetings.</p><div class="form-actions"><a class="button button-light" href="{% url 'booking-new' %}">Book a room →</a><a class="button button-quiet" href="{% url 'calendar' %}">View calendar</a></div></div>
-    <div class="hero-decoration" aria-hidden="true"><div class="hero-ring ring-one"></div><div class="hero-ring ring-two"></div><div class="hero-mark">T</div></div>
+    <div class="hero-decoration" aria-hidden="true"><div class="hero-ring ring-one"></div><div class="hero-ring ring-two"></div><div class="hero-mark"><img src="{% static 'booking/transgate-symbol.svg' %}" alt="" width="112" height="90"></div></div>
   </section>
   <section class="metric-grid" aria-label="Workspace summary">
     <div class="metric-card"><div class="metric-icon icon-room" aria-hidden="true">▦</div><p class="metric-label">Active rooms</p><p class="metric-value">{{ room_count }}</p><p class="metric-note">Currently configured</p></div>

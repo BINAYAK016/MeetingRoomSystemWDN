@@ -21,9 +21,9 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
     BaseDocTemplate,
     CondPageBreak,
+    Flowable,
     Frame,
     HRFlowable,
-    Image,
     PageBreak,
     PageTemplate,
     Paragraph,
@@ -451,6 +451,35 @@ def parse(source, chapter_number, title):
     return story
 
 
+class BrandWordmark(Flowable):
+    """Display the supplied wordmark, excluding its empty outer margins."""
+
+    def __init__(self, path, width):
+        super().__init__()
+        self.path = str(path)
+        self.width = width
+        self.height = width * 86 / 876
+        self.hAlign = "LEFT"
+
+    def draw(self):
+        # Same source viewport as transgate-logo.svg, with top-left PNG coords
+        # converted to the PDF canvas's bottom-left coordinates.
+        scale = self.width / 876
+        canvas = self.canv
+        canvas.saveState()
+        clip = canvas.beginPath()
+        clip.rect(0, 0, self.width, self.height)
+        canvas.clipPath(clip, stroke=0)
+        canvas.drawImage(
+            self.path,
+            -102 * scale,
+            -(1080 - 497 - 86) * scale,
+            width=1080 * scale,
+            height=1080 * scale,
+        )
+        canvas.restoreState()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=ROOT / "docs" / "MBS_Complete_Handbook.pdf")
@@ -460,13 +489,7 @@ def main():
     cover_style = ParagraphStyle("cover", fontName=BOLD, fontSize=35, leading=40, textColor=NAVY)
     sub_style = ParagraphStyle("cover_sub", fontName=SERIF, fontSize=17, leading=23, textColor=MUTED)
     logo_path = ROOT / "booking" / "static" / "booking" / "transgate-logo.png"
-    # Resolve intrinsic size before changing dimensions: lazy Image setup can
-    # otherwise reset drawWidth while imageHeight is first read.
-    logo = Image(str(logo_path))
-    logo_width, logo_height = logo.imageWidth, logo.imageHeight
-    logo.drawWidth = 85 * mm
-    logo.drawHeight = logo.drawWidth * logo_height / logo_width
-    logo.hAlign = "LEFT"
+    logo = BrandWordmark(logo_path, 85 * mm)
     story = [
         Spacer(1, 28 * mm),
         logo,
