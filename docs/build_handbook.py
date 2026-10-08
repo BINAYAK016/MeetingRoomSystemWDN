@@ -529,7 +529,7 @@ def main():
                 STYLES["body"],
             ),
             Paragraph(
-                "Documentation updated 8 October 2026. See Verification evidence for tested behavior and remaining deployment checks.",
+                "Documentation updated 8 October 2026, including per-room approval. See Verification evidence for tested behavior and remaining deployment checks.",
                 STYLES["small"],
             ),
             Paragraph("Transgate Tech | Binayak Bhandari", STYLES["body"]),

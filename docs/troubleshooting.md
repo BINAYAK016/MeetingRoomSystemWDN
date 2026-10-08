@@ -30,7 +30,7 @@ curl --silent --show-error --max-time 15 --write-out '\nHTTP %{http_code}\n' htt
 | 502/504 | Proxy could not complete upstream request | [Network](#4-network-dns-and-proxy) |
 | Branded 500/503 | Application failure or unavailable database | [Application errors](#10-application-errors-and-static-assets) |
 | Email missing after sign-in request | SMTP/relay/mailbox problem; generic success message alone proves no delivery | [Email](#7-email-sign-in-and-smtp) |
-| Booking still pending | Staff approval required | [Booking rules](#8-booking-availability-and-business-rules) |
+| Booking still pending | Review required when submitted, or saved Pending retained after policy changed | [Booking rules](#8-booking-availability-and-business-rules) |
 | Release/reminder late | Check worker, deadline, booking state and outbox | [Health](#3-health-and-worker-problems), [email](#7-email-sign-in-and-smtp) |
 
 A successful sign-in-page GET does not prove POST, SMTP, staff MFA or check-in works. Readiness does not prove inbox delivery.
@@ -353,7 +353,10 @@ Replace 123 with the diagnosed notification ID. Output is `requeued=N superseded
 | No approved meeting but room unavailable | Pending requests, closures, gap, holidays, activity or horizon. |
 | Recurring series fails entirely | All occurrences save atomically; inspect every date/conflict. |
 | Monthly recurrence gives one occurrence | Only dates within default 14-day horizon; later months booked manually. |
-| Approved becomes pending after edit | Employee resubmission; staff edits retain pending/approved state. |
+| Approved becomes pending after edit | Substantive employee edit in a room currently requiring approval; selected room's current setting applies. Staff edits of Approved retain approval. |
+| Unchecked room still has Pending requests | A toggle never rewrites bookings. Existing Pending needs explicit staff review or a substantive valid edit in the unchecked room; an unchanged save preserves Pending. |
+| Checkbox does not save | Staff password/code session required; with JavaScript it submits on change, otherwise use that row's Save button. Reload and check audit. A 403 requires CSRF investigation; do not disable CSRF. |
+| Unchecked room booking confirmed but no email | Approved is a saved booking state, not proof of delivery. Inspect worker/outbox/relay as in section 7; the check-in deadline remains. |
 | Old approval screen fails | Reload; changed/expired/cancelled/rejected request cannot be revived. |
 | Date/time invalid | Future Nepal start, Mon-Fri hours, holidays, duration/increments/horizon; current policy may differ from defaults. |
 | Staff override still conflicts | Never bypasses overlap, room/organizer activity or capacity. Move/cancel through UI or select another slot. |
@@ -376,7 +379,7 @@ from django.db.models import Count
 from booking.models import BookingPolicy, Reservation, Room, CompanyHoliday
 fields = ('opens_at', 'closes_at', 'minimum_minutes', 'maximum_minutes', 'slot_minutes', 'gap_minutes', 'advance_days', 'check_in_minutes')
 print('policy=', BookingPolicy.objects.filter(pk=1).values(*fields).first())
-print('rooms=', list(Room.objects.values('is_active').annotate(total=Count('id'))))
+print('rooms=', list(Room.objects.values('is_active', 'requires_approval').annotate(total=Count('id')).order_by('is_active', 'requires_approval')))
 print('reservations=', list(Reservation.objects.values('kind', 'status').annotate(total=Count('id')).order_by('kind', 'status')))
 print('holiday_count=', CompanyHoliday.objects.count())
 PY
@@ -395,7 +398,7 @@ Inspect individual bookings/audit in Staff desk. Direct SQL status/time edits by
 | Photo request redirects to sign-in | Images require an authenticated session. Ordinary employee sessions cannot view inactive room photos. |
 | Room has no photo | Optional and valid; staff can add one under Staff desk → Rooms → Edit. |
 | Stored photo returns 404 after recovery | Database has only a filename; restore the matching photo archive, not only the dump. Missing files are not recreated from room records. |
-| New schema field/endpoint fails after upgrade | Apply committed 0009/0010 using the maintenance workflow, rerun `db_setup`, rebuild/recreate services; do not reseed rooms. |
+| New schema field/endpoint fails after upgrade | Apply committed 0009/0010/0011 using the maintenance workflow, rerun `db_setup`, rebuild/recreate services; do not reseed rooms. |
 
 Read-only storage diagnosis (no photo bytes or credentials printed):
 

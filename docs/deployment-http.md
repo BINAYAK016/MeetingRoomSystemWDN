@@ -128,16 +128,18 @@ docker compose -f compose.prod.http.yaml exec web python manage.py create_staff_
 
 Open the emailed password setup link, set a password, then visit **`http://mbs.wdn.com.np/staff/sign-in/`**. Staff sign-in requires the password plus an emailed code. Repeat the account command for each approved Front Desk/Administrator user. If email setup fails, fix the relay and rerun it for the same address; it does not create duplicate accounts.
 
-Add real rooms through **Staff desk → Rooms → Add room**, including an optional supported photo. No sample accounts or demo rooms are loaded. Review business hours, holidays, booking rules, and room capacities/facilities. Employee access supports `wdn.com.np` and `transgate.com.np`.
+Add real rooms through **Staff desk → Rooms → Add room**, including an optional supported photo. No sample accounts or demo rooms are loaded. Review business hours, holidays, booking rules, room capacities/facilities and each room's **Requires approval** setting (checked by default). Employee access supports `wdn.com.np` and `transgate.com.np`.
 
 ## 5. Verify from an office laptop
 
 Open **`http://mbs.wdn.com.np/`** using the HTTP prefix. Verify employee email sign-in and logout, staff password/code sign-in, room search, and the booking lifecycle:
 
-- Employee creates a pending request and the time slot is held.
+- In a checked Requires approval room, employee creates a Pending request and the time slot is held.
 - Staff approves the request; organizer receives the confirmation.
 - Staff rejects another request with a visible reason; the slot becomes available.
-- Employee edits an approved meeting; it returns to pending.
+- Employee substantively edits an Approved meeting in a checked room; it returns to Pending.
+- Uncheck another room in Staff desk → Rooms, verify the saved/audited setting, then submit a valid employee booking there; it starts Approved and queues confirmation/check-in immediately.
+- Toggle a room containing an existing Pending request: its status stays Pending, and an unchanged edit stays Pending. A substantive valid edit in an unchecked room becomes Approved.
 - Organizer cancels an eligible booking; the slot becomes available.
 - Simultaneous requests for the same slot produce one reservation and one availability error.
 - Check-in link works during the valid window; missed check-in releases the slot after the deadline.
@@ -157,20 +159,47 @@ COMPOSE_FILE=compose.prod.http.yaml sh deploy/backup.sh
 
 The script writes private custom-format database dumps to `deploy/backups/` and checks their archive listings. It does **not** include optional room photos. Web stores those in the named `room_media` volume at `/app/media`; back up/restore a matching photo archive using [Room photo backup and recovery](operations-runbook.md#room-photo-backup-and-recovery). Ordinary container recreation preserves the volume. Encrypt and copy backups to company-approved separate storage with retention; store `.env` separately in approved secret storage. Perform a restore drill into an isolated database rather than the live one. An archive listing alone does not prove restoration. The shared [backup and restore procedure](deployment.md#backup-and-restore) applies, substituting `compose.prod.http.yaml` for each Compose command.
 
-For an update, first take and verify the backup, then use a maintenance window:
+For an update, build the current branch before the outage, then stop writers and take a matching database/media recovery point while PostgreSQL remains running. Execute this from the installed repository; if its checked branch or clean-worktree gate fails, preserve the local changes and investigate before continuing. The subshell stops on any failure:
 
-```sh
+```bash
+(
+set -eu
+cd /opt/mbs/MeetingRoomSystemWDN
+mbs() { docker compose -f compose.prod.http.yaml "$@"; }
+
+test "$(git branch --show-current)" = "mbs-prod"
+if [ -n "$(git status --porcelain)" ]; then
+  echo "Local code changes found. Stop here and inspect git status --short."
+  exit 1
+fi
+
+git pull --ff-only origin mbs-prod
+mbs config --quiet
+mbs build web
+mbs up -d --wait --wait-timeout 90 db
+mbs run --rm --no-deps -T --entrypoint sh web -c 'test -w /app/media/rooms/photos'
+
+mbs stop proxy web worker
 COMPOSE_FILE=compose.prod.http.yaml sh deploy/backup.sh
-docker compose -f compose.prod.http.yaml stop proxy web worker
-git pull --ff-only
-docker compose -f compose.prod.http.yaml build --pull
-docker compose -f compose.prod.http.yaml run --rm migrate
-docker compose -f compose.prod.http.yaml run --rm db_setup
-docker compose -f compose.prod.http.yaml up -d --wait --wait-timeout 180 web worker proxy
-curl --fail --show-error http://mbs.wdn.com.np/healthz/
+umask 077
+mbs_media_backup="deploy/backups/room_media_$(date -u +%Y%m%dT%H%M%SZ).tar.gz"
+mbs run --rm --no-deps -T --entrypoint sh web -c 'tar -C /app/media -czf - .' > "$mbs_media_backup"
+tar -tzf "$mbs_media_backup" > /dev/null
+
+mbs run --rm --no-deps migrate
+mbs run --rm --no-deps db_setup
+mbs up -d --no-deps --force-recreate --wait --wait-timeout 180 web worker proxy
+mbs exec -T web python manage.py check
+mbs exec -T web python manage.py showmigrations booking
+mbs ps
+curl --fail --show-error --resolve mbs.wdn.com.np:80:192.168.50.222 http://mbs.wdn.com.np/healthz/
+git log -1 --oneline
+)
 ```
 
-Preserve `.env`, the database credentials, Django secret, PostgreSQL volume and `room_media` photo volume. For an installation with photos, stop writers and take the paired database/photo backup before updating. This release requires committed migrations `0009_mixed_meeting_type` and `0010_room_photo`; both preserve existing records, and no room reseeding is required. Verify both applied using `docker compose -f compose.prod.http.yaml exec web python manage.py showmigrations booking`. Migration 0008 preserves legacy confirmed meetings as approved; reversing it cancels pending/rejected records, so review rollback/restore separately. Stop web/worker writers before any migration.
+Keep the printed database dump, media archive and release commit together as one recovery point and copy them to approved separate storage. Archive listing validates structure, not a successful restore. If a command fails after services were stopped, leave the writers stopped, inspect the failure and use the recovery runbook before resuming; do not delete volumes or start old code against a newer schema.
+
+Preserve `.env`, the database credentials, Django secret, PostgreSQL volume and `room_media` photo volume. For an installation with photos, stop writers and take the paired database/photo backup before updating. This release requires committed migrations `0009_mixed_meeting_type`, `0010_room_photo` and `0011_room_requires_approval`; they preserve existing records, and no room reseeding is required. Migration 0011 checks Requires approval for existing rooms and does not change saved booking statuses. Verify all applied using `docker compose -f compose.prod.http.yaml exec web python manage.py showmigrations booking`. Migration 0008 preserves legacy confirmed meetings as approved; reversing it cancels pending/rejected records, so review rollback/restore separately. Stop web/worker writers before any migration.
 
 Stop containers while preserving the database:
 

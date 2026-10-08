@@ -135,7 +135,7 @@ General Bookings is latest meeting first; use filters for forthcoming work. Pagi
 3. Enter an override reason only if a justified rule exception is needed.
 4. Save and inspect the result.
 
-Staff edits to Approved retain Approved and queue change notices; staff edits to Pending keep Pending and require an explicit Approve action. An employee's substantive edit to Approved returns it to Pending and clears prior approval. An unchanged form save does not trigger a substantive status change.
+Staff edits to Approved retain Approved and queue change notices. A substantive staff edit to Pending keeps it Pending when the selected room requires approval; when the room is unchecked, it becomes Approved automatically and queues confirmation. An employee's substantive edit follows the selected room's current policy: checked means Pending with prior approval cleared, unchecked means Approved automatically. An unchanged form save retains the state, even if a Pending request's room was unchecked after submission.
 
 Editing one series occurrence does not alter its siblings or recurrence pattern. Availability/capacity/current policy apply; failure leaves the saved booking intact. Old check-in links and stale pending notifications are superseded when substantive changes are saved. Removed attendees/former organizer receive change notices on an approved change.
 
@@ -166,10 +166,10 @@ The worker normally reconciles every 30 seconds: Approved meetings missing the d
 3. For a justified policy exception, open **Staff booking options** and enter **Booking rule override reason**. Use custom/manual times for an exceptional schedule; preview and saving still enforce non-bypassable rules.
 4. In **Attendees**, enter **Book on behalf of an employee** at `@wdn.com.np` or `@transgate.com.np`. Blank uses your own account. An eligible email not already registered creates an employee account; an inactive organizer is rejected.
 5. Add email attendees/additional guests, check the headcount, and continue to **Review & confirm**. For recurrence, review every actual occurrence and its availability.
-6. Press **Create approved booking** once.
+6. Press **Confirm booking** once.
 7. Check Approved state and correct organizer; queued confirmation goes to that organizer/attendees/staff.
 
-A newly created staff booking is Approved without the employee Pending stage. It still needs check-in. New recurring staff bookings create Approved occurrences; existing Pending requests remain Pending until explicitly approved.
+A newly created staff booking is Approved without the employee Pending stage. It still needs check-in. New recurring staff bookings create Approved occurrences; existing Pending requests stay Pending after a room-policy toggle or unchanged save, but a substantive valid edit in an unchecked room can approve them automatically.
 
 ### Exception behavior
 
@@ -183,7 +183,7 @@ The following cannot be bypassed:
 - Conflicts with bookings, Pending holds, closures and buffers.
 - Recurring creation limits of 15 occurrences and at most 366 days.
 
-The configured post-meeting gap still applies. The calendar normally marks closed times as unavailable even for staff; an approved exception is entered through the booking form. Staff edit values, including original custom times and override reason, are prefilled; editing a Pending record does not approve it. Without JavaScript, the native form supports the same fields/validation, including staff organizer and override fields.
+The configured post-meeting gap still applies. The calendar normally marks closed times as unavailable even for staff; an approved exception is entered through the booking form. Staff edit values, including original custom times and override reason, are prefilled; a substantive edit to Pending confirms it only if the selected room is unchecked; a checked-room request still needs explicit approval. Without JavaScript, the native form supports the same fields/validation, including staff organizer and override fields.
 
 ### WDN third-floor senior-management priority
 
@@ -197,11 +197,27 @@ Priority is manual, with no automatic ranking/displacement. Review impacted meet
 4. Enter facility names separated by commas, semicolons or newlines, such as **Projector, Whiteboard, Video conferencing**.
 5. Optionally choose a real room **Photo**. Use a still JPEG, PNG or WebP no larger than 5 MiB and 12 million pixels; no photo is required.
 6. Select **Active** to offer it for bookings; clear Active to retire it.
-7. Save and check **Room saved**, the updated row and room image in the booking wizard when appropriate.
+7. Set **Requires approval**: checked means employee requests require staff review; unchecked means valid employee requests are immediately Approved. New rooms default to checked.
+8. Save and check **Room saved**, the updated row and room image in the booking wizard when appropriate.
 
 Example: name **Room 1**, location **Kantipat**, floor **3**, capacity **8**, instructions **Leave the room tidy and switch off the projector**. Use actual office data; example rooms are not automatically imported into production.
 
 Direct links: [staff room list](http://mbs.wdn.com.np/staff/rooms/) and [Add room](http://mbs.wdn.com.np/staff/rooms/new/). Room editing is on **Staff desk → Rooms → Edit**, not the employee Rooms page. It requires staff password/email-code sign-in.
+
+### Change approval directly from the room list
+
+1. Open **Staff desk → Rooms** in a verified staff session.
+2. Find the correct room by name/location/floor and change its **Requires approval** checkbox.
+3. With JavaScript, the row saves immediately when changed. Without JavaScript, press the **Save** button in that row.
+4. Verify the saved checkbox and **Room approval setting saved** message. The audit log records the old/new setting when it changes.
+5. Review existing Pending requests separately; use Approve/Reject, or make a substantive valid edit if appropriate.
+
+| Setting | New employee booking / substantive employee edit | Staff-created booking |
+| --- | --- | --- |
+| Checked | Pending; hold retained until review/expiry | Approved immediately |
+| Unchecked | Approved immediately; confirmation/check-in queued | Approved immediately |
+
+Changing this field does not rewrite existing Pending or Approved records. A Pending request remains Pending after an unchecked toggle or unchanged form save. A substantive valid edit to it in an unchecked room can confirm it automatically, whether made by its organizer or verified staff. Recurring creations follow the selected room's policy for each occurrence; no existing series is bulk-converted. The setting takes effect on subsequent saving without an application restart. Migration 0011 checks it for existing rooms to preserve their current review requirement.
 
 ### Replace or remove a room photo
 

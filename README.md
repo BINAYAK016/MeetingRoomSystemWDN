@@ -16,7 +16,7 @@ Start with the [documentation index](docs/index.md). Detailed guides cover all f
 - Three-step booking flow: Schedule & details → Attendees → Review & confirm, with real room availability for every selected recurring occurrence. Native form fallback keeps booking usable without JavaScript.
 - Internal, External and Internal + External meetings; guest company is required for external/mixed meetings.
 - Own bookings and profile; booking requests, modification, and cancellation.
-- Employee requests require staff approval. Pending requests reserve the slot; approval confirms the meeting, rejection records a reason and releases the slot.
+- Per-room approval: checked **Requires approval** rooms create Pending employee requests; unchecked rooms confirm them immediately. Pending requests reserve the slot; staff approval confirms the meeting, rejection records a reason and releases the slot.
 - Daily, weekly, and monthly recurrence within the two-week advance window. Later monthly dates are reserved manually.
 - Business hours, holidays, meeting duration, time slots, and room gap enforced on the server. PostgreSQL exclusion constraints prevent conflicting concurrent reservations, including room closures.
 - Request, approval, rejection, modification, cancellation, reminder, check-in, and no-show notifications for the organizer, attendees, and staff.
@@ -57,7 +57,7 @@ docker compose run --rm migrate
 docker compose up -d web worker
 ```
 
-Protect the dump; backup archives are Git-ignored. Preserve `.env`, its database password, Django secret, database volume and optional `room_media` volume. A database dump does not contain uploaded photos: back up/restore that volume alongside the matching database snapshot. Existing confirmed meetings become approved; future employee requests require review. Current upgrades apply `0009_mixed_meeting_type` and `0010_room_photo` after `0008`; they preserve existing rooms/bookings and do not seed rooms. See [photo backup/recovery](docs/operations-runbook.md#room-photo-backup-and-recovery) before updating an installation with uploads.
+Protect the dump; backup archives are Git-ignored. Preserve `.env`, its database password, Django secret, database volume and optional `room_media` volume. A database dump does not contain uploaded photos: back up/restore that volume alongside the matching database snapshot. Existing confirmed meetings become approved. Current upgrades apply `0009_mixed_meeting_type`, `0010_room_photo` and `0011_room_requires_approval` after `0008`; they preserve existing rooms/bookings and do not seed rooms. Migration 0011 sets Requires approval to checked for existing rooms, preserving their review requirement. See [photo backup/recovery](docs/operations-runbook.md#room-photo-backup-and-recovery) before updating an installation with uploads.
 
 Open <http://127.0.0.1:8000/>. Local `.env.example` explicitly selects `DJANGO_EMAIL_BACKEND=file`; messages are written to a Docker volume and appear in the development inbox at <http://127.0.0.1:8000/dev/mail/>. This local convenience does not verify mailbox ownership. It is unavailable in either production profile and must never be used for company rollout.
 
@@ -123,11 +123,11 @@ The [verification report](docs/verification-report.md) records the production-br
 
 ## Approval and booking lifecycle
 
-Employees submit **Pending** requests. Pending requests hold the room and time, including the configured gap. Front Desk or Administrators open **Pending requests**, review details, and approve or reject. Rejection requires a reason visible to the requester. Approval is enforced by the backend and requires a verified staff session.
+Staff select **Requires approval** per room in **Staff desk → Rooms** or the room add/edit form; it defaults to checked. Employee submissions for checked rooms start **Pending** and hold the room/time, including the configured gap. Front Desk or Administrators open **Pending requests**, review details, and approve or reject. Rejection requires a reason visible to the requester. Employee submissions for unchecked rooms start **Approved** immediately and queue confirmation/check-in instructions. Capacity, availability and booking rules apply to both paths. Manual approval requires a verified staff session.
 
 The wizard checks date/time/recurrence availability without creating a reservation and submits one server-validated request at the final step. A selected available card is not a hold; final saving rechecks room activity, capacity, schedule and conflicts.
 
-Staff-created bookings are **Approved** immediately. Editing an approved booking through an employee session returns it to **Pending**; staff edits to approved meetings retain approval; edits to pending requests keep them pending. Each recurring occurrence is reviewed separately. Owners and staff may cancel eligible bookings; cancelled and rejected records remain in history but release occupancy. Pending requests that have not been approved by the meeting start are cancelled automatically. Approval cannot revive rejected, cancelled, or expired records. Approved meetings proceed through **Checked in**, **Completed**, or **No show** after a missed check-in deadline.
+Staff-created bookings are **Approved** immediately. A substantive employee edit follows the selected room's current policy: checked means **Pending**; unchecked means **Approved**. Staff edits retain Approved; a substantive staff edit to Pending can confirm it automatically only when the selected room is unchecked. An unchanged save preserves the existing state. Toggling a room does not rewrite saved bookings, so existing Pending requests remain Pending until review or a substantive eligible edit. Each recurring occurrence follows its room's policy and is reviewed separately when Pending. Owners and staff may cancel eligible bookings; cancelled and rejected records remain in history but release occupancy. Pending requests that have not been approved by the meeting start are cancelled automatically. Approval cannot revive rejected, cancelled, or expired records. Approved meetings proceed through **Checked in**, **Completed**, or **No show** after a missed check-in deadline.
 
 ## Operations and limits
 

@@ -280,7 +280,7 @@ mbs ps
 curl --fail --show-error http://mbs.wdn.com.np/healthz/
 ```
 
-If room photos exist, take a paired database/photo backup from [Room photo backup and recovery](#room-photo-backup-and-recovery) before the update; the database-only command above does not include files. Current releases add `0009_mixed_meeting_type` and `0010_room_photo`; apply both before starting new web code, then reapply `db_setup`. They preserve existing records and do not import/reset room inventory. Web now mounts the named `room_media` volume, initialized for application UID/GID 1000.
+If room photos exist, take a paired database/photo backup from [Room photo backup and recovery](#room-photo-backup-and-recovery) before the update; the database-only command above does not include files. Current releases add `0009_mixed_meeting_type`, `0010_room_photo` and `0011_room_requires_approval`; apply the complete chain before starting new web code, then reapply `db_setup`. They preserve existing records and do not import/reset room inventory. Migration 0011 checks Requires approval for all existing rooms; room policy changes do not rewrite booking statuses. No additional environment variable or service is required. Web now mounts the named `room_media` volume, initialized for application UID/GID 1000.
 
 Record the previous commit, new commit, backup filenames, migration results, and acceptance checks. `git pull --ff-only` deliberately stops if local commits/history conflict; review instead of forcing Git history. Preserve `.env`, secret storage, and the PostgreSQL volume.
 
@@ -403,7 +403,7 @@ mbs exec web python manage.py showmigrations booking
 mbs exec web python manage.py migrate --plan
 ```
 
-All committed booking migrations, including `0008_booking_approval`, `0009_mixed_meeting_type` and `0010_room_photo`, should be marked applied on a deployed current release. If changes are needed, follow the maintenance workflow using `mbs run --rm migrate` and `mbs run --rm db_setup`.
+All committed booking migrations, including `0008_booking_approval`, `0009_mixed_meeting_type`, `0010_room_photo` and `0011_room_requires_approval`, should be marked applied on a deployed current release. If changes are needed, follow the maintenance workflow using `mbs run --rm migrate` and `mbs run --rm db_setup`.
 
 ### Runtime identity and privileges
 
@@ -851,8 +851,9 @@ If rollback is needed, stop every writer again and review which database has acc
 - All health checks return expected status; inspect safe startup/error logs.
 - Employee can request/confirm a login; staff can authenticate with password/code.
 - Room search/details/calendar work; the booking wizard previews every selected occurrence and preserves edit values. Staff can add/edit room photos under Staff desk → Rooms.
-- Existing inventory remains; migrations 0009/0010 are applied and named media volume is writable by UID 1000. Paired database/photo restore has been checked when photos exist.
-- Submit one approved test workflow: pending hold → approval/rejection, edit approval behavior, cancellation, recurring occurrence horizon, valid check-in/no-show handling.
+- Existing inventory remains; migrations 0009/0010/0011 are applied, existing rooms initially require approval and named media volume is writable by UID 1000. Paired database/photo restore has been checked when photos exist.
+- Submit a checked-room test workflow: Pending hold → approval/rejection, employee edit requiring review, cancellation, recurring occurrence horizon, valid check-in/no-show handling.
+- Verify an unchecked room creates Approved employee bookings, including recurrence; toggling the setting does not convert existing Pending/Approved records, and unchanged saves preserve their status. Verify current selected-room policy on substantive edits and an audited staff checkbox change.
 - Confirm reports/audit/access controls and actual mailbox delivery; do not infer all this from HTTP 200 alone.
 - Keep test meetings distinguishable and cancel eligible test bookings through the UI after verification.
 

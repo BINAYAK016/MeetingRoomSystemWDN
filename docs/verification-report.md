@@ -6,15 +6,15 @@
 
 Production work is on `mbs-prod`, created from clean `main` at `22caa31`. Earlier production review preserved the existing demo branch, running containers, database, SMTP settings and company accounts. The 8 October local upgrade is recorded separately below. The final commit IDs and remote push result are reported in the handover message. This report covers locally verified code and isolated deployment rehearsals. The owner has separately installed the company HTTP services; these local checks do not establish company-server acceptance.
 
-Inspection covered every URL pattern, templates/static assets, forms, identity and staff permissions, model relations/constraints/indexes, migrations, booking services, recurring occurrences, calendar, worker/outbox, reports/Excel, audit history, configuration, Docker/TLS/runtime database permissions, seed/bootstrap and backup tools. This application serves HTML forms plus readiness/liveness JSON; it has no public REST API.
+Inspection covered every URL pattern, templates/static assets, forms, identity and staff permissions, model relations/constraints/indexes, migrations, booking services, recurring occurrences, calendar, worker/outbox, reports/Excel, audit history, configuration, Docker/TLS/runtime database permissions, seed/bootstrap and backup tools. This application serves HTML forms, authenticated read-only availability JSON and readiness/liveness JSON; it has no public REST API.
 
 ## Approval workflow
 
-- Employee creation produces **Pending**. Pending requests hold the complete occupied interval and gap through the PostgreSQL exclusion constraint.
+- Employee creation in a room with **Requires approval** checked produces **Pending**; an unchecked room produces **Approved** automatically. Pending requests hold the complete occupied interval and gap through the PostgreSQL exclusion constraint. New/previously configured rooms default to checked in migration 0011.
 - Verified staff review a dedicated queue and approve a future request or reject it with a required reason visible to its requester. Approval/rejection actors and timestamps are stored and audited.
-- Staff creation is approved. Employee substantive edits to approved meetings return them to pending and invalidate previous links/notifications. Unchanged edits preserve approval; staff edits retain the current pending/approved state.
+- Staff creation is Approved. Employee substantive edits follow the selected room's current setting: checked → Pending; unchecked → Approved automatically. Staff edits retain Approved; substantive edits to Pending in unchecked rooms can confirm automatically. Previous links/notifications are invalidated after substantive changes. Unchanged edits and room toggles preserve saved statuses.
 - Rejected/cancelled records release their slot and remain in history. Invalid transitions cannot revive them. Unapproved requests expire as cancelled at the meeting start; approved meetings use the existing check-in/completed/no-show lifecycle.
-- Recurrence remains atomic and finite inside the two-week horizon; each occurrence is reviewed separately. Front Desk handles room priority manually.
+- Recurrence remains atomic and finite inside the two-week horizon; each occurrence follows its room policy and is reviewed separately when Pending. Front Desk handles room priority manually.
 
 ## Reproduced failures and fixes
 
@@ -42,16 +42,16 @@ Migration `0008_booking_approval` atomically maps existing confirmed records to 
 
 | Gate | Latest result / earlier evidence |
 | --- | --- |
-| Full PostgreSQL suite | **244 passed in 40.439 seconds on 8 October 2026**; separate test DB created and removed. Earlier browser-CSRF baseline: 210 passed in 31.580 seconds; earlier HTTPS/HTTP support: 186/202 passed. |
-| Fresh migration chain | All Django migrations and booking **0001–0010** passed; existing local installation also upgraded through 0009/0010 without resetting data. |
+| Full PostgreSQL suite | **281 passed in 43.153 seconds on 8 October 2026**; separate test DB created and removed. Prior wizard/photo baseline: 244 passed in 40.439 seconds; earlier browser-CSRF baseline: 210 passed in 31.580 seconds; earlier HTTPS/HTTP support: 186/202 passed. |
+| Fresh migration chain | All Django migrations and booking **0001–0011** passed; the existing local installation upgraded through 0011 without resetting records or booking statuses. |
 | Forward/reverse migration tests | Legacy data, new guards, rollback mail and re-upgrade passed |
 | Concurrency/transactions | Conflicting pending creates/edits, buffer/closure conflicts, atomic recurrence, competing decisions, access changes, login/code and check-in races passed |
 | Email | Disabled/configured backend, failures/zero delivery, retry/lease, request/rejection/approval/cancellation, revision/reminder checks and local fake SMTP relay passed; no company mail sent |
-| Ruff lint/format | Full repository `ruff check .` passed; `ruff format --check .` passed for **75 Python files** on 8 October 2026. |
+| Ruff lint/format | Full repository `ruff check .` passed; `ruff format --check .` passed for **77 Python files** on 8 October 2026. |
 | Syntax/system checks | Current JavaScript syntax and Django system checks passed. Python compilation passed in the earlier recorded baseline. |
 | Migration drift | Current `makemigrations --check --dry-run` reported no changes. |
-| Docker build | Current build passed; **135 static files copied, 401 post-processing outputs**. |
-| Dependency audit | **8 October 2026:** pip-audit 2.10.1 completed full application-requirement resolution, including Pillow 12.3.0, with exit 0 and no known vulnerabilities found at audit time. |
+| Docker build | Current room-approval build and collectstatic passed. Prior wizard/photo build: **135 static files copied, 401 post-processing outputs**. |
+| Dependency audit | **Earlier 8 October 2026 wizard/photo release:** pip-audit 2.10.1 completed full application-requirement resolution, including Pillow 12.3.0, with exit 0 and no known vulnerabilities found at audit time. |
 | Earlier HTTPS production Django check | Exit 0; unsilenced W005/W021 for HSTS subdomains/preload, pending IT domain-wide policy |
 | Static type checker | Not configured; no formal type-check success is claimed |
 | GitHub Actions | CI workflow covers lint, migrations, tests, audit and build; hosted runner result is separate from this local report |
@@ -161,6 +161,8 @@ The optional documentation dependency is separate from application requirements.
 
 ## Booking wizard and room photos - 8 October 2026
 
+The following records the prior wizard/photo baseline, before the subsequent per-room approval release.
+
 This release changes application behavior as well as documentation: Schedule & details → Attendees → Review & confirm, real whole-series room availability, Internal + External meetings, and optional staff-managed room photos. Committed migrations `0009_mixed_meeting_type` and `0010_room_photo` preserve existing records. No room reseeding is part of the upgrade. A local database backup was taken before upgrading the existing laptop installation.
 
 ### Automated verification
@@ -189,3 +191,24 @@ The current local installation was backed up, rebuilt and migrated through 0009/
 The guides now cover all 45 configured routes, native-form fallback, real preview limitations, staff photo paths, media ownership/persistence, paired database/photo backups and migrations 0009/0010. Syntax checks of documented archive/extraction commands do not claim an executed photo restore. Actual staff photo upload is covered by integration tests; the browser review used existing rooms with no photo and does not claim a manual uploaded-photo walkthrough.
 
 Company-server deployment of this release, actual mailbox delivery, employee-device behavior, representative load and a paired database/photo restore drill still require IT's acceptance checks. The local QA data and evidence do not establish those outcomes. Rebuild/recreate and migrate the company installation through the documented maintenance procedure; preserve existing database and media volumes.
+
+
+## Per-room approval - 8 October 2026
+
+This release adds Requires approval to staff room rows/add/edit and exposes Staff approval required or Automatic approval in employee room/booking screens. Migration `0011_room_requires_approval` follows 0010, defaults all existing rooms to checked and leaves saved booking status/history intact. Employee creations and substantive edits use the selected locked room policy; staff creation remains Approved. No-op saves and policy toggles do not convert an existing Pending queue.
+
+### Automated verification
+
+- Final PostgreSQL run: **281 tests passed in 43.153 seconds**, including 23 added booking-policy tests and 14 added staff-management tests. Django system checks reported no issues. The first run exposed an unchecked default on a new room form; it was corrected and the full suite rerun successfully.
+- The complete migration chain through **0011** passed, including existing-data preservation. Tests exercise checked/unchecked creation and recurrence, selected-room edits, no-op retention, current policy under locks, normal validation/conflicts, confirmation/change mail, check-in link invalidation, approval metadata and audit. Staff tests cover verified access, CSRF, strict input, add/edit defaults, toggle persistence, retained booking states and audit.
+- Full repository `ruff check .` and `ruff format --check .` passed (**77 Python files**). Node syntax checks for both application/wizard scripts passed. The Docker image build and collectstatic passed. No new company-server or live-SMTP result is implied.
+
+### Actual browser checks
+
+An isolated QA instance used local file email. Staff completed password-plus-email-code sign-in, unchecked Room 4 directly in Staff desk → Rooms, and the automatic POST persisted with the saved message. An employee completed email-link sign-in, selected that room and pressed **Confirm booking**: the resulting booking was **Approved**, identified as automatically approved. The same employee substantively edited it into checked Room 2: it became **Pending approval** with the earlier approval actor cleared. The staff checkbox screen was captured for the handover. These were real browser workflows; additional service/security edge cases are covered by tests rather than claimed as manual walkthroughs.
+
+### Existing laptop upgrade and documentation
+
+The laptop database was backed up in validated custom format, migrated through 0011 and web/worker recreated. Health returned HTTP 200; both services were healthy. Pre/post inventory matched: **five rooms, two bookings and three users**. Booking 1 remained Cancelled and booking 2 remained Pending; all five existing rooms defaulted to Requires approval checked. Local file email remained unchanged. No production server was accessed and no company email was sent.
+
+Documentation now explains both room policies, checkbox auto-save/Save fallback, review queue retention, substantive/no-op edits, confirmation/check-in, recurrence, audit and migration 0011. The feature directory covers all **46 configured routes**. The HTTP update example builds before the outage, stops writers, takes paired database/media snapshots with database running, applies migrations/runtime grants, then recreates services. Documented command syntax/link checks validate examples; they do not claim the production update or photo restore has run.

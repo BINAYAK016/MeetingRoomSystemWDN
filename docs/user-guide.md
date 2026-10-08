@@ -12,7 +12,7 @@ This guide explains employee use of **http://mbs.wdn.com.np** on the office netw
 2. Enter company email, request the link, open it within 15 minutes and press **Continue to workspace**.
 3. Open **My profile** and set name/department.
 4. Find a room using **Rooms** and a time using **Calendar**.
-5. Submit **New booking**. Employee requests start **Pending approval**; wait for approval.
+5. Submit **New booking**. A room marked **Staff approval required** starts **Pending approval**; wait for staff. A room marked **Automatic approval** starts **Approved** immediately.
 6. At meeting start, open the organizer check-in link in the approved email and press **Check in now** before the deadline.
 7. Use **My bookings** for changes, cancellation, status and history.
 
@@ -120,9 +120,11 @@ The following is an illustrative request. Choose a **future company working date
 4. Enter meeting title and information, select **Internal**, set refreshments to Yes/No, and add special requirements. Keep Repeat meeting as **One meeting**.
 5. Select **Next: attendees**. Add colleague emails separated by commas or new lines. Duplicate addresses are normalized and removed; the organizer is already included. Enter `0` additional guests and check the displayed headcount fits the room.
 6. Continue to **Review & confirm**. Read the room, date/time, meeting details and attendee list. Use **Edit** or **Back** to correct them without restarting.
-7. Press **Submit booking request** once. Availability is checked again while saving.
-8. On success, the detail page shows **Pending approval** and that room/time are held.
-9. Wait for staff approval before treating the meeting as confirmed. Follow the status in **My bookings**.
+7. Press **Submit booking request** for a room requiring review, or **Confirm booking** for an automatically approved room, once. Availability and the current room policy are checked again while saving.
+8. On success, check the saved status. A room requiring approval shows **Pending approval** and holds the room/time; an unchecked room shows **Approved** immediately.
+9. If Pending, wait for staff approval before treating the meeting as confirmed. If Approved, read the confirmation/check-in instructions. Follow the status in **My bookings**.
+
+Room cards and the review screen show the room's approval requirement. Both reviewed and immediately confirmed bookings must satisfy the same capacity, availability and booking rules; staff creation uses its own verified staff path.
 
 The room preview does not reserve space. If the schedule changes, wait for its updated result; an intervening booking can still be rejected at final submission. Field/general errors preserve your entries so you can correct and retry. A photo is optional; a room without a photo can be booked normally.
 
@@ -175,7 +177,7 @@ Example: organizer + two listed colleagues + three unlisted guests = **six peopl
 4. Wait for availability: each room must fit every eligible occurrence, not just the first. A conflict on a later date also makes that room unavailable.
 5. Add attendees, then review the actual occurrence dates/times in **Review & confirm**. Daily skips appear in the resulting list; no hidden later months are reserved.
 6. Submit; the detail page opens the first created occurrence.
-7. Open **My bookings** to inspect all occurrences. Every employee occurrence starts Pending and requires its own approval/check-in.
+7. Open **My bookings** to inspect all occurrences. Each starts Pending if the selected room requires approval, otherwise Approved. Pending occurrences need individual review; every Approved occurrence has its own check-in.
 
 | Example | Expected behavior |
 | --- | --- |
@@ -204,7 +206,7 @@ Open **My bookings** and select the meeting title. The detail page shows room, d
 
 **Upcoming** lists active Pending/Approved/Checked in meetings whose end has not passed. **History** shows all your booking records, including future records in other states; it is not exclusively past meetings. You cannot open another organizer's private record, even if you know its ID or were invited.
 
-A request still Pending at meeting start is automatically cancelled because its approval window expired. Approval does not happen automatically.
+A request still Pending at meeting start is automatically cancelled because its approval window expired. Staff changing the room to **Automatic approval** does not automatically approve saved Pending requests. They remain Pending until staff review or a substantive valid edit; an unchanged save keeps their state.
 
 ## 9. Edit or cancel
 
@@ -215,7 +217,7 @@ A request still Pending at meeting start is automatically cancelled because its 
 3. Use the same three steps to adjust fields, review, and press **Save booking changes**. The original date/start/end, room and meeting information are prefilled; recurrence controls are omitted because this edits one occurrence.
 4. Check the resulting state and confirmation message.
 
-A substantive employee edit of Approved returns it to **Pending** for another review and invalidates earlier check-in links. An unchanged save retains the state. Current room capacity, availability and policy apply to edits. Started, Checked in, Completed, Rejected, Cancelled and No show records cannot be edited through normal workflow.
+A substantive employee edit uses the **selected room's current approval requirement**. Checked means **Pending** for staff review; unchecked means **Approved** immediately. This applies to a change of room as well as details, times or attendees, and invalidates earlier check-in links. An unchanged save retains the state, including an existing Pending request after staff unchecked its room. Current room capacity, availability and policy apply to edits. Started, Checked in, Completed, Rejected, Cancelled and No show records cannot be edited through normal workflow.
 
 ### Cancel
 

@@ -62,7 +62,7 @@ Staff permissions are checked against the active account and the session's verif
 | See another organizer's private booking detail | No | Yes |
 | See occupancy of another employee's slot | Yes, as unavailable | Yes, with a link to detail |
 | Read own meeting title, attendees, notes and decisions | Yes | Yes |
-| Submit own booking request | Yes, starts Pending | Yes, staff creation starts Approved |
+| Submit own booking request | Pending if selected room requires approval; otherwise Approved | Yes, staff creation starts Approved |
 | Book on behalf of another employee | No | Yes |
 | Edit/cancel another organizer's eligible booking | No | Yes |
 | Approve/reject requests | No | Yes |
@@ -126,6 +126,7 @@ These routes complement the page directory. Buttons/forms supply the required se
 | `/staff/bookings/{booking_id}/approve/` | POST | Verified staff approves future Pending |
 | `/staff/bookings/{booking_id}/reject/` | POST | Verified staff rejects Pending with reason |
 | `/staff/bookings/{booking_id}/check-in/` | POST | Verified staff manual check-in during window |
+| `/staff/rooms/{room_id}/approval/` | POST | Verified staff changes Requires approval; existing statuses retained |
 | `/staff/blocks/{block_id}/cancel/` | POST | Verified staff removes active closure |
 | `/staff/holidays/{holiday_id}/delete/` | POST | Verified staff deletes holiday entry |
 | `/staff/users/save/` | POST | Verified staff saves profile/access state |
@@ -149,7 +150,7 @@ The employee room directory supports:
 - Minimum seat count.
 - Exact location and facility filters selected from active room values.
 - Resetting filters and pagination, with **12 rooms per page**.
-- Room cards with name, location, floor, capacity and listed facilities; staff can supply an optional real photo used by the booking wizard.
+- Room cards with name, location, floor, capacity, facilities and **Staff approval required** or **Automatic approval**; staff can supply an optional real photo used by the booking wizard.
 - Detail pages with descriptions, instructions, equipment labels and **Book this room**.
 
 Facilities are descriptive free-text labels such as “Projector” or “Whiteboard”. They are not separate reservable inventory items. Minimum seats filters room capacity; it does not reserve seats or check attendee schedules. Only active rooms appear in employee search, detail and calendar views.
@@ -240,8 +241,8 @@ Attendee count, future time, active room/organizer and room conflict rules still
 
 | Status | How reached | Holds occupied interval? | Normal available next actions |
 | --- | --- | --- | --- |
-| Pending approval (`pending`) | Employee creation; substantive employee edit of Approved | Yes | Future edit; staff approve/reject; cancel; automatic expiry at start |
-| Approved (`approved`) | Staff approves Pending; staff creates booking | Yes | Future edit; cancel; organizer or manual staff check-in during window; automatic No show if missed |
+| Pending approval (`pending`) | Employee creation/substantive edit in a room requiring approval; existing Pending retained after room-policy toggle or unchanged save | Yes | Future edit; staff approve/reject; cancel; automatic expiry at start |
+| Approved (`approved`) | Staff approves Pending; staff creates; employee creates/substantively edits in an unchecked room; substantive staff edit of Pending in an unchecked room | Yes | Future edit; cancel; organizer or manual staff check-in during window; automatic No show if missed |
 | Rejected (`rejected`) | Staff rejects Pending with reason | No | Read history/reason; submit a separate new request |
 | Checked in (`checked_in`) | Valid email check-in or staff manual check-in | Yes | Cancel if necessary; automatic completion after end |
 | Completed (`completed`) | Worker reconciles a checked-in meeting after scheduled end | Yes, its historical occupied interval | View/report; no normal edit/cancel |
@@ -254,7 +255,9 @@ Completed meetings keep their historical interval to preserve conflict integrity
 
 ### Submission and review
 
-Employee submission creates Pending and queues a request message to the organizer and active staff. It does not issue approved invitations to attendees. The detail page shows “Waiting for administrator approval”. Staff review each future request in the Pending queue and approve it or reject it with an explanation of up to 500 characters.
+The selected room's **Requires approval** setting determines employee submission status. It defaults to checked: submission creates Pending, queues a request message to the organizer and active staff, and does not issue approved invitations to attendees. The detail page shows that review is required. Staff review each future Pending request and approve it or reject it with an explanation of up to 500 characters.
+
+For an unchecked room, a valid employee submission starts Approved immediately and queues normal confirmation to organizer/attendees/staff, including eligible organizer check-in instructions. No staff reviewer is invented: automatic approval records a timestamp with no approval actor. The current room setting is read under a transaction lock when saving; a preview does not override it. Capacity, conflicts, buffers, date/duration rules and ownership checks are identical for both policies.
 
 Approval records the staff actor and time, changes state to Approved and queues confirmation. The room and organizer must still be active; the meeting must not have started. Approval confirms the stored request; it does not re-run every changed holiday/policy/capacity value. If room details or rules changed after submission, staff should review the request manually.
 
@@ -262,9 +265,13 @@ Rejection records staff actor, time and reason, releases the interval and queues
 
 ### Modification
 
+A substantive change includes room, organizer, time/occupied buffer, meeting fields (for example title, department, purpose or refreshments), or the normalized attendee set. A new configured gap can change the saved occupied interval even when the visible meeting times stay the same.
+
 Only future Pending or Approved bookings may be edited. Ordinary employees edit their own bookings. Verified staff can edit any eligible booking, including changing organizer. Editing a recurring occurrence changes that occurrence only; recurrence fields are not offered on the edit form.
 
-A substantive employee change to Approved returns it to Pending, clears approval metadata, invalidates the former check-in link and queues an updated request. A form saved without substantive changes keeps its original status. Staff editing Approved keeps it Approved and queues changes. Staff editing Pending leaves it Pending; a separate Approve action is required.
+A substantive employee edit follows the **selected room's current policy**, even when moving to another room. Checked means Pending with approval metadata cleared and an updated request queued; unchecked means Approved with an automatic approval timestamp and no attributed reviewer. Old check-in links and obsolete queued mail are invalidated.
+
+A form saved without substantive changes keeps its original status, including a Pending request whose room was later unchecked. Staff editing Approved keeps it Approved and queues changes. A substantive staff edit to Pending in a checked room leaves it Pending for a separate Approve action; in an unchecked room it becomes Approved automatically. A Pending-to-Approved edit queues confirmation; an Approved-to-Approved edit queues change notices. Changing the room setting alone does not rewrite any booking or queue approval mail.
 
 Availability, capacity and applicable policy are checked for the proposed new state. Failed edits do not discard the existing booking. Revision numbers prevent outdated pending email from being sent as if it described the current booking. Change messages for approved bookings include previous attendees/organizer when those recipients were removed or changed.
 
@@ -313,7 +320,7 @@ Recipients are deduplicated by address. “Staff” below means every currently 
 | --- | --- | --- | --- | --- |
 | Employee request / updated Pending request | Yes | No | Yes | No |
 | Rejection | Yes, with reason | No | Yes | No |
-| Approval / staff creation confirmation | Yes | Yes | Yes | Organizer recipient only while valid |
+| Approval / automatic approval / staff creation confirmation | Yes | Yes | Yes | Organizer recipient only while valid |
 | Approved booking change | Yes | Yes, including former removed recipients | Yes | Organizer recipient only while valid |
 | Cancellation | Yes, with reason | Yes | Yes | No |
 | No show release | Yes | Yes | Yes | No |
@@ -341,11 +348,17 @@ Bookings filters by title/room/organizer search, status, room and inclusive star
 
 ### Rooms
 
-Staff add/edit room name, location, floor, positive capacity, description, instructions, facilities, optional real room photo and Active state. The combination of name/location/floor must be unique. Facilities accept comma, semicolon or newline separators, up to 50 names of at most 120 characters, deduplicated case-insensitively.
+Staff add/edit room name, location, floor, positive capacity, description, instructions, facilities, optional real room photo, Active state and **Requires approval**. The combination of name/location/floor must be unique. Facilities accept comma, semicolon or newline separators, up to 50 names of at most 120 characters, deduplicated case-insensitively.
 
 Photo upload accepts a still JPEG, PNG or WebP up to 5 MiB and 12 million pixels. The server generates a JPEG no larger than 1920 pixels on its longest edge, removes supplied metadata and gives it a generated filename. Existing rooms without photos remain valid. Edit can replace a photo or select Remove current photo; selecting both is rejected. Replacement/removal deletes the previous file only after the database change commits. Photo delivery requires authentication; ordinary employees cannot fetch inactive room photos, while verified staff can preview them. No public media directory is served.
 
 Deactivation removes the room from employee discovery/new selection and prevents approval while inactive. It preserves bookings/history; it does not automatically cancel meetings or prevent a previously approved meeting reaching its check-in flow. Reconcile affected meetings before deactivating. There is no hard-delete room action. Edit the same record or deactivate it when its history should remain associated.
+
+### Room approval policy
+
+**Staff desk → Rooms** contains a **Requires approval** checkbox for each active/inactive room. With JavaScript, changing it submits that row immediately; without JavaScript, select the desired state and press that row's **Save** button. The add/edit form provides the same field. Checked is the default for a new room and for every existing room upgraded through migration 0011.
+
+Checked rooms require staff review of employee creations/substantive edits; unchecked rooms confirm those valid requests immediately. Staff-created bookings remain Approved for either setting. A saved toggle takes effect for later writes without a process restart, and is audited as `room_approval_changed` with its old/new values. The staff-only POST validates CSRF/current verified access and locks the room. It changes no booking status: an existing Pending request still needs explicit review or a substantive eligible edit; an existing Approved meeting is not demoted. Use the Pending queue to resolve the backlog deliberately.
 
 ### Closures
 
@@ -355,7 +368,7 @@ Closures do not apply normal meeting horizon, working-day, office-hour, minimum/
 
 ### Rules and holidays
 
-Rules are one office-wide policy, not different rules per room/user. Editable fields are opening/closing times, minimum/maximum meeting minutes, slot increment, post-meeting gap, advance days and check-in minutes.
+Timing rules are one office-wide policy, not different limits per room/user. Editable fields are opening/closing times, minimum/maximum meeting minutes, slot increment, post-meeting gap, advance days and check-in minutes. The separate Requires approval checkbox is managed per room, not in Rules.
 
 The form enforces ordered office hours, ordered duration limits, duration limits as whole increments, office hours aligned to increments, minimum duration fitting within office hours, and check-in closing within the shortest permitted meeting. Numeric bounds are minimum/maximum duration 1–1440, increment 1–60, gap 0–120, advance 1–366 and check-in 1–1440, subject to those cross-field checks.
 
@@ -406,14 +419,14 @@ Examples assume an illustrative eight-seat room and default policy. Adjust dates
 | UC-03 | Staff first login | Access granted, setup email received | Set valid 12+ character password → staff password sign-in → newest eight-digit code → staff desk |
 | UC-04 | Staff uses employee login | Staff email, employee session | Employee functions available; management redirects to staff sign-in until MFA completed |
 | UC-05 | Find projector room for six | Signed-in employee | Rooms → seats 6 → Projector → instructions → calendar; no match means change filters/contact staff |
-| UC-06 | Reserve team meeting | Employee, room free | Future working Thursday, 10:00–11:00, Internal, “Team planning”, colleagues listed → Pending hold → review |
+| UC-06 | Reserve reviewed team meeting | Employee, free room with Requires approval checked | Future working Thursday, 10:00–11:00, Internal, “Team planning”, colleagues listed → Pending hold → review |
 | UC-07 | External or mixed client visit | Employee, adequate seats | External or Internal + External, “Example Partners”, three unlisted guests + two listed colleagues → six seats; missing company rejected |
 | UC-08 | Concurrent same-time requests | Concurrent signed-in users | One transaction holds interval; other create fails without duplicate; choose another time/room |
 | UC-09 | Approve request | Future Pending, active room/organizer | Pending queue → detail → Approve → Approved, actor/time and confirmation mail |
 | UC-10 | Reject request | Pending | Reason “Use larger room for visitor count” → Reject → Rejected, slot free, reason visible |
-| UC-11 | Edit Approved meeting | Organizer, future Approved | Change end 11:00 to 11:30 → validate → Pending again; old check-in link invalid |
+| UC-11 | Edit Approved meeting | Organizer, future Approved | Change end 11:00 to 11:30 → validate → Pending if selected room is checked, otherwise Approved; old check-in link invalid |
 | UC-12 | Staff edits Approved | Verified staff, future Approved | Change eligible fields → Approved retained → change mail includes removed recipients |
-| UC-13 | Daily stand-up | Employee, all slots free | Daily 09:00–09:30 for future week → skip closed dates → all Pending occurrences or none |
+| UC-13 | Daily stand-up | Employee, all slots free | Daily 09:00–09:30 for future week → skip closed dates → all Pending in checked room or Approved in unchecked room; any conflict rolls back the whole series |
 | UC-14 | Weekly holiday conflict | Employee | Weekly dates include holiday → whole normal series rejected; choose dates or ask staff about exception |
 | UC-15 | Monthly with 14-day limit | Employee | Until inside window → usually first only; later month manual; distant until rejected |
 | UC-16 | Cancel one recurrence | Organizer/staff, eligible state | Open occurrence → reason → Cancel; other occurrences unchanged |
@@ -429,6 +442,9 @@ Examples assume an illustrative eight-seat room and default policy. Adjust dates
 | UC-26 | Monthly usage review | Verified staff | Reports → range → counts/estimated utilization → Excel; percentages are not actual presence |
 | UC-27 | Investigate changed booking | Verified staff | Audit actor/action + detail + IT logs if needed; read-only history |
 | UC-28 | Email outage | Web/database operational | Saved state survives; queue waits/retries; IT checks mail/worker; deadline still applies |
+| UC-29 | Confirm without staff review | Employee, free room with Requires approval unchecked | Submit valid team meeting → Approved immediately → confirmation and organizer check-in; normal capacity/conflict rules still apply |
+| UC-30 | Change room approval requirement | Verified staff, room has existing Pending/Approved records | Rooms → change checkbox → saved/audited; saved bookings keep status; future submissions follow new policy |
+| UC-31 | Resubmit a retained Pending request | Organizer/staff, future Pending in now-unchecked room | Unchanged save stays Pending; substantive valid edit becomes Approved and queues confirmation |
 
 ## Implemented scope and limitations
 

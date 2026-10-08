@@ -53,13 +53,14 @@ These are initial defaults, not immutable promises. Staff can change policy thro
 | Gap after meeting | 15 minutes, counted once |
 | Advance horizon | 14 days, including recurring occurrences |
 | Recurrence | Daily/weekly/monthly; finite occurrences, no automatic future renewal |
-| Employee request | Pending; holds the slot until review or expiry |
+| Room Requires approval | Checked by default; staff can change each room |
+| Employee request | Checked room: Pending hold until review/expiry; unchecked room: Approved immediately |
 | Staff-created booking | Approved immediately |
 | Unreviewed request | Cancelled at meeting start when reconciliation runs |
 | Check-in | From start until before start + 15 minutes |
 | No check-in | No show; occupancy released, history preserved |
 
-Approved bookings edited in an employee session return to pending. Each recurring occurrence is reviewed separately and later edited/cancelled individually. Booking and closure conflicts share a PostgreSQL exclusion constraint. Staff overrides never allow simultaneous occupancy; WDN third-floor senior-management priority is handled manually.
+Substantive employee edits follow the selected room's current approval setting. Changing a room's setting alone, or saving a booking unchanged, preserves saved statuses; existing Pending requests are not bulk-approved. Recurring occurrences follow that room's policy at creation, are reviewed individually when Pending, and are later edited/cancelled individually. Booking and closure conflicts share a PostgreSQL exclusion constraint. Staff overrides never allow simultaneous occupancy; WDN third-floor senior-management priority is handled manually.
 
 ## Where to go in the application
 
