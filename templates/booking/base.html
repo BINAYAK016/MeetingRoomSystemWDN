@@ -11,6 +11,7 @@
   <link rel="icon" type="image/svg+xml" href="{% static 'booking/transgate-symbol.svg' %}">
   <link rel="stylesheet" href="{% static 'booking/app.css' %}">
   <script src="{% static 'booking/app.js' %}" defer></script>
+  {% block extra_head %}{% endblock %}
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>

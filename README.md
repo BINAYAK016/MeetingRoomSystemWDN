@@ -12,7 +12,7 @@ Start with the [documentation index](docs/index.md). Detailed guides cover all f
 
 ## Features
 
-- Room search, details, capacity/facilities, optional staff-managed real photos, and availability calendar.
+- Room search, details, capacity/facilities, optional staff-managed real photos, and a room-filtered Month/Week/Day calendar with private meeting cards, date navigation and available-start booking links.
 - Three-step booking flow: Schedule & details → Attendees → Review & confirm, with real room availability for every selected recurring occurrence. Native form fallback keeps booking usable without JavaScript.
 - Internal, External and Internal + External meetings; guest company is required for external/mixed meetings.
 - Own bookings and profile; booking requests, modification, and cancellation.

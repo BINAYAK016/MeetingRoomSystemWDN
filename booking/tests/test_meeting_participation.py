@@ -234,13 +234,13 @@ class MeetingParticipationTests(TestCase):
             self.assertIn(expected, response.context["page_query"])
 
     def test_attendees_have_calendar_detail_links_without_exposing_meetings_to_others(self):
-        response = self.client.get(reverse("calendar"), {"date": DAY.isoformat()})
+        response = self.client.get(reverse("calendar"), {"date": DAY.isoformat(), "view": "day"})
         cells = [cell for slot in response.context["slots"] for cell in slot["cells"] if cell["occupied"]]
         self.assertTrue(cells)
         self.assertTrue(all(cell["can_open"] and cell["attending"] and not cell["own"] for cell in cells))
         self.assertContains(response, reverse("booking-detail", args=[self.booking.pk]))
         self.client.force_login(self.outsider)
-        response = self.client.get(reverse("calendar"), {"date": DAY.isoformat()})
+        response = self.client.get(reverse("calendar"), {"date": DAY.isoformat(), "view": "day"})
         self.assertNotContains(response, reverse("booking-detail", args=[self.booking.pk]))
         self.assertNotContains(response, self.booking.description)
 

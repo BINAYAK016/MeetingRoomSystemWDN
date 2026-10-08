@@ -166,14 +166,15 @@ class ApprovalRouteTests(TestCase):
 
     def test_pending_calendar_reserves_time_without_exposing_private_details(self):
         self.client.force_login(self.other)
-        response = self.client.get(reverse("calendar"), {"date": self.day.isoformat()})
+        response = self.client.get(reverse("calendar"), {"date": self.day.isoformat(), "view": "day"})
         self.assertNotContains(response, self.booking.title)
         self.assertNotContains(response, self.employee.email)
         self.assertNotContains(response, "Private meeting notes")
         occupied = [cell for slot in response.context["slots"] for cell in slot["cells"] if cell["occupied"]]
         self.assertTrue(occupied)
         self.assertTrue(all(not cell["available"] and not cell["can_open"] for cell in occupied))
-        self.assertContains(response, "Pending, approved or buffer")
+        self.assertContains(response, "Awaiting approval")
+        self.assertContains(response, "Meeting buffer")
 
     def test_calendar_uses_same_room_snapshot_during_concurrent_activation(self):
         late_room = Room.objects.create(name="Recently activated", location="WDN", floor="4", capacity=12)
@@ -189,11 +190,11 @@ class ApprovalRouteTests(TestCase):
         with patch(
             "booking.booking_views.Reservation.objects.filter", side_effect=activate_before_booking_query
         ):
-            response = self.client.get(reverse("calendar"), {"date": self.day.isoformat()})
+            response = self.client.get(reverse("calendar"), {"date": self.day.isoformat(), "view": "day"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual([room.pk for room in response.context["rooms"]], [self.room.pk])
         self.assertNotContains(response, late_room.name)
-        refreshed = self.client.get(reverse("calendar"), {"date": self.day.isoformat()})
+        refreshed = self.client.get(reverse("calendar"), {"date": self.day.isoformat(), "view": "day"})
         self.assertContains(refreshed, late_room.name)
 
     def test_employee_edit_of_approved_booking_requires_new_review(self):

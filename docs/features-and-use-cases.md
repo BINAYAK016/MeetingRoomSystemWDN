@@ -58,7 +58,7 @@ Staff permissions are checked against the active account and the session's verif
 | --- | --- | --- |
 | Browse active rooms, facilities and instructions | Yes | Yes |
 | Day and week availability | Yes | Yes |
-| Month availability | No; a month request falls back to week | Yes |
+| Month availability | Yes; unrelated meeting details remain private | Yes |
 | See a meeting organized by someone else | Read-only when your email is listed as attendee; unrelated details denied | Yes |
 | See occupancy of another employee's slot | Yes, as unavailable | Yes, with a link to detail |
 | Read organized/invited meeting title, attendees, notes and decisions | Yes; invited meetings are read-only | Yes |
@@ -86,7 +86,7 @@ Paths below are relative to `http://mbs.wdn.com.np`. Numeric identifiers in `{br
 | `/profile/` | Update own first name, last name and department | Signed in |
 | `/rooms/` | Search/filter active room directory | Signed in |
 | `/rooms/{room_id}/` | Facilities, description and instructions | Signed in; active rooms |
-| `/calendar/` | Day/week availability; staff month view | Signed in |
+| `/calendar/` | Month/week/day calendar, room filter and available starts | Signed in |
 | `/bookings/new/` | Three-step meeting request or approved staff booking | Signed in |
 | `/bookings/availability/` | Read-only room availability for the full selected schedule/series | Signed in |
 | `/rooms/{room_id}/photo/` | Authenticated optional room photo | Signed in; active room, or verified staff for inactive room |
@@ -158,13 +158,15 @@ Facilities are descriptive free-text labels such as “Projector” or “Whiteb
 
 ### Calendar
 
-All booking times are **Nepal time (Asia/Kathmandu, NPT)**. The day view displays one column per active room and one row per configured booking increment. A free cell offers **Available +**, which preselects room/date/start time on the booking form. The wizard keeps those selections, proposes a duration/end time under the current policy, and lets the organizer adjust them and complete the remaining fields.
+All booking times are **Nepal time (Asia/Kathmandu, NPT)**. Calendar opens in **Month** view for every signed-in user. The workspace has a meeting-room filter, Month/Week/Day controls, previous/next navigation, Today, a date jump and New booking. Select **All meeting rooms** or a specific active room; navigation retains that selection. There is no secondary mini-calendar or room-overview sidebar.
 
-Calendar markings distinguish an available start, unavailable occupancy, the current user's organized/invited meeting, and dates/times outside normal rules. Pending holds, approved bookings, checked-in/completed occupied intervals, room closures and meeting buffers can all make a cell unavailable. Unrelated employees see generic occupancy. Organizers, current listed attendees and verified staff can open accessible meeting detail links; attendees retain read-only rights.
+Month is a Monday-to-Sunday calendar with surrounding dates to complete its weeks, a highlighted today, and meeting cards showing times and authorized titles. Select a date for Day view. A day initially shows up to three events; expand **more** for the remainder. Week shows seven day columns with meeting cards and Day links. Room labels are included when viewing all rooms. Pending requests, personal organized/invited meetings, other occupancy, closures, buffers and permitted short meetings have distinct labelled markings; short meetings require a compatible rule or staff exception and are not enabled by a calendar color.
 
-Week view shows counts by day and room, with links to day view. Staff also get a month view. Counts cover active reservation records, including closures; they are not a count of approved meetings only. Day view marks closed weekends, holidays, past times, dates outside the horizon, insufficient time before closing, and insufficient time for a minimum meeting plus buffer before another reservation.
+Unrelated employees see generic occupancy with no private title, booking ID, attendee or notes. Organizers, current listed attendees and verified staff can open authorized detail links; attendees retain read-only rights. Calendar permissions are identical across Month, Week and Day. Pending holds, approved bookings, checked-in/completed occupied intervals, room closures and buffers continue to block overlapping bookings. Calendar reads do not change reservation status.
 
-The calendar reflects the database when loaded. It is not a live push-updated feed or a guarantee that another person cannot reserve a slot. Availability is checked again when a form is saved. Reload after other users' changes. Dates more than 366 days from today fall back to today.
+Day displays one column per selected active room and one row per configured booking increment. **Available** opens the booking wizard with room/date/start preselected. The wizard keeps those selections, proposes an end time under the current policy, and validates every occurrence again when saving. Closed weekends, holidays, past times, dates outside the horizon, insufficient time before closing and insufficient minimum-meeting-plus-buffer space prevent normal available-start links. Month/Week date links can inspect historical or future occupancy without extending the booking horizon.
+
+The calendar reflects the database when loaded. Reload after other users' changes. Dates more than 366 days from today fall back to today. The room filter, view/navigation links, date jump and event expansion work without JavaScript. On a small screen, the wide month/day grid scrolls inside its labelled region and Week adapts to a readable agenda.
 
 ## Booking fields and validation
 

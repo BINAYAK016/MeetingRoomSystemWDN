@@ -14,6 +14,7 @@ from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from booking.calendar_presenter import build_calendar_context
 from booking.forms import BookingForm, BookingScheduleForm
 from booking.meeting_access import personal_meetings, with_meeting_membership
 from booking.models import ACTIVE_RESERVATION_STATUSES, BookingPolicy, CompanyHoliday, Reservation, Room, User
@@ -315,147 +316,8 @@ def room_detail(request, room_id):
 @require_GET
 def calendar_view(request):
     policy = BookingPolicy.objects.get(pk=1)
-    local_tz = ZoneInfo("Asia/Kathmandu")
-    now = timezone.now()
-    today = timezone.localtime(now, local_tz).date()
-    staff = _staff(request)
-    try:
-        selected = datetime.strptime(request.GET.get("date", ""), "%Y-%m-%d").date()
-    except ValueError:
-        selected = today
-    if abs((selected - today).days) > 366:
-        selected = today
-    view = request.GET.get("view", "day")
-    if view not in ("day", "week", "month"):
-        view = "day"
-    if view == "month" and not staff:
-        view = "week"
-    rooms = list(Room.objects.filter(is_active=True).order_by("location", "floor", "name"))
-    if view == "week":
-        first = selected - timedelta(days=selected.weekday())
-        days = [first + timedelta(days=i) for i in range(7)]
-    elif view == "month":
-        first = selected.replace(day=1)
-        days = [
-            first + timedelta(days=i) for i in range(35) if (first + timedelta(days=i)).month == first.month
-        ]
-    else:
-        days = [selected]
-    last = days[-1] + timedelta(days=1)
-    holidays = dict(
-        CompanyHoliday.objects.filter(date__gte=days[0], date__lt=last).values_list("date", "name")
-    )
-    bookings = list(
-        with_meeting_membership(
-            Reservation.objects.filter(
-                room_id__in=[room.pk for room in rooms],
-                occupied_from__lt=datetime.combine(last, datetime.min.time(), local_tz),
-                occupied_until__gt=datetime.combine(days[0], datetime.min.time(), local_tz),
-                status__in=ACTIVE_RESERVATION_STATUSES,
-            ),
-            request.user,
-        ).select_related("room")
-    )
-    by_room = {room.pk: [] for room in rooms}
-    daily_counts = {}
-    for item in bookings:
-        by_room[item.room_id].append(item)
-        key = (item.room_id, timezone.localtime(item.starts_at, local_tz).date())
-        daily_counts[key] = daily_counts.get(key, 0) + 1
-
-    def closed_reason(day):
-        if day.weekday() >= 5:
-            return "Office closed for the weekend"
-        if day in holidays:
-            return f"Company holiday: {holidays[day]}"
-        if day < today:
-            return "Past date"
-        if day > today + timedelta(days=policy.advance_days):
-            return f"Outside the {policy.advance_days}-day booking window"
-        return ""
-
-    if view == "day":
-        slots = []
-        cursor = datetime.combine(selected, policy.opens_at, local_tz)
-        end = datetime.combine(selected, policy.closes_at, local_tz)
-        date_reason = closed_reason(selected)
-        while cursor < end:
-            slot_end = cursor + timedelta(minutes=policy.slot_minutes)
-            cells = []
-            for room in rooms:
-                occupying = next(
-                    (
-                        item
-                        for item in by_room[room.pk]
-                        if item.occupied_from < slot_end and item.occupied_until > cursor
-                    ),
-                    None,
-                )
-                own = bool(occupying and occupying.organizer_id == request.user.pk)
-                attending = bool(occupying and occupying.is_attendee)
-                reason = date_reason
-                if not reason and cursor <= now:
-                    reason = "Start time has passed"
-                if not reason and cursor + timedelta(minutes=policy.minimum_minutes) > end:
-                    reason = "Not enough time before closing"
-                if not reason and not occupying:
-                    minimum_end = cursor + timedelta(minutes=policy.minimum_minutes + policy.gap_minutes)
-                    if any(
-                        item.occupied_from < minimum_end and item.occupied_until > cursor
-                        for item in by_room[room.pk]
-                    ):
-                        reason = "Not enough time for a meeting and buffer"
-                cells.append(
-                    {
-                        "room": room,
-                        "occupied": occupying,
-                        "own": own,
-                        "attending": attending,
-                        "can_open": bool(
-                            occupying
-                            and occupying.kind == Reservation.Kind.BOOKING
-                            and (own or attending or staff)
-                        ),
-                        "unavailable_reason": reason,
-                        "available": occupying is None and not reason,
-                    }
-                )
-            slots.append({"time": cursor, "cells": cells})
-            cursor = slot_end
-        return render(
-            request,
-            "booking/calendar.html",
-            {
-                "view": view,
-                "selected": selected,
-                "rooms": rooms,
-                "slots": slots,
-                "policy": policy,
-                "staff": staff,
-                "date_unavailable_reason": date_reason,
-            },
-        )
-    day_rows = []
-    for day in days:
-        day_rows.append(
-            {
-                "date": day,
-                "unavailable_reason": closed_reason(day),
-                "cells": [{"room": room, "count": daily_counts.get((room.pk, day), 0)} for room in rooms],
-            }
-        )
-    return render(
-        request,
-        "booking/calendar.html",
-        {
-            "view": view,
-            "selected": selected,
-            "rooms": rooms,
-            "day_rows": day_rows,
-            "policy": policy,
-            "staff": staff,
-        },
-    )
+    context = build_calendar_context(request, policy, staff=_staff(request))
+    return render(request, "booking/calendar.html", context)
 
 
 @login_required(login_url="sign-in")

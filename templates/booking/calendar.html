@@ -1,21 +1,75 @@
 {% extends "booking/base.html" %}
-{% block title %}Availability{% endblock %}
-{% block content %}<div class="page-container app-page">
-  <div class="page-heading"><div><p class="eyebrow">ROOM AVAILABILITY</p><h1>Calendar</h1><p class="lead">Nepal time · Meeting details are visible to organizers and verified staff.</p></div><a class="button button-primary" href="{% url 'booking-new' %}">New booking →</a></div>
-  <form method="get" class="filter-bar"><label>Date<input type="date" name="date" value="{{ selected|date:'Y-m-d' }}"></label><label>View<select name="view"><option value="day" {% if view == 'day' %}selected{% endif %}>Day</option><option value="week" {% if view == 'week' %}selected{% endif %}>Week</option>{% if staff %}<option value="month" {% if view == 'month' %}selected{% endif %}>Month</option>{% endif %}</select></label><button class="button button-primary">Show</button><a class="button button-quiet" href="{% url 'calendar' %}">Today</a></form>
-  <div class="panel calendar-panel">
-    {% if not rooms %}<div class="empty-state"><h2>No active rooms</h2><p>Contact Front Desk to add or reactivate a meeting room.</p></div>{% else %}
-    <div class="calendar-key"><span><i class="key-free"></i> Available start</span><span><i class="key-booked"></i> Pending, approved or buffer</span><span><i class="key-own"></i> Your meetings</span><span><i class="key-closed"></i> Outside booking rules</span></div>
-    {% if date_unavailable_reason %}<p class="notice">{{ date_unavailable_reason }}</p>{% endif %}
-    <p class="muted">Availability is checked again when you save. Meetings need {{ policy.minimum_minutes }}–{{ policy.maximum_minutes }} minutes and a {{ policy.gap_minutes }} minute buffer.</p>
-    <div class="table-scroll" tabindex="0" role="region" aria-label="Room availability table">
-    {% if view == 'day' %}<table class="calendar-table"><thead><tr><th scope="col">Time</th>{% for room in rooms %}<th scope="col">{{ room.name }}<small>{{ room.capacity }} seats</small></th>{% endfor %}</tr></thead><tbody>
-    {% for slot in slots %}<tr><th scope="row">{{ slot.time|date:'H:i' }}</th>{% for cell in slot.cells %}<td>
-      {% if cell.occupied %}{% if cell.can_open %}<a class="slot slot-own" href="{% url 'booking-detail' cell.occupied.pk %}">{% if cell.own %}Your meeting{% elif cell.attending %}Invited meeting{% else %}View booking{% endif %}</a>{% else %}<span class="slot slot-booked">Unavailable</span>{% endif %}
-      {% elif cell.available %}<a class="slot slot-free" href="{% url 'booking-new' %}?room={{ cell.room.pk }}&amp;date={{ selected|date:'Y-m-d' }}&amp;start={{ slot.time|date:'H:i' }}">Available +</a>
-      {% else %}<span class="slot slot-closed" title="{{ cell.unavailable_reason }}">{{ cell.unavailable_reason }}</span>{% endif %}
-    </td>{% endfor %}</tr>{% endfor %}</tbody></table>
-    {% else %}<table class="calendar-table"><thead><tr><th scope="col">Date</th>{% for room in rooms %}<th scope="col">{{ room.name }}</th>{% endfor %}</tr></thead><tbody>{% for row in day_rows %}<tr><th scope="row"><a href="?date={{ row.date|date:'Y-m-d' }}&amp;view=day">{{ row.date|date:'D, d M' }}</a>{% if row.unavailable_reason %}<small class="muted">{{ row.unavailable_reason }}</small>{% endif %}</th>{% for cell in row.cells %}<td><a href="?date={{ row.date|date:'Y-m-d' }}&amp;view=day">{{ cell.count }} booking{{ cell.count|pluralize }}</a></td>{% endfor %}</tr>{% endfor %}</tbody></table>{% endif %}
-    </div>{% endif %}
+{% load static %}
+{% block title %}Meeting calendar{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'booking/calendar.css' %}">{% endblock %}
+{% block workspace_nav %}{% endblock %}
+{% block content %}
+{% include 'booking/_booking_icons.html' %}
+<div class="booking-workspace calendar-workspace">
+  <aside class="booking-sidebar" aria-label="Workspace navigation">
+    <a href="{% url 'home' %}" class="booking-sidebar-title">Meeting workspace<span>Transgate Tech</span></a>
+    <nav class="booking-side-nav">
+      <a href="{% url 'booking-new' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-calendar"/></svg>Book a room</a>
+      <a href="{% url 'my-bookings' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-clock"/></svg>My meetings</a>
+      {% if staff %}<a href="{% url 'staff-bookings' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-users"/></svg>All bookings</a>{% endif %}
+      <a href="{% url 'calendar' %}" aria-current="page"><svg class="booking-icon" aria-hidden="true"><use href="#booking-calendar"/></svg>Calendar view</a>
+      <a href="{% url 'rooms' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-room"/></svg>Rooms</a>
+      {% if staff %}<a href="{% url 'staff-reports' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-report"/></svg>Reports</a><a href="{% url 'staff-policy' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-facility"/></svg>Booking rules</a><a href="{% url 'staff-dashboard' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-profile"/></svg>Staff desk</a>{% elif request.user.is_staff %}<a href="{% url 'staff-login' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-profile"/></svg>Staff sign-in</a>{% endif %}
+      <a href="{% url 'profile' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-profile"/></svg>My profile</a>
+    </nav>
+    <div class="booking-sidebar-note"><svg class="booking-icon" aria-hidden="true"><use href="#booking-info"/></svg><p>Book up to {{ policy.advance_days }} days ahead.<br>All times are in Nepal time.</p></div>
+  </aside>
+  <div class="calendar-main">
+    <header class="calendar-page-heading">
+      <div><p class="eyebrow">MEETING WORKSPACE</p><h1>Calendar</h1><p>Find a room, see what’s coming up, and plan your next meeting.</p></div>
+      <span class="calendar-timezone"><svg class="booking-icon" aria-hidden="true"><use href="#booking-clock"/></svg>Nepal time</span>
+    </header>
+    <div class="calendar-toolbar">
+      <form method="get" class="calendar-room-filter">
+        <label for="calendar-room">Select meeting room</label>
+        <input type="hidden" name="date" value="{{ selected|date:'Y-m-d' }}">
+        <input type="hidden" name="view" value="{{ view }}">
+        <div class="calendar-room-control"><select name="room" id="calendar-room"><option value="">All meeting rooms</option>{% for room in rooms %}<option value="{{ room.pk }}" {% if calendar.selected_room_id == room.pk|stringformat:'s' %}selected{% endif %}>{{ room.name }} · {{ room.location }}{% if room.floor %}, Floor {{ room.floor }}{% endif %}</option>{% endfor %}</select><button class="calendar-apply" type="submit">Apply</button></div>
+      </form>
+      <div class="calendar-view-control"><span class="calendar-control-label">View</span><nav class="calendar-view-switch" aria-label="Calendar view"><a href="{{ calendar.month_url }}" {% if view == 'month' %}aria-current="page"{% endif %}>Month</a><a href="{{ calendar.week_url }}" {% if view == 'week' %}aria-current="page"{% endif %}>Week</a><a href="{{ calendar.day_url }}" {% if view == 'day' %}aria-current="page"{% endif %}>Day</a></nav></div>
+      <nav class="calendar-date-navigation" aria-label="Calendar dates">{% if calendar.previous_url %}<a class="calendar-arrow" href="{{ calendar.previous_url }}" aria-label="Previous {{ view }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></a>{% else %}<button class="calendar-arrow" type="button" disabled aria-label="Previous {{ view }} unavailable"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg></button>{% endif %}{% if calendar.next_url %}<a class="calendar-arrow" href="{{ calendar.next_url }}" aria-label="Next {{ view }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg></a>{% else %}<button class="calendar-arrow" type="button" disabled aria-label="Next {{ view }} unavailable"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg></button>{% endif %}<a class="calendar-today" href="{{ calendar.today_url }}">Today</a></nav>
+      <a class="button button-primary calendar-new-booking" href="{{ calendar.new_booking_url }}"><span aria-hidden="true">＋</span>New booking</a>
+    </div>
+    <section class="calendar-surface" aria-labelledby="calendar-title">
+      <header class="calendar-surface-heading"><div><h2 id="calendar-title">{{ calendar.title }}</h2><p>{{ calendar.subtitle }}</p></div><form method="get" class="calendar-jump"><label for="calendar-date">Go to date</label><div><input type="date" id="calendar-date" name="date" value="{{ selected|date:'Y-m-d' }}"><input type="hidden" name="view" value="{{ view }}"><input type="hidden" name="room" value="{{ calendar.selected_room_id }}"><button type="submit">Go</button></div></form></header>
+      {% if not calendar_rooms %}
+        <div class="calendar-empty"><svg class="booking-icon" aria-hidden="true"><use href="#booking-room"/></svg><h3>No active meeting rooms</h3><p>Front Desk can add or reactivate a room to get your calendar started.</p>{% if staff %}<a class="button button-primary" href="{% url 'staff-room-new' %}">Add a room</a>{% endif %}</div>
+      {% elif view == 'month' %}
+        <p class="calendar-scroll-hint"><svg class="booking-icon" aria-hidden="true"><use href="#booking-arrow"/></svg>Swipe across to see the full week. Select a date for its room availability.</p>
+        <div class="calendar-month-scroll" tabindex="0" role="region" aria-label="Monthly meeting calendar, Monday to Sunday">
+          <table class="calendar-month-table"><thead><tr><th scope="col">Mon</th><th scope="col">Tue</th><th scope="col">Wed</th><th scope="col">Thu</th><th scope="col">Fri</th><th scope="col">Sat</th><th scope="col">Sun</th></tr></thead><tbody>
+            {% for week in calendar.month_weeks %}<tr>{% for day in week.days %}<td class="calendar-month-day{% if day.outside_month %} calendar-outside-month{% endif %}{% if day.is_today %} calendar-is-today{% endif %}{% if day.closed_reason %} calendar-closed-day{% endif %}">
+              <div class="calendar-day-heading"><a class="calendar-day-number" href="{{ day.day_url }}" aria-label="View {{ day.date|date:'l, j F Y' }}" {% if day.is_today %}aria-current="date"{% endif %}><time datetime="{{ day.date|date:'Y-m-d' }}">{{ day.date|date:'j' }}</time></a>{% if day.new_booking_url %}<a class="calendar-day-add" href="{{ day.new_booking_url }}" aria-label="Book a room on {{ day.date|date:'j F' }}" title="Book a room on {{ day.date|date:'j F' }}">＋</a>{% endif %}</div>
+              <div class="calendar-day-events">{% for event in day.visible_events %}{% include 'booking/calendar_event.html' with show_room=True %}{% endfor %}</div>
+              {% if day.extra_count %}<details class="calendar-more-events"><summary>{{ day.extra_count }} more<span class="calendar-visually-hidden"> meeting{{ day.extra_count|pluralize }} on {{ day.date|date:'j F' }}</span></summary><div class="calendar-day-events">{% for event in day.more_events %}{% include 'booking/calendar_event.html' with show_room=True %}{% endfor %}</div></details>{% endif %}
+              {% if day.closed_reason %}<p class="calendar-day-closed">{{ day.closed_reason }}</p>{% endif %}
+            </td>{% endfor %}</tr>{% endfor %}
+          </tbody></table>
+        </div>
+      {% elif view == 'week' %}
+        <div class="calendar-week-grid" aria-label="Weekly meeting calendar">
+          {% for day in calendar.week_days %}<section class="calendar-week-day{% if day.is_today %} calendar-is-today{% endif %}{% if day.closed_reason %} calendar-closed-day{% endif %}" aria-labelledby="week-date-{{ day.date|date:'Ymd' }}"><header class="calendar-week-heading"><a href="{{ day.day_url }}" id="week-date-{{ day.date|date:'Ymd' }}"><span>{{ day.date|date:'D' }}</span><time datetime="{{ day.date|date:'Y-m-d' }}">{{ day.date|date:'j' }}</time><small>{{ day.date|date:'M' }}</small></a></header><div class="calendar-week-events">{% for event in day.events %}{% include 'booking/calendar_event.html' with show_room=True %}{% empty %}{% if not day.closed_reason %}<p class="calendar-no-meetings">No meetings</p>{% endif %}{% endfor %}</div>{% if day.closed_reason %}<p class="calendar-day-closed">{{ day.closed_reason }}</p>{% endif %}<div class="calendar-week-footer"><a href="{{ day.day_url }}">View day <span aria-hidden="true">→</span></a>{% if day.new_booking_url %}<a href="{{ day.new_booking_url }}" class="calendar-week-add" aria-label="Book a room on {{ day.date|date:'j F' }}">＋</a>{% endif %}</div></section>{% endfor %}
+        </div>
+      {% else %}
+        {% if date_unavailable_reason %}<p class="calendar-day-notice"><svg class="booking-icon" aria-hidden="true"><use href="#booking-info"/></svg>{{ date_unavailable_reason }}</p>{% endif %}
+        {% if calendar.day_events %}<details class="calendar-day-agenda"><summary>Meetings and room closures for this day <span>{{ calendar.day_events|length }}</span></summary><div class="calendar-agenda-events">{% for event in calendar.day_events %}{% include 'booking/calendar_event.html' with show_room=True %}{% endfor %}</div></details>{% endif %}
+        <p class="calendar-day-instructions">Select an available start time to book. Meeting durations are {{ policy.minimum_minutes }}–{{ policy.maximum_minutes }} minutes, with a {{ policy.gap_minutes }} minute buffer.</p>
+        <div class="calendar-time-grid-scroll" tabindex="0" role="region" aria-label="Daily room availability in Nepal time"><table class="calendar-time-grid" style="min-width: max(460px, calc(70px + {{ calendar_rooms|length }} * 180px));"><thead><tr><th scope="col" class="calendar-time-column"><svg class="booking-icon" aria-hidden="true"><use href="#booking-clock"/></svg><span class="calendar-visually-hidden">Time</span></th>{% for room in calendar_rooms %}<th scope="col"><span>{{ room.name }}</span><small>{{ room.location }}{% if room.floor %} · Floor {{ room.floor }}{% endif %} · {{ room.capacity }} seats</small></th>{% endfor %}</tr></thead><tbody>
+          {% for slot in slots %}<tr><th scope="row" class="calendar-time-column"><time datetime="{{ slot.time|date:'c' }}">{{ slot.time|date:'H:i' }}</time></th>{% for cell in slot.cells %}<td{% if cell.occupied %} class="calendar-occupied-cell{% if not cell.show_event %} calendar-continuation-cell{% endif %}"{% endif %}>
+            {% if cell.occupied %}{% if cell.show_event %}{% include 'booking/calendar_event.html' with event=cell.occupied show_room=False %}{% else %}<span class="calendar-occupied-continuation {{ cell.occupied.css_class }}" aria-label="{{ cell.occupied.title }} continues"></span>{% endif %}
+            {% elif cell.available %}<a class="calendar-available-start" href="{{ cell.booking_url }}"><span aria-hidden="true">＋</span>Available<span class="calendar-visually-hidden"> in {{ cell.room.name }} at {{ slot.time|date:'H:i' }}</span></a>
+            {% else %}<span class="calendar-unavailable-slot" title="{{ cell.unavailable_reason }}"><span aria-hidden="true">—</span><span class="calendar-visually-hidden">{{ cell.unavailable_reason }}</span></span>{% endif %}
+          </td>{% endfor %}</tr>{% empty %}<tr><td colspan="{{ calendar_rooms|length|add:'1' }}"><p class="calendar-no-meetings">No booking hours have been configured for this date.</p></td></tr>{% endfor %}
+        </tbody></table></div>
+      {% endif %}
+    </section>
+    <section class="calendar-legend" aria-label="Calendar legend"><h2>Legend</h2><ul><li><span class="calendar-swatch calendar-event-own"></span>Your meeting</li><li><span class="calendar-swatch calendar-event-invited"></span>Invited meeting</li><li><span class="calendar-swatch calendar-event-other"></span>Other booking</li><li><span class="calendar-swatch calendar-event-pending"></span>Awaiting approval</li><li><span class="calendar-swatch calendar-available-swatch"></span>Available start</li><li><span class="calendar-swatch calendar-event-closed"></span>Room / office closed</li><li><span class="calendar-swatch calendar-event-buffer"></span>Meeting buffer</li><li><span class="calendar-swatch calendar-short-swatch"></span>Short meeting (&lt;30 min)</li></ul></section>
+    <p class="calendar-privacy-note"><svg class="booking-icon" aria-hidden="true"><use href="#booking-info"/></svg>Meeting details are visible to organizers, invited employees and verified staff. Availability is checked again when you save a booking.</p>
   </div>
-</div>{% endblock %}
+</div>
+{% endblock %}

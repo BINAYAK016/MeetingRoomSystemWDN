@@ -1,0 +1,6 @@
+{% if event.url %}<a href="{{ event.url }}" class="calendar-event {{ event.css_class }}" aria-label="{{ event.title }} · {{ event.time_label }} · {{ event.room_label }} · {{ event.status_label }}">{% else %}<div class="calendar-event {{ event.css_class }}">{% endif %}
+  <span class="calendar-event-time">{{ event.time_label }}{% if event.is_short %}<span class="calendar-short-mark" title="Meeting under 30 minutes" aria-label="Meeting under 30 minutes"></span>{% endif %}</span>
+  <span class="calendar-event-title">{{ event.title }}</span>
+  {% if show_room and not calendar.selected_room_id %}<span class="calendar-event-room">{{ event.room_label }}</span>{% endif %}
+  {% if event.relation_label or event.css_class == 'calendar-event-pending' %}<span class="calendar-event-meta">{% if event.relation_label %}{{ event.relation_label }}{% endif %}{% if event.css_class == 'calendar-event-pending' %}{% if event.relation_label %} · {% endif %}Awaiting approval{% endif %}</span>{% endif %}
+{% if event.url %}</a>{% else %}</div>{% endif %}

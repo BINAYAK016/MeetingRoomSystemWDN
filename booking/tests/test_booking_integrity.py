@@ -263,14 +263,14 @@ class BookingIntegrityTests(TestCase):
             (date(2026, 10, 2), "Past date"),
             (date(2026, 10, 20), "booking window"),
         ):
-            response = self.client.get(reverse("calendar"), {"date": day.isoformat()})
+            response = self.client.get(reverse("calendar"), {"date": day.isoformat(), "view": "day"})
             self.assertEqual(response.status_code, 200)
             self.assertIn(expected, response.context["date_unavailable_reason"])
             self.assertTrue(
                 all(not cell["available"] for slot in response.context["slots"] for cell in slot["cells"])
             )
         CompanyHoliday.objects.create(date=MEETING_DATE, name="Annual holiday")
-        response = self.client.get(reverse("calendar"), {"date": MEETING_DATE.isoformat()})
+        response = self.client.get(reverse("calendar"), {"date": MEETING_DATE.isoformat(), "view": "day"})
         self.assertIn("Annual holiday", response.context["date_unavailable_reason"])
 
     def test_calendar_preserves_buffer_and_staff_can_open_bookings(self):
@@ -280,9 +280,9 @@ class BookingIntegrityTests(TestCase):
         session["staff_verified"] = True
         session["staff_auth_version"] = self.staff.auth_version
         session.save()
-        response = self.client.get(reverse("calendar"), {"date": MEETING_DATE.isoformat()})
+        response = self.client.get(reverse("calendar"), {"date": MEETING_DATE.isoformat(), "view": "day"})
         slot = next(slot for slot in response.context["slots"] if slot["time"].time() == time(12))
-        self.assertEqual(slot["cells"][0]["occupied"].pk, item.pk)
+        self.assertEqual(slot["cells"][0]["occupied"]["url"], reverse("booking-detail", args=[item.pk]))
         self.assertFalse(slot["cells"][0]["available"])
         self.assertTrue(slot["cells"][0]["can_open"])
 

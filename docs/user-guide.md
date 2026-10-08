@@ -22,7 +22,7 @@ This guide explains employee use of **http://mbs.wdn.com.np** on the office netw
 | --- | --- |
 | [Overview](http://mbs.wdn.com.np/) | Room count, upcoming meetings, pending count and current booking window |
 | [Rooms](http://mbs.wdn.com.np/rooms/) | Search room, seat count, location and facilities; read instructions |
-| [Calendar](http://mbs.wdn.com.np/calendar/) | Day/week occupancy and available starts |
+| [Calendar](http://mbs.wdn.com.np/calendar/) | Month/week/day meetings, room filters and available starts |
 | [My meetings](http://mbs.wdn.com.np/bookings/mine/) | Upcoming or History for meetings you organize or attend; filter by role, status or search |
 | [New booking](http://mbs.wdn.com.np/bookings/new/) | Schedule & details → Attendees → Review & confirm for one meeting or recurring occurrences |
 | [My profile](http://mbs.wdn.com.np/profile/) | Your name and department |
@@ -79,21 +79,25 @@ Only active rooms are listed. A room's listed facility is a descriptive label; c
 
 ## 4. Read the calendar
 
-1. Open **Calendar**.
-2. Select a date and **Day** or **Week**, then press **Show**. **Today** resets the selected date.
-3. In day view, find the row/time and room column.
-4. **Available +** opens the booking wizard with room/date/start preselected. Check the proposed duration/end and adjust if needed.
-5. In week view, select a day to see its detailed slots.
+1. Open **Calendar**. It starts in **Month** view, with Monday-to-Sunday weeks and today's date highlighted.
+2. Choose **All meeting rooms** or one room under **Select meeting room**, then **Apply**.
+3. Use **Month**, **Week** or **Day**. The arrows move one selected period; **Today** returns to today. **Go to date** jumps to a particular date. These controls keep your selected room.
+4. Month shows meeting cards with times. A day with more than three events has an expandable **more** link. Select the date number to inspect Day availability. Week shows seven days of meetings and a **View day** link for each.
+5. In Day view, select an **Available** start in the desired room column. The booking wizard preselects room/date/start; check the proposed duration/end and adjust if needed. **New booking** opens the normal booking flow.
 
 | Calendar marking | Meaning |
 | --- | --- |
-| Available + | A permitted start for at least a minimum meeting and required buffer appears free at page load |
-| Your meeting | Occupied by a meeting you organize; select to open details |
-| Invited meeting | You are listed as an attendee; select for read-only details |
-| Unavailable | Another booking/request, closure or buffer occupies the interval; details remain private |
-| Outside rule / past / holiday explanation | This start cannot be booked normally; read the displayed reason |
+| Your meeting / Invited meeting | You organize or attend it; select the card for authorized details |
+| Awaiting approval | A Pending request already holds room time |
+| Other booking | Generic occupancy; private title/details are hidden from unrelated employees |
+| Available start | A permitted start for at least a minimum meeting and required buffer appears free at page load |
+| Room / office closed | Closure, weekend or configured company holiday |
+| Meeting buffer | Room time reserved around a meeting; not a free start |
+| Short meeting (<30 min) | A saved short meeting permitted by policy or staff exception |
 
-Calendar availability is checked again on submission. Another person may hold the slot after you load the page. Staff can see month view; employees use day/week. A signed-in employee listed as an attendee may open that meeting's details; unrelated employees see only occupancy without title, notes or attendee details. Invitation never grants editing, cancellation, approval or organizer check-in rights.
+All times use **Nepal time**. Month and Week can show dates beyond the booking horizon, but do not allow reservations outside the normal rules. Historical meetings remain visible when eligible. On a phone, swipe inside the Month or Day grid; Week adapts to day cards.
+
+Calendar availability is checked again on submission. Another person may hold the slot after you load the page. A signed-in employee listed as an attendee may open that meeting's details; unrelated employees see occupancy without title, notes, private booking ID or attendee details. Invitation never grants editing, cancellation, approval or organizer check-in rights. Refresh to see other users' changes.
 
 ## 5. Request a single internal meeting
 

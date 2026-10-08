@@ -151,7 +151,7 @@ Open **`http://mbs.wdn.com.np/`** using the HTTP prefix. Verify employee email s
 
 Check that company laptops can reach the office IP and resolve the domain. Do not expose port 80 to the public internet. Existing HTTPS rehearsal results in `verification-report.md` remain evidence for that profile; verify this actual server's DNS, mail, firewall, and restore procedure before rollout.
 
-The invited-meeting, attendee-suggestion and professional-email update introduces no additional database migration beyond 0011. Rebuild and recreate both web and worker to load the new UI/API/mail templates; preserve database, media, `.env` and existing settings. The normal maintenance procedure still runs committed migrations and reapplies runtime permissions.
+The calendar redesign, invited-meeting, attendee-suggestion and professional-email updates introduce no additional database migration beyond 0011. Rebuild and recreate both web and worker to load the new UI/API/mail templates; preserve database, media, `.env` and existing settings. The normal maintenance procedure still runs committed migrations and reapplies runtime permissions.
 
 ## Backups and updates
 

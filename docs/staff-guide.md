@@ -67,7 +67,7 @@ Ask another verified staff member to open **People**, find your active staff row
 1. Open **Overview** and check Pending requests, today's No shows and Failed emails.
 2. Open **Pending requests** and review meetings before their start times.
 3. Use **Bookings** to prepare for today's external guests, refreshments and equipment requests.
-4. Open **Calendar** for day/week or staff-only month occupancy.
+4. Open **Calendar** for Month/Week/Day occupancy, filter by room and follow meeting cards. Verified staff can open all booking details; employee month cards retain normal privacy.
 5. Monitor organizer check-in at meeting start; use Manual check-in only after confirming arrival and within the deadline.
 6. Investigate failed mail with IT; missing reminders can cause missed check-ins even while meetings remain saved.
 7. Review room closures and follow the company's manual senior-management priority process.
