@@ -1,1 +1,65 @@
-{% extends "booking/base.html" %}{% block title %}Holidays{% endblock %}{% block content %}<div class="page-container app-page"><p class="eyebrow">STAFF DESK</p><h1>Company holidays</h1><p class="lead">Bookings on these dates require a staff override.</p>{% include "booking/staff_nav.html" %}<form method="post" class="panel filter-bar">{% csrf_token %}<label>Date <input type="date" name="date" required></label><label>Name <input name="name" maxlength="160" required></label><button class="button button-primary">Add holiday</button></form><section class="panel"><div class="table-scroll"><table><thead><tr><th>Date</th><th>Holiday</th><th></th></tr></thead><tbody>{% for item in holidays %}<tr><td>{{ item.date|date:'d M Y' }}</td><td>{{ item.name }}</td><td><form method="post" action="{% url 'staff-holiday-delete' item.pk %}" data-confirm="Remove this company holiday?">{% csrf_token %}<button class="link-button">Remove</button></form></td></tr>{% empty %}<tr><td colspan="3">No holidays configured.</td></tr>{% endfor %}</tbody></table></div></section>{% include "booking/pagination.html" %}</div>{% endblock %}
+{% extends "booking/base.html" %}
+{% load static %}
+{% block title %}Company holidays{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'booking/holiday-import.css' %}">{% endblock %}
+{% block content %}
+<div class="page-container app-page holiday-page">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">STAFF DESK</p>
+      <h1>Company holidays</h1>
+      <p class="lead">Keep the calendar in step with your office holiday schedule.</p>
+    </div>
+    <a class="button button-primary" href="{% url 'staff-holiday-import' %}">Upload Excel <span aria-hidden="true">↑</span></a>
+  </div>
+  {% include "booking/staff_nav.html" %}
+
+  <section class="panel holiday-intro" aria-labelledby="holiday-upload-title">
+    <div class="holiday-intro-copy">
+      <span class="holiday-file-icon" aria-hidden="true">XLSX</span>
+      <div>
+        <h2 id="holiday-upload-title">Plan company holidays in one upload</h2>
+        <p>Use an Excel file with Date and Occasion columns. Review every change before saving it.</p>
+      </div>
+    </div>
+    <a class="button button-quiet button-small" href="{% url 'staff-holiday-template' %}">Download template <span aria-hidden="true">↓</span></a>
+  </section>
+
+  <section class="panel holiday-manual" aria-labelledby="holiday-add-title">
+    <h2 id="holiday-add-title">Add a single holiday</h2>
+    <form method="post" class="filter-bar holiday-manual-form">
+      {% csrf_token %}
+      <label for="holiday-date">Date <input type="date" id="holiday-date" name="date" required></label>
+      <label for="holiday-name">Occasion <input id="holiday-name" name="name" maxlength="160" placeholder="Holiday name" required></label>
+      <button class="button button-primary" type="submit">Add holiday +</button>
+    </form>
+    <p class="holiday-footnote">Holidays close normal employee bookings across all rooms. Existing meetings remain saved; staff can review them or use the existing booking override.</p>
+  </section>
+
+  <section class="panel holiday-list" aria-labelledby="holiday-list-title">
+    <div class="panel-head"><h2 id="holiday-list-title">Saved holidays</h2><span class="muted">Shown in the meeting calendar</span></div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th scope="col">Date</th><th scope="col">Occasion</th><th scope="col"><span class="holiday-screen-reader">Actions</span></th></tr></thead>
+        <tbody>
+          {% for item in holidays %}
+          <tr>
+            <td><time datetime="{{ item.date|date:'Y-m-d' }}">{{ item.date|date:'d M Y' }}</time></td>
+            <td>{{ item.name }}</td>
+            <td class="holiday-row-actions">
+              <form method="post" action="{% url 'staff-holiday-delete' item.pk %}" data-confirm="Remove this company holiday?">
+                {% csrf_token %}
+                <button class="link-button" type="submit" aria-label="Remove {{ item.name }} on {{ item.date|date:'d M Y' }}">Remove</button>
+              </form>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3" class="holiday-empty">No holidays configured. Add a date above or upload your company holiday schedule.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% include "booking/pagination.html" %}
+</div>
+{% endblock %}

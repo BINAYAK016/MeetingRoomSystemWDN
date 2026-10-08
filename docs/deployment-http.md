@@ -149,10 +149,13 @@ Open **`http://mbs.wdn.com.np/`** using the HTTP prefix. Verify employee email s
 - Reports, audit history, recurring dates, holiday rules, closures, and room deactivation work with real office data.
 - Optional staff-uploaded room photos display only while authenticated, survive recreation, and restore from the matching media archive.
 - Booking/profile/People department dropdowns contain the eight initial options and imported legacy names. Verified staff can add or deactivate an option through Departments; existing booking labels remain intact.
+- Holidays offers a Date/Occasion Excel template and upload preview. A valid reviewed import adds/updates dates, displays holiday names in Calendar and blocks normal employee booking. Invalid rows import nothing; existing meetings and omitted saved holidays remain intact.
 
 Check that company laptops can reach the office IP and resolve the domain. Do not expose port 80 to the public internet. Existing HTTPS rehearsal results in `verification-report.md` remain evidence for that profile; verify this actual server's DNS, mail, firewall, and restore procedure before rollout.
 
 The department update adds migration `0012_department` and requires the full update procedure below, including `migrate` and `db_setup` for the new catalog table/sequence. The earlier calendar redesign, invited-meeting, attendee-suggestion and professional-email updates added no migration beyond 0011. Rebuild and recreate both web and worker to load current code/templates; preserve database, media, `.env` and existing settings. No new environment variable is needed.
+
+The holiday Excel upload update adds no migration beyond `0012_department`, dependency, service or environment setting. Use the same maintenance procedure below to back up, pull `mbs-prod`, rebuild and recreate the application. Re-running the committed migration chain and `db_setup` also covers servers that have not yet installed the preceding department release. After updating, verified staff should check **Staff desk → Holidays → Upload Excel** and download the template. Use the company's approved holiday schedule for production imports; an uploaded file is only saved after its preview is confirmed.
 
 ## Backups and updates
 

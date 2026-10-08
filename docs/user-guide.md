@@ -99,6 +99,8 @@ Only active rooms are listed. A room's listed facility is a descriptive label; c
 
 All times use **Nepal time**. Month and Week can show dates beyond the booking horizon, but do not allow reservations outside the normal rules. Historical meetings remain visible when eligible. On a phone, swipe inside the Month or Day grid; Week adapts to day cards.
 
+Staff can upload the company's approved holiday schedule. Saved holiday names appear in the calendar and those dates close normal employee bookings across every room. Refresh the page after a schedule update. Adding a holiday does not cancel a meeting already saved on that date; contact Front Desk if your meeting needs to be moved. A staff member may approve a justified booking exception through the existing override process. Employees do not upload or change the holiday list.
+
 Calendar availability is checked again on submission. Another person may hold the slot after you load the page. A signed-in employee listed as an attendee may open that meeting's details; unrelated employees see occupancy without title, notes, private booking ID or attendee details. Invitation never grants editing, cancellation, approval or organizer check-in rights. Refresh to see other users' changes.
 
 ## 5. Request a single internal meeting

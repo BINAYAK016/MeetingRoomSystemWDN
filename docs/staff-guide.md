@@ -19,7 +19,7 @@ Related documents: [employee guide](user-guide.md), [features/use cases](feature
 | Departments | [Manage departments](http://mbs.wdn.com.np/staff/departments/) | Add, rename, activate or deactivate booking/profile options |
 | Closures | [Room closures](http://mbs.wdn.com.np/staff/blocks/) | Block/release unavailable periods |
 | Rules | [Booking rules](http://mbs.wdn.com.np/staff/policy/) | Office-wide booking/check-in policy |
-| Holidays | [Company holidays](http://mbs.wdn.com.np/staff/holidays/) | Non-bookable dates |
+| Holidays | [Company holidays](http://mbs.wdn.com.np/staff/holidays/) | Add dates manually or preview/confirm an Excel holiday schedule |
 | People | [People and access](http://mbs.wdn.com.np/staff/users/) | Profiles, active status, staff grants and setup email |
 | Reports | [Usage reports](http://mbs.wdn.com.np/staff/reports/) | Date-range reports and Excel export |
 | Audit log | [Action history](http://mbs.wdn.com.np/staff/audit/) | Read-only decisions and administration outcomes |
@@ -276,11 +276,32 @@ Changed rules apply to new/edited bookings. Existing occupied buffers remain the
 
 ## 9. Manage company holidays
 
-1. Open **Holidays**.
-2. Enter date and name, for example **Company holiday**.
-3. Save. An existing date updates that holiday's name rather than adding a duplicate.
-4. Review scheduled bookings on that date and handle them separately if needed.
-5. To remove an entry, use its **Remove** action; the removal is audited.
+### Upload an Excel holiday schedule
+
+1. Open **Staff desk → Holidays** and select **Download template**. The workbook has a **Holidays** sheet, with **Date** in A1 and **Occasion** in B1; enter your approved dates starting on row 2.
+2. Save as **`.xlsx`**. Use Gregorian/AD Excel date cells or text in **YYYY-MM-DD** format. Enter one date and a required holiday name (up to 160 characters) per row. Enter a separate row for each day of a multi-day holiday. Do not use duplicate dates, merged cells or formulas.
+3. Select **Upload Excel**, choose the file and press **Preview holidays**. Maximum upload size is **2 MiB** and the schedule may contain up to **1,000 holiday rows**. A header-only template is not a completed schedule.
+4. Correct any errors shown with Excel row numbers and upload again. No dates are imported while the file contains an error. The preview shows **New holiday**, **Update name** (with the previous name), or **No change**, plus existing meeting counts for each date.
+5. Review the warning if Pending, Approved or Checked in meetings overlap an uploaded holiday date in Nepal time. Open **Staff desk → Bookings** to inspect them. The import does not cancel, reschedule or notify those meetings. Select the acknowledgment that existing meetings remain saved and need staff review.
+6. Press **Confirm import**. New dates are added and changed names are updated together; unchanged dates stay unchanged. Holidays missing from the file are kept. Importing requires the same currently verified staff session and the saved preview; no upload field values alone can confirm it.
+7. Check the success counts and **Saved holidays**, then open **Calendar** at one imported date. Holiday names appear there and normal employee booking is closed across all rooms.
+
+The preview expires after **15 minutes** and is consumed once. Upload again if it expired or was already confirmed. If holiday data or affected meetings change before confirmation, the application refreshes the preview and asks you to review and confirm again. **Cancel** returns to Holidays without importing. The batch is recorded as `holiday_imported`, and added/renamed entries have `holiday_saved` audit records. Uploaded workbook bytes are not retained as a room photo or permanent document.
+
+Example rows below illustrate the format; they are not an approved office holiday schedule:
+
+| Date | Occasion |
+| --- | --- |
+| 2026-12-25 | Christmas |
+| 2027-01-01 | New Year |
+
+### Add or remove a single date
+
+1. Open **Holidays**, then **Add a single holiday**.
+2. Enter a Gregorian date and occasion name, for example **Company holiday**.
+3. Press **Add holiday**. An existing date updates that holiday's name rather than adding a duplicate.
+4. Review scheduled bookings on that date separately if needed.
+5. Use the saved entry's **Remove** action to delete that date; the removal is audited.
 
 Dates must be valid and name is required (up to 160 characters). Holiday entries are unique by date. Daily normal recurrence skips these dates; weekly/monthly series containing a holiday are rejected unless staff enters an exception. Existing meetings are not automatically cancelled. Removing a holiday does not open weekends, which remain closed independently.
 

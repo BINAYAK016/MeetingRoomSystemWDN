@@ -20,6 +20,7 @@ Start with the [documentation index](docs/index.md). Detailed guides cover all f
 - Per-room approval: checked **Requires approval** rooms create Pending employee requests; unchecked rooms confirm them immediately. Pending requests reserve the slot; staff approval confirms the meeting, rejection records a reason and releases the slot.
 - Daily, weekly, and monthly recurrence within the two-week advance window. Later monthly dates are reserved manually.
 - Business hours, holidays, meeting duration, time slots, and room gap enforced on the server. PostgreSQL exclusion constraints prevent conflicting concurrent reservations, including room closures.
+- Verified staff can upload a company holiday `.xlsx` schedule, review new/updated/unchanged dates and existing meeting counts, then confirm an atomic import. A downloadable Date/Occasion template is available under Holidays; omitted dates and saved meetings remain intact.
 - Request, approval, rejection, modification, cancellation, reminder, check-in, and no-show notifications for the organizer, attendees, and staff.
 - Branded HTML and plain-text emails for authentication and meeting events, with clear schedule/details and relevant action buttons. Organizer-only **Check in** opens a secure browser confirmation; check-in opens at start and the worker releases missed check-ins after 15 minutes.
 - **My meetings** includes organized and invited meetings with role/status/search filters and read-only attendee detail access. Attendee visibility also applies to dashboard/calendar; management remains organizer or verified staff only.
@@ -76,6 +77,8 @@ Open the staff setup link in the development inbox, set a password, and use `/st
 Stop containers and preserve data with `docker compose down`. Restart with `docker compose up -d web worker`. Database, optional room photos (`room_media`) and local email persist in named volumes. Never add `--volumes` to the stop command unless intentionally deleting the data.
 
 The department catalog requires migration `0012_department`. It creates the catalog, adds the eight initial options and imports existing nonblank profile/booking labels case-insensitively without rewriting their saved strings. Follow the normal maintenance procedure: back up, stop writers, apply committed migrations, reapply runtime permissions with `db_setup` in production, and recreate web/worker. Preserve database, media, `.env` and existing settings; no new environment variable is required. Earlier calendar, invited-meeting, attendee-suggestion and professional-email updates added no migration beyond 0011.
+
+The holiday Excel upload adds no migration beyond `0012_department`, dependency, service or environment variable. Rebuild and recreate the application using the [HTTP update procedure](docs/deployment-http.md#backups-and-updates). Staff sign in with password plus email code, then use **Holidays → Download template / Upload Excel → Preview holidays → Confirm import**. See the [staff holiday workflow](docs/staff-guide.md#9-manage-company-holidays) for format rules and conflict review.
 
 ## Environment and email
 

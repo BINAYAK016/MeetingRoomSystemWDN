@@ -1,6 +1,6 @@
 from django.urls import path
 
-from booking import booking_views, error_views, profile_views, staff_views, views
+from booking import booking_views, error_views, holiday_views, profile_views, staff_views, views
 from booking.health import liveness, readiness
 from booking.room_media import room_photo
 
@@ -61,6 +61,8 @@ urlpatterns = [
     path("staff/blocks/<int:block_id>/cancel/", staff_views.block_cancel, name="staff-block-cancel"),
     path("staff/policy/", staff_views.policy, name="staff-policy"),
     path("staff/holidays/", staff_views.holidays, name="staff-holidays"),
+    path("staff/holidays/import/", holiday_views.holiday_import, name="staff-holiday-import"),
+    path("staff/holidays/template.xlsx", holiday_views.holiday_template, name="staff-holiday-template"),
     path("staff/holidays/<int:holiday_id>/delete/", staff_views.holiday_delete, name="staff-holiday-delete"),
     path("staff/users/", staff_views.users, name="staff-users"),
     path("staff/users/save/", staff_views.user_save, name="staff-user-save"),

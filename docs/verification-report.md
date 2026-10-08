@@ -254,3 +254,23 @@ Booking, My profile and Staff desk People now use an active department catalog. 
 The full PostgreSQL-backed suite passed **375 tests in 50.761 seconds**. Coverage includes dropdown/prefill behavior, unknown/inactive rejection, legacy edit isolation, historical label preservation, staff authorization/second-factor/CSRF checks, audited catalog changes, database case-insensitive uniqueness and an actual migration from 0011 preserving all existing user/reservation fields. Ruff lint and formatting checks passed for 85 Python files; Django reported no pending model changes.
 
 The final Docker image was rebuilt, migration 0012 applied locally, and web/worker recreated with healthy checks. The normal local employee session displayed all eight requested department options in the booking form and selected Accounts. `/healthz/` returned database/worker ok with local file email. No company email was sent and no production server was accessed. Production must use the documented backup/migrate/`db_setup`/recreate procedure to install the new table and runtime grants.
+
+## Holiday Excel upload - 8 October 2026
+
+Verified staff can download a blank Excel template and upload an `.xlsx` workbook with a `Holidays` sheet and `Date`/`Occasion` columns. The upload previews new dates, changed names, unchanged entries and existing meetings before confirmation. Imported dates appear in the calendar and close normal employee bookings across all rooms. Dates omitted from the file remain saved; existing meetings require acknowledgment and retain their status, attendees and notifications.
+
+### Automated verification
+
+- The final PostgreSQL-backed suite passed **422 tests in 57.373 seconds**, including **47 new holiday import tests**. Django system checks reported no issues.
+- Parser coverage includes native Excel/ISO dates, required sheet/headers, duplicate and invalid rows, file/row/archive bounds, formulas, macro content, corrupt workbooks and unsafe XML declarations. Invalid uploads produce no partial writes.
+- Preview/confirmation tests cover current staff authorization and email second factor, CSRF, expiration, changed data requiring renewed review, old/non-ASCII tokens, replay, concurrent confirmation, acknowledgment, preserved bookings, transactional rollback and audit events. A concurrent booking regression verifies that room locks make a normal booking wait for the holiday import, then reject the newly closed date.
+- Calendar/availability regressions verify holiday closure while existing meetings remain visible. Choosing another file and cancelling clear the pending preview; cancellation does not require the meeting acknowledgment.
+- Repository Ruff lint and formatting checks passed for **89 Python files**. Migration drift reported no changes; **0012_department remains the latest migration**. No new dependency, environment variable or service is needed.
+
+### Actual browser checks
+
+An isolated QA database at localhost:8002 used synthetic records and local file email. Staff completed the normal password-plus-email-code sign-in. The sample workbook preview showed **one new holiday, one renamed holiday, one unchanged holiday and ten existing meetings**. Choosing another file returned to the upload form; uploading again, acknowledging the meetings and confirming produced the saved success message and all three expected dates. The calendar showed the imported holiday names, preserved the synthetic pending meeting on the holiday and omitted normal available-start links on those dates. Desktop preview and saved-result screenshots were captured outside the repository. This was a test-data walkthrough, not an office holiday import or company mailbox delivery test.
+
+### Local runtime and deployment
+
+The final Docker image was rebuilt and the ordinary laptop web/worker were recreated with healthy checks, preserving the local database, photos and file-email configuration. QA used a separate database volume; no production server was accessed and no company email was sent. The maintained guides document the template, limits, preview/confirmation, preserved meetings, audit and troubleshooting commands. Production still requires the documented pull/build/backup/migrate/`db_setup`/recreate procedure; this feature adds no migration beyond 0012.

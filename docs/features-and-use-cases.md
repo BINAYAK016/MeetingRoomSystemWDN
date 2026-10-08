@@ -110,6 +110,8 @@ Paths below are relative to `http://mbs.wdn.com.np`. Numeric identifiers in `{br
 | `/staff/blocks/new/` | Reserve an unavailable period | Verified staff |
 | `/staff/policy/` | Configure booking rules | Verified staff |
 | `/staff/holidays/` | Add/update/delete company holidays | Verified staff |
+| `/staff/holidays/import/` | Upload Excel, preview changes and confirm holiday import | Verified staff |
+| `/staff/holidays/template.xlsx` | Download a header-only Holidays workbook | Verified staff |
 | `/staff/users/` | Employee directory, profile fields and access controls | Verified staff |
 | `/staff/reports/` | Date-range usage reports | Verified staff |
 | `/staff/reports.xlsx` | Download selected report as Excel | Verified staff |
@@ -133,6 +135,7 @@ These routes complement the page directory. Buttons/forms supply the required se
 | `/staff/rooms/{room_id}/approval/` | POST | Verified staff changes Requires approval; existing statuses retained |
 | `/staff/blocks/{block_id}/cancel/` | POST | Verified staff removes active closure |
 | `/staff/holidays/{holiday_id}/delete/` | POST | Verified staff deletes holiday entry |
+| `/staff/holidays/import/` | POST | Preview uploaded workbook or confirm the stored, reviewed batch |
 | `/staff/users/save/` | POST | Verified staff saves profile/access state |
 | `/staff/users/{user_id}/setup/` | POST | Verified staff sends active staff setup/reset mail |
 | `/sign-in/link/{private_token}/` | GET | Stage email token and redirect to confirmation; does not consume it |
@@ -396,6 +399,12 @@ Changes apply to subsequent validation. Existing occupied buffers are stored wit
 
 Holidays use a unique date and a name (up to 160 characters). Saving an existing date updates its name. Remove deletes that entry and records an audit event. Weekends remain closed independently of holidays.
 
+**Excel holiday upload** is available under Staff desk → Holidays with a header-only downloadable template. It accepts `.xlsx` workbooks up to **2 MiB**, with up to **1,000 holiday rows** in a sheet named **Holidays**. The first two headers are **Date** and **Occasion**. Dates are Gregorian/AD Excel date cells or exact `YYYY-MM-DD` text, and occasion is required text up to 160 characters. Duplicate dates, invalid dates/names, merged cells and formulas are rejected with actionable workbook or source-row errors. A file with any error imports nothing; a header-only file must be completed first.
+
+The staff preview labels dates as new, name update (with previous name), or unchanged and shows affected Pending/Approved/Checked in meeting counts in Nepal time. A warning requires acknowledgment when such meetings exist. Confirmation adds/updates the entire batch atomically, keeps holiday dates omitted from the file, and leaves every saved booking/status intact. Imported holidays immediately appear in the calendar and enforce normal non-working-day rules. Staff review meeting conflicts separately using Bookings and the existing override process; the upload sends no meeting cancellation notifications.
+
+Previews are tied to the active verified staff session and account authentication version, expire after **15 minutes** and are consumed once. Expired or reused previews require another upload. A changed holiday list or affected meeting set refreshes the preview and requires review/confirmation again. The import is audited as `holiday_imported`; individual added/updated holidays are `holiday_saved`. No new database migration beyond `0012_department` is required.
+
 ### Departments
 
 Booking and My profile offer a department dropdown. The initial catalog contains **Accounts, Administrative, Logistics, Sales, Oracle Support, Dell Support, Toshiba and ATM support**. Migration `0012_department` also imports existing nonblank user/booking labels, deduplicating names case-insensitively without rewriting their stored strings.
@@ -479,6 +488,9 @@ Examples assume an illustrative eight-seat room and default policy. Adjust dates
 | UC-35 | Choose a department | Signed-in employee | Booking/Profile → select Accounts or another active catalog option → save; department remains optional |
 | UC-36 | Add a department | Verified staff | Departments → Add department → required unique name and Active → Save; option appears in dropdowns immediately |
 | UC-37 | Retire or rename a department | Verified staff, saved bookings use the existing name | Departments → Edit → rename or clear Active → Save; existing profile/booking labels and report history remain intact |
+| UC-38 | Load company holiday schedule | Verified staff, approved Gregorian schedule | Holidays → template → fill Date/Occasion → Upload Excel → Preview → confirm; omitted saved dates remain |
+| UC-39 | Holiday upload contains a duplicate or bad date | Verified staff | Preview shows Excel row error → no import → correct file and upload again |
+| UC-40 | Imported holiday has existing meetings | Verified staff, Pending/Approved/Checked in records | Review counts/Bookings → acknowledge → Confirm import → holiday closes normal booking; saved meetings remain for staff review |
 
 ## Implemented scope and limitations
 

@@ -395,6 +395,41 @@ PY
 
 Inspect individual bookings/audit in Staff desk. Direct SQL status/time edits bypass locking, notifications, revisions and audit.
 
+### Holiday Excel upload
+
+Use **Staff desk → Holidays → Upload Excel** after completing staff password-plus-email-code sign-in. First download the template from Holidays; the empty template needs at least one holiday row before it can be imported. Validation/preview never changes the saved calendar.
+
+| Symptom | Check/action |
+| --- | --- |
+| Upload control is missing or import URL gives 404 | Confirm the latest `mbs-prod` image was rebuilt and web recreated. Use the staff Holidays page, not the employee calendar. |
+| Import redirects to Staff sign-in | Employee email-link sign-in does not grant verified staff powers. Complete password plus email code with an active staff account. |
+| Wrong workbook/sheet/headers | Save `.xlsx`, use a sheet named `Holidays`, and put `Date` in A1 and `Occasion` in B1. Old `.xls`, CSV and macro-enabled workbooks are not accepted. |
+| Date row is rejected | Use a Gregorian/AD Excel date cell or exact `YYYY-MM-DD` text. Numeric serials stored as ordinary numbers, BS dates, ambiguous `DD/MM/YYYY` strings and invalid calendar dates are not parsed. |
+| Duplicate date or missing/long occasion | Correct the identified source row. Use one row per date with required single-line occasion text of at most 160 characters. No rows import until all errors are fixed. |
+| Formulas or merged cells rejected | Use literal date/name values and unmerge cells. Copy into the downloaded template rather than renaming an unsupported workbook extension. |
+| File exceeds size/row limits | Keep the upload within 2 MiB and 1,000 holiday rows. Simplify unused worksheet content/formatting or split the company schedule into separate reviewed uploads. |
+| Confirm import asks for acknowledgment | Active saved meetings overlap uploaded holiday dates. Review them through Staff desk → Bookings, then acknowledge that they remain saved and require staff review. |
+| Preview expired or already used | Upload again and review the new preview. It lasts 15 minutes and can be confirmed once. Avoid submitting an older tab after previewing another file. |
+| Preview refreshed before confirmation | A holiday name/date or affected meeting changed. Review the fresh counts and names; confirm again only after checking them. |
+| Saved holidays missing from file are still listed | Intended: import adds dates and updates names, without deleting omitted saved dates. Use the holiday's Remove action for a deliberate deletion. |
+| Calendar still shows an existing meeting on a new holiday | Intended: no automatic cancellation/rescheduling. The holiday closes normal new bookings; staff reviews saved meetings separately. |
+| Calendar has not updated after successful import | Reload the date and check Saved holidays. Verify it is the intended Gregorian date/year. No process restart or email delivery is required for the saved holiday to take effect. |
+
+Read-only checks on the HTTP production server:
+
+```bash
+docker compose -f compose.prod.http.yaml exec -T web python manage.py shell <<'PY'
+from booking.models import AuditEvent, CompanyHoliday
+print('holiday_count=', CompanyHoliday.objects.count())
+print('saved_holidays=', list(CompanyHoliday.objects.order_by('date').values('date', 'name')[:100]))
+print('recent_imports=', list(AuditEvent.objects.filter(action='holiday_imported').order_by('-created_at').values('created_at', 'outcome', 'details')[:10]))
+PY
+
+docker compose -f compose.prod.http.yaml logs --since 15m --tail=100 --no-color web proxy
+```
+
+Holiday names and import counts are company information. Review diagnostic output before sharing it outside IT. Inspect **Staff desk → Audit log**, filtering action `holiday_imported`, for successful batch counts; `holiday_saved` records individual added/renamed dates. An ordinary rejected workbook is a page validation error, so no successful batch audit event is expected. Do not edit holiday or reservation rows with SQL to bypass review.
+
 ### Department dropdowns
 
 | Symptom | Check/action |

@@ -1,0 +1,139 @@
+{% extends "booking/base.html" %}
+{% load static %}
+{% block title %}Import company holidays{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'booking/holiday-import.css' %}">{% endblock %}
+{% block content %}
+<div class="page-container app-page holiday-page">
+  <div class="page-heading">
+    <div>
+      <p class="eyebrow">STAFF DESK</p>
+      <h1>Import company holidays</h1>
+      <p class="lead">Upload your schedule, check the dates, then confirm the changes.</p>
+    </div>
+    <a class="button button-quiet" href="{% url 'staff-holidays' %}">Back to holidays</a>
+  </div>
+  {% include "booking/staff_nav.html" %}
+
+  <ol class="holiday-steps" aria-label="Holiday import steps">
+    <li class="{% if preview %}holiday-step-complete{% else %}holiday-step-current{% endif %}" {% if not preview %}aria-current="step"{% endif %}><span aria-hidden="true">1</span>Upload Excel</li>
+    <li class="{% if preview %}holiday-step-current{% endif %}" {% if preview %}aria-current="step"{% endif %}><span aria-hidden="true">2</span>Review dates</li>
+    <li><span aria-hidden="true">3</span>Confirm import</li>
+  </ol>
+
+  {% if errors %}
+  <section class="holiday-notice holiday-notice-error" role="alert" aria-labelledby="holiday-errors-title">
+    <h2 id="holiday-errors-title">Review these issues before importing</h2>
+    <p>No holidays have been changed. Fix the issues below before continuing.</p>
+    <ul>{% for error in errors %}<li>{% if error.row_number %}<strong>Row {{ error.row_number }}:</strong> {% endif %}{{ error.message }}</li>{% endfor %}</ul>
+  </section>
+  {% endif %}
+
+  {% if preview %}
+  <section class="holiday-preview" aria-labelledby="holiday-preview-title">
+    <div class="holiday-section-heading">
+      <div><h2 id="holiday-preview-title">Review your holiday schedule</h2><p class="muted">These are the changes from your upload. Nothing is saved until you confirm.</p></div>
+      <form method="post" action="{% url 'staff-holiday-import' %}">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="discard">
+        <button class="link-button" type="submit">Choose another file</button>
+      </form>
+    </div>
+    <dl class="holiday-summary">
+      <div><dt>New holidays</dt><dd>{{ preview.summary.new }}</dd></div>
+      <div><dt>Names to update</dt><dd>{{ preview.summary.update }}</dd></div>
+      <div><dt>Already saved</dt><dd>{{ preview.summary.unchanged }}</dd></div>
+      <div class="{% if preview.summary.affected_bookings %}holiday-summary-warning{% endif %}"><dt>Existing meetings</dt><dd>{{ preview.summary.affected_bookings }}</dd></div>
+    </dl>
+
+    {% if preview.summary.affected_bookings %}
+    <section class="holiday-notice holiday-notice-warning" aria-labelledby="holiday-conflict-title">
+      <h3 id="holiday-conflict-title">{{ preview.summary.affected_bookings }} existing meeting{{ preview.summary.affected_bookings|pluralize }} on these dates</h3>
+      <p>The import keeps these meetings intact. Review them in <a href="{% url 'staff-bookings' %}">Staff desk → Bookings</a> and contact the organizers if changes are needed.</p>
+    </section>
+    {% endif %}
+
+    <div class="panel holiday-preview-table">
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Holiday import preview">
+        <table>
+          <thead><tr><th scope="col">Excel row</th><th scope="col">Date</th><th scope="col">Occasion</th><th scope="col">Change</th><th scope="col">Existing meetings</th></tr></thead>
+          <tbody>
+            {% for row in preview.rows %}
+            <tr>
+              <td class="holiday-source-row">{{ row.row_number }}</td>
+              <td><time datetime="{{ row.date }}">{{ row.date }}</time></td>
+              <td>{{ row.name }}{% if row.action == 'update' %}<span class="holiday-previous-name">Previously: {{ row.previous_name }}</span>{% endif %}</td>
+              <td>{% if row.action == 'new' %}<span class="holiday-change holiday-change-new">New holiday</span>{% elif row.action == 'update' %}<span class="holiday-change holiday-change-update">Update name</span>{% else %}<span class="holiday-change holiday-change-unchanged">No change</span>{% endif %}</td>
+              <td>{% if row.booking_count %}<span class="holiday-booking-count">{{ row.booking_count }} meeting{{ row.booking_count|pluralize }}</span>{% else %}<span class="muted">None</span>{% endif %}</td>
+            </tr>
+            {% empty %}<tr><td colspan="5">No holiday dates to import.</td></tr>{% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% if confirm_form and not errors %}
+    <form method="post" action="{% url 'staff-holiday-import' %}" class="panel holiday-confirm-form">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="confirm">
+      {{ confirm_form.preview_id }}
+      {{ confirm_form.non_field_errors }}
+      {% for error in confirm_form.preview_id.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+      {% if preview.summary.affected_bookings %}
+      <div class="form-field holiday-acknowledgement">
+        <label for="{{ confirm_form.acknowledge_bookings.id_for_label }}">{{ confirm_form.acknowledge_bookings }}<span>I understand that existing meetings on these holiday dates will remain saved and need staff review.</span></label>
+        {% for error in confirm_form.acknowledge_bookings.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+      </div>
+      {% endif %}
+      <p class="holiday-footnote">Dates missing from this file will stay in your saved holidays. The import adds new dates and updates the names shown above.</p>
+      <p class="holiday-preview-expiry">This preview is valid for 15 minutes. If the saved schedule changes, you will be asked to review an updated preview.</p>
+      <div class="form-actions"><button class="button button-primary" type="submit">Confirm import <span aria-hidden="true">✓</span></button><button class="button button-quiet" type="submit" name="action" value="cancel" formnovalidate>Cancel</button></div>
+    </form>
+    {% endif %}
+  </section>
+  {% endif %}
+
+  {% if not preview or errors %}
+  <div class="holiday-upload-layout">
+    <section class="panel holiday-upload-panel" aria-labelledby="holiday-file-title">
+      <span class="holiday-file-icon holiday-file-icon-large" aria-hidden="true">XLSX</span>
+      <h2 id="holiday-file-title">Upload your Excel file</h2>
+      <p class="muted">Select the approved company holiday schedule. You will see a preview before anything is saved.</p>
+      <form method="post" action="{% url 'staff-holiday-import' %}" enctype="multipart/form-data" class="holiday-upload-form">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="preview">
+        {{ upload_form.non_field_errors }}
+        <div class="form-field">
+          <label for="{{ upload_form.file.id_for_label }}">Holiday schedule (.xlsx)</label>
+          {{ upload_form.file }}
+          <small id="holiday-file-help">{% if upload_form.file.help_text %}{{ upload_form.file.help_text }}{% else %}Use the Holidays sheet with Date and Occasion as the first two headers. Maximum file size: 2 MiB; up to 1,000 holiday rows.{% endif %}</small>
+          {% for error in upload_form.file.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="form-actions"><button class="button button-primary" type="submit">Preview holidays <span aria-hidden="true">→</span></button><a class="button button-quiet" href="{% url 'staff-holidays' %}">Cancel</a></div>
+      </form>
+    </section>
+
+    <aside class="panel holiday-format" aria-labelledby="holiday-format-title">
+      <p class="eyebrow">TWO COLUMNS. ONE DATE PER ROW.</p>
+      <h2 id="holiday-format-title">A simple format to follow</h2>
+      <p class="muted">Start with the template, then enter your company's approved holidays.</p>
+      <a class="button button-quiet button-small" href="{% url 'staff-holiday-template' %}">Download Excel template <span aria-hidden="true">↓</span></a>
+      <div class="table-scroll holiday-format-example">
+        <table aria-label="Example holiday file format">
+          <thead><tr><th scope="col">Date</th><th scope="col">Occasion</th></tr></thead>
+          <tbody><tr><td>2026-12-25</td><td>Christmas</td></tr><tr><td>2027-01-01</td><td>New Year</td></tr></tbody>
+        </table>
+      </div>
+      <p class="holiday-example-caption">Example rows only. Use your company holiday schedule.</p>
+      <ul class="holiday-format-rules">
+        <li>Name the sheet <strong>Holidays</strong> and use the headers <strong>Date</strong> and <strong>Occasion</strong>.</li>
+        <li>Use a Gregorian/AD Excel date cell or text in <strong>YYYY-MM-DD</strong> format.</li>
+        <li>Keep the occasion name within <strong>160 characters</strong>.</li>
+        <li>Enter one row per date, including each day of a multi-day holiday.</li>
+        <li>Avoid duplicate dates, merged cells and formulas.</li>
+      </ul>
+      <p class="holiday-footnote">Saved holidays close normal employee bookings across all rooms and appear in the calendar. Dates missing from a later upload remain saved.</p>
+    </aside>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
