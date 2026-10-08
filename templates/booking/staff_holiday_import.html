@@ -12,7 +12,7 @@
     </div>
     <a class="button button-quiet" href="{% url 'staff-holidays' %}">Back to holidays</a>
   </div>
-  {% include "booking/staff_nav.html" %}
+
 
   <ol class="holiday-steps" aria-label="Holiday import steps">
     <li class="{% if preview %}holiday-step-complete{% else %}holiday-step-current{% endif %}" {% if not preview %}aria-current="step"{% endif %}><span aria-hidden="true">1</span>Upload Excel</li>

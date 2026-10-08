@@ -18,13 +18,15 @@ This guide explains employee use of **http://mbs.wdn.com.np** on the office netw
 
 ## Navigation
 
+All signed-in pages share the left sidebar. On a phone, open **Workspace menu** to reach the same links. The current page stays highlighted, including room and meeting details. Staff management links appear after staff email-code verification.
+
 | Menu / page | What to do there |
 | --- | --- |
 | [Overview](http://mbs.wdn.com.np/) | Room count, upcoming meetings, pending count and current booking window |
 | [Rooms](http://mbs.wdn.com.np/rooms/) | Search room, seat count, location and facilities; read instructions |
-| [Calendar](http://mbs.wdn.com.np/calendar/) | Month/week/day meetings, room filters and available starts |
+| [Calendar view](http://mbs.wdn.com.np/calendar/) | Month/week/day meetings, room filters and available starts |
 | [My meetings](http://mbs.wdn.com.np/bookings/mine/) | Upcoming or History for meetings you organize or attend; filter by role, status or search |
-| [New booking](http://mbs.wdn.com.np/bookings/new/) | Schedule & details → Attendees → Review & confirm for one meeting or recurring occurrences |
+| [Book a room](http://mbs.wdn.com.np/bookings/new/) | Schedule & details → Attendees → Review & confirm for one meeting or recurring occurrences |
 | [My profile](http://mbs.wdn.com.np/profile/) | Your name and department |
 | Staff desk | Management interface; separate staff password/code authentication required |
 | Sign out | End this browser's session |

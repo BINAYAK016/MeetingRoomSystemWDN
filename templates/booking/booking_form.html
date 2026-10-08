@@ -1,22 +1,11 @@
 {% extends "booking/base.html" %}
 {% load static %}
 {% block title %}{% if editing %}Edit booking{% else %}Book a meeting room{% endif %}{% endblock %}
-{% block workspace_nav %}{% endblock %}
+
 {% block content %}
-{% include 'booking/_booking_icons.html' %}
-<div class="booking-workspace">
-  <aside class="booking-sidebar" aria-label="Workspace navigation">
-    <a href="{% url 'home' %}" class="booking-sidebar-title">Meeting workspace<span>Transgate Tech</span></a>
-    <nav class="booking-side-nav">
-      <a href="{% url 'booking-new' %}" aria-current="page"><svg class="booking-icon" aria-hidden="true"><use href="#booking-room"/></svg>Book a room</a>
-      <a href="{% url 'my-bookings' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-clock"/></svg>My meetings</a>
-      <a href="{% url 'calendar' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-calendar"/></svg>Calendar view</a>
-      <a href="{% url 'rooms' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-room"/></svg>Rooms</a>
-      {% if staff %}<a href="{% url 'staff-reports' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-report"/></svg>Reports</a><a href="{% url 'staff-dashboard' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-users"/></svg>Staff desk</a>{% endif %}
-      <a href="{% url 'profile' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-profile"/></svg>My profile</a>
-    </nav>
-    <div class="booking-sidebar-note"><svg class="booking-icon" aria-hidden="true"><use href="#booking-info"/></svg><p>Plan together.<br>Make room for better work.</p></div>
-  </aside>
+
+
+
   <div class="booking-main">
     <div class="booking-page-heading"><div><p class="eyebrow">YOUR NEXT MEETING</p><h1>{% if editing %}Edit your meeting{% else %}Book a meeting room{% endif %}</h1><p>Choose a time, find your space, and bring everyone together.</p></div><span class="booking-timezone"><svg class="booking-icon" aria-hidden="true"><use href="#booking-clock"/></svg>Nepal time</span></div>
     <form method="post" id="booking-wizard" class="booking-wizard" data-booking-status="{{ booking.status|default:'' }}" novalidate>
@@ -85,5 +74,4 @@
     <script src="{% static 'booking/booking-wizard.js' %}" defer></script>
     <script src="{% static 'booking/attendee-picker.js' %}" defer></script>
   </div>
-</div>
 {% endblock %}

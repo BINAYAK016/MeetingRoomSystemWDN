@@ -1,0 +1,79 @@
+/* One workspace navigation shell for every signed-in employee and staff page. */
+.workspace-shell { display: grid; grid-template-columns: 220px minmax(0, 1fr); width: 100%; max-width: 1800px; min-height: calc(100dvh - 160px); margin-inline: auto; flex: 1; }
+.workspace-sidebar { min-width: 0; align-self: start; position: sticky; top: 0; max-height: 100dvh; min-height: calc(100dvh - 92px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; border-right: 1px solid var(--line); background: #f8fafc; }
+.workspace-menu { min-width: 0; }
+.workspace-menu > .workspace-menu-toggle { display: flex; align-items: center; gap: 10px; min-height: 54px; padding: 15px 22px; color: var(--navy); font-size: 15px; font-weight: 700; cursor: pointer; list-style: none; }
+.workspace-menu-toggle > .workspace-chevron { margin-left: auto; }
+.workspace-menu > .workspace-nav-content { display: flex; flex-direction: column; min-width: 0; padding: 30px 14px 25px; }
+.workspace-menu:not([open]) > .workspace-nav-content { display: none; }
+.workspace-title { display: block; padding: 0 12px 25px; color: var(--navy); text-decoration: none; font-size: 17px; font-weight: 700; line-height: 1.35; }
+.workspace-title span { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; font-weight: 400; }
+.workspace-primary-nav { display: grid; gap: 6px; }
+.workspace-primary-nav a { display: flex; align-items: center; gap: 11px; min-height: 43px; padding: 11px 12px; border-radius: 7px; color: #4b5d6d; text-decoration: none; font-size: 15px; line-height: 1.3; }
+.workspace-primary-nav a:hover { background: #edf3f8; color: var(--navy); }
+.workspace-primary-nav a[aria-current="page"] { background: #e8f0f8; color: var(--navy); font-weight: 700; box-shadow: inset 3px 0 var(--navy); }
+.workspace-primary-nav .booking-icon { width: 19px; height: 19px; }
+.workspace-staff-tools { margin-top: 23px; border-top: 1px solid #e0e7ee; padding-top: 12px; }
+.workspace-staff-tools > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 12px; border-radius: 6px; color: #5a7084; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; cursor: pointer; list-style: none; }
+.workspace-staff-tools > summary::-webkit-details-marker, .workspace-menu-toggle::-webkit-details-marker { display: none; }
+.workspace-staff-tools > summary:hover { background: #edf3f8; }
+.workspace-chevron { display: inline-block; font: 18px/1 "Times New Roman", Times, serif; transition: transform .15s ease; }
+.workspace-staff-tools[open] > summary .workspace-chevron, .workspace-menu[open] > summary .workspace-chevron { transform: rotate(180deg); }
+.workspace-staff-tools nav { display: grid; gap: 3px; padding-top: 7px; }
+.workspace-staff-tools nav a { padding: 9px 12px 9px 21px; border-radius: 6px; color: #52677a; font-size: 14px; line-height: 1.3; text-decoration: none; }
+.workspace-staff-tools nav a:hover { color: var(--navy); background: #edf3f8; }
+.workspace-staff-tools nav a[aria-current="page"] { color: var(--navy); font-weight: 700; background: #e8f0f8; box-shadow: inset 3px 0 var(--navy); }
+.workspace-note { display: flex; align-items: flex-start; gap: 9px; padding: 34px 12px 0; color: #758493; }
+.workspace-note p { margin: 0; font-size: 13px; line-height: 1.5; }
+.workspace-note .booking-icon { width: 16px; height: 16px; margin-top: 2px; }
+.workspace-content { display: flex; flex-direction: column; min-width: 0; }
+.workspace-content > main { min-width: 0; }
+.workspace-content .page-container { width: calc(100% - 64px); max-width: 1400px; margin-inline: auto; }
+.workspace-content .flash-stack { width: calc(100% - 64px); max-width: 1400px; margin-inline: auto; }
+.workspace-content .booking-main, .workspace-content .calendar-main { max-width: 1464px; margin-inline: auto; padding: 30px 32px 36px; }
+.authenticated-workspace .header-inner, .authenticated-workspace .footer-inner { width: calc(100% - 64px); max-width: 1736px; }
+.authenticated-workspace .site-footer { margin-top: 0; }
+
+@media (min-width: 801px) {
+  .workspace-menu[open] > .workspace-menu-toggle { display: none; }
+}
+
+@media (max-width: 1200px) {
+  .workspace-shell { grid-template-columns: 204px minmax(0, 1fr); }
+  .workspace-content .page-container, .workspace-content .flash-stack { width: calc(100% - 44px); }
+  .workspace-content .booking-main, .workspace-content .calendar-main { padding-inline: 22px; }
+  .workspace-menu > .workspace-nav-content { padding-inline: 11px; }
+}
+
+@media (max-width: 800px) {
+  .workspace-shell { display: block; min-height: auto; }
+  .workspace-sidebar { position: static; min-height: 0; max-height: none; overflow: visible; border-right: 0; border-bottom: 1px solid var(--line); background: #f8fafc; }
+  .workspace-menu > .workspace-menu-toggle { display: flex; align-items: center; gap: 10px; min-height: 54px; padding: 15px 22px; color: var(--navy); font-size: 15px; font-weight: 700; cursor: pointer; list-style: none; }
+  .workspace-menu-toggle > .workspace-chevron { margin-left: auto; }
+  .workspace-menu:not([open]) > .workspace-nav-content { display: none; }
+  .workspace-menu[open] > .workspace-nav-content { display: flex; padding: 4px 18px 20px; border-top: 1px solid var(--line); }
+  .workspace-title { padding: 15px 12px; }
+  .workspace-primary-nav a { min-height: 44px; }
+  .workspace-staff-tools { margin-top: 16px; }
+  .workspace-note { padding-top: 21px; }
+  .workspace-content .page-container, .workspace-content .flash-stack { width: calc(100% - 36px); }
+  .workspace-content .booking-main, .workspace-content .calendar-main { padding: 24px 18px 30px; }
+  .authenticated-workspace .header-inner, .authenticated-workspace .footer-inner { width: calc(100% - 36px); }
+  .authenticated-workspace .header-inner { gap: 15px; }
+  .authenticated-workspace .header-actions { gap: 10px; }
+  .authenticated-workspace .user-pill { max-width: 190px; }
+}
+
+@media (max-width: 600px) {
+  .authenticated-workspace .header-inner { align-items: center; flex-wrap: wrap; gap: 12px; padding-block: 15px; }
+  .authenticated-workspace .header-actions { width: 100%; justify-content: space-between; }
+  .authenticated-workspace .user-pill { max-width: calc(100% - 92px); }
+  .workspace-menu > .workspace-menu-toggle { padding-inline: 16px; }
+  .workspace-menu[open] > .workspace-nav-content { padding-inline: 12px; }
+  .workspace-content .page-container, .workspace-content .flash-stack { width: calc(100% - 28px); }
+  .workspace-content .booking-main, .workspace-content .calendar-main { padding: 22px 14px 28px; }
+  .authenticated-workspace .header-inner, .authenticated-workspace .footer-inner { width: calc(100% - 28px); }
+  .authenticated-workspace .footer-inner { flex-wrap: wrap; justify-content: flex-start; gap: 5px; padding-block: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) { .workspace-chevron { transition: none; } }

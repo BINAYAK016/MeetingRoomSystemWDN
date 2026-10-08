@@ -1,5 +1,14 @@
 "use strict";
 
+// Keep the same navigation available on every page, with a native mobile toggle.
+const workspaceMenu = document.querySelector(".workspace-menu");
+if (workspaceMenu) {
+  const desktopWorkspace = window.matchMedia("(min-width: 801px)");
+  const resizeWorkspaceMenu = () => { workspaceMenu.open = desktopWorkspace.matches; };
+  resizeWorkspaceMenu();
+  desktopWorkspace.addEventListener("change", resizeWorkspaceMenu);
+}
+
 // Native forms remain functional without JavaScript. The dialog adds confirmation.
 const confirmation = document.getElementById("action-confirmation");
 let pendingForm = null;
@@ -71,10 +80,4 @@ document.querySelectorAll("form[data-room-approval-form]").forEach((form) => {
   if (!checkbox || typeof form.requestSubmit !== "function") return;
   checkbox.addEventListener("change", () => form.requestSubmit());
   form.querySelector('button[type="submit"]').hidden = true;
-});
-
-document.querySelectorAll(".app-nav a, .staff-nav a").forEach((link) => {
-  if (new URL(link.href).pathname === window.location.pathname) {
-    link.setAttribute("aria-current", "page");
-  }
 });

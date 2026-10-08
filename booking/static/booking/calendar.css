@@ -1,8 +1,4 @@
 /* Meeting calendar: full-width workspace with native, server-rendered controls. */
-.calendar-workspace { max-width: 1800px; overflow-x: clip; }
-.calendar-workspace .booking-sidebar { background: #f4f8fb; overflow: clip; }
-.calendar-workspace .booking-side-nav { min-width: 0; max-width: 100%; }
-.calendar-workspace .booking-side-nav a[aria-current="page"] { color: white; background: var(--navy); box-shadow: 0 4px 12px rgb(16 64 104 / 10%); }
 .calendar-main { min-width: 0; padding: 30px 30px 36px; }
 .calendar-page-heading { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 25px; }
 .calendar-page-heading .eyebrow { font-size: 10px; margin-bottom: 6px; }
@@ -156,7 +152,6 @@ a.calendar-event:hover { border-color: var(--event-line); box-shadow: 0 2px 6px 
 @media (max-width: 950px) {
   .calendar-main { padding: 24px 20px 30px; }
   .calendar-toolbar { grid-template-columns: minmax(220px, 1fr) auto auto; gap: 15px; }
-  .calendar-workspace .booking-side-nav a[aria-current="page"] { box-shadow: none; }
 }
 @media (max-width: 740px) {
   .calendar-main { padding: 22px 14px 25px; }

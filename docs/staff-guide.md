@@ -10,21 +10,23 @@ Related documents: [employee guide](user-guide.md), [features/use cases](feature
 
 ## Staff navigation
 
+The same left sidebar is used throughout the workspace. After staff verification, **Staff tools** opens the management links below and expands automatically on staff pages. **Reports** is in the main sidebar. On phones, first open **Workspace menu**. Staff tools and the phone menu use native expand/collapse controls; without JavaScript the workspace menu starts expanded.
+
 | Menu | Direct page | Main task |
 | --- | --- | --- |
 | Overview | [Staff desk](http://mbs.wdn.com.np/staff/) | Pending requests, meetings, no-shows, active rooms and failed mail |
 | Pending requests | [Pending queue](http://mbs.wdn.com.np/staff/bookings/pending/) | Review earliest upcoming requests |
-| Bookings | [Company bookings](http://mbs.wdn.com.np/staff/bookings/) | Search/filter all records and open management actions |
-| Rooms | [Manage rooms](http://mbs.wdn.com.np/staff/rooms/) | Add/edit/deactivate rooms |
+| All bookings | [Company bookings](http://mbs.wdn.com.np/staff/bookings/) | Search/filter all records and open management actions |
+| Manage rooms | [Manage rooms](http://mbs.wdn.com.np/staff/rooms/) | Add/edit/deactivate rooms |
 | Departments | [Manage departments](http://mbs.wdn.com.np/staff/departments/) | Add, rename, activate or deactivate booking/profile options |
-| Closures | [Room closures](http://mbs.wdn.com.np/staff/blocks/) | Block/release unavailable periods |
-| Rules | [Booking rules](http://mbs.wdn.com.np/staff/policy/) | Office-wide booking/check-in policy |
+| Room closures | [Room closures](http://mbs.wdn.com.np/staff/blocks/) | Block/release unavailable periods |
+| Booking rules | [Booking rules](http://mbs.wdn.com.np/staff/policy/) | Office-wide booking/check-in policy |
 | Holidays | [Company holidays](http://mbs.wdn.com.np/staff/holidays/) | Add dates manually or preview/confirm an Excel holiday schedule |
-| People | [People and access](http://mbs.wdn.com.np/staff/users/) | Profiles, active status, staff grants and setup email |
+| People and access | [People and access](http://mbs.wdn.com.np/staff/users/) | Profiles, active status, staff grants and setup email |
 | Reports | [Usage reports](http://mbs.wdn.com.np/staff/reports/) | Date-range reports and Excel export |
 | Audit log | [Action history](http://mbs.wdn.com.np/staff/audit/) | Read-only decisions and administration outcomes |
 
-The top **Rooms** menu opens the employee directory. To find the room edit control choose **Staff desk → Rooms → Edit** in the room's row.
+The main **Rooms** menu opens the employee directory. To find the room edit control choose **Staff tools → Manage rooms → Edit** in the room's row.
 
 ## 1. First access and staff sign-in
 

@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-container app-page">
   <p class="eyebrow">STAFF DESK</p><h1>Booking reports</h1>
-  {% include "booking/staff_nav.html" %}
+
   <div class="filter-bar" aria-label="Common date ranges">{% for label,from_day,to_day in presets %}<a class="button button-quiet button-small" href="?from={{ from_day|date:'Y-m-d' }}&to={{ to_day|date:'Y-m-d' }}">{{ label }}</a>{% endfor %}</div>
   <form method="get" class="filter-bar"><label>From <input type="date" name="from" value="{{ start|date:'Y-m-d' }}"></label><label>To <input type="date" name="to" value="{{ end|date:'Y-m-d' }}"></label><button class="button button-primary">Show report</button><a class="button button-quiet" href="{% url 'staff-report-excel' %}?from={{ start|date:'Y-m-d' }}&to={{ end|date:'Y-m-d' }}">Download Excel</a></form>
   <div class="metric-grid"><div class="metric-card"><p class="metric-label">Bookings in period</p><p class="metric-value">{{ total }}</p></div></div>

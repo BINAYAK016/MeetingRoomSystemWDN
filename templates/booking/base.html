@@ -12,9 +12,11 @@
   <link rel="stylesheet" href="{% static 'booking/app.css' %}">
   <script src="{% static 'booking/app.js' %}" defer></script>
   {% block extra_head %}{% endblock %}
+  <link rel="stylesheet" href="{% static 'booking/workspace.css' %}">
 </head>
-<body>
+<body{% if request.user.is_authenticated %} class="authenticated-workspace"{% endif %}>
   <a class="skip-link" href="#main">Skip to content</a>
+  {% include 'booking/_booking_icons.html' %}
   <header class="site-header">
     <div class="header-inner">
       <a class="brand" href="{% url 'home' %}" aria-label="Transgate meeting rooms home">
@@ -33,9 +35,14 @@
       </nav>
     </div>
   </header>
-  {% block workspace_nav %}{% if request.user.is_authenticated %}<nav class="app-nav" aria-label="Workspace"><div class="app-nav-inner"><a href="{% url 'home' %}">Overview</a><a href="{% url 'rooms' %}">Rooms</a><a href="{% url 'calendar' %}">Calendar</a><a href="{% url 'my-bookings' %}">My meetings</a><a href="{% url 'booking-new' %}">New booking</a><a href="{% url 'profile' %}">My profile</a>{% if request.user.is_staff and request.session.staff_verified %}<a href="{% url 'staff-dashboard' %}">Staff desk</a>{% elif request.user.is_staff %}<a href="{% url 'staff-login' %}">Staff sign-in</a>{% endif %}</div></nav>{% endif %}{% endblock %}
+  {% if request.user.is_authenticated %}
+  <div class="workspace-shell">
+    {% include 'booking/workspace_nav.html' %}
+    <div class="workspace-content">
+  {% endif %}
   {% if messages %}<div class="flash-stack" role="status">{% for message in messages %}<div class="flash flash-{{ message.tags }}">{{ message }}</div>{% endfor %}</div>{% endif %}
   <main id="main">{% block content %}{% endblock %}</main>
+  {% if request.user.is_authenticated %}</div></div>{% endif %}
   <dialog id="action-confirmation" class="action-confirmation" aria-labelledby="confirmation-title" aria-describedby="confirmation-message">
     <h2 id="confirmation-title">Confirm action</h2>
     <p id="confirmation-message"></p>

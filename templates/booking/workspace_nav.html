@@ -1,0 +1,42 @@
+{% with current=request.resolver_match.url_name %}
+<aside class="workspace-sidebar" aria-label="Meeting workspace">
+  <details class="workspace-menu" open>
+    <summary class="workspace-menu-toggle"><svg class="booking-icon" aria-hidden="true"><use href="#booking-room"/></svg><span>Workspace menu</span><span class="workspace-chevron" aria-hidden="true">⌄</span></summary>
+    <div class="workspace-nav-content">
+      <a href="{% url 'home' %}" class="workspace-title">Meeting workspace<span>Transgate Tech</span></a>
+      <nav class="workspace-primary-nav" aria-label="Workspace">
+        <a href="{% url 'home' %}"{% if current == 'home' %} aria-current="page"{% endif %}><svg class="booking-icon" aria-hidden="true"><use href="#booking-display"/></svg><span>Overview</span></a>
+        <a href="{% url 'booking-new' %}"{% if current == 'booking-new' or current == 'booking-edit' %} aria-current="page"{% endif %}><svg class="booking-icon" aria-hidden="true"><use href="#booking-room"/></svg><span>Book a room</span></a>
+        <a href="{% url 'my-bookings' %}"{% if current == 'my-bookings' or current == 'booking-detail' or current == 'booking-cancel' or current == 'checkin-link' or current == 'checkin-confirm' %} aria-current="page"{% endif %}><svg class="booking-icon" aria-hidden="true"><use href="#booking-clock"/></svg><span>My meetings</span></a>
+        <a href="{% url 'calendar' %}"{% if current == 'calendar' %} aria-current="page"{% endif %}><svg class="booking-icon" aria-hidden="true"><use href="#booking-calendar"/></svg><span>Calendar view</span></a>
+        <a href="{% url 'rooms' %}"{% if current == 'rooms' or current == 'room-detail' %} aria-current="page"{% endif %}><svg class="booking-icon" aria-hidden="true"><use href="#booking-room"/></svg><span>Rooms</span></a>
+        {% if workspace_staff_verified %}
+        <a href="{% url 'staff-reports' %}"{% if current == 'staff-reports' or current == 'staff-report-excel' %} aria-current="page"{% endif %}><svg class="booking-icon" aria-hidden="true"><use href="#booking-report"/></svg><span>Reports</span></a>
+        <a href="{% url 'staff-dashboard' %}"{% if 'staff-' in current and current != 'staff-reports' and current != 'staff-report-excel' and current != 'staff-login' and current != 'staff-code' and current != 'staff-set-password' %} aria-current="page"{% endif %}><svg class="booking-icon" aria-hidden="true"><use href="#booking-users"/></svg><span>Staff desk</span></a>
+        {% elif request.user.is_staff %}
+        <a href="{% url 'staff-login' %}"{% if current == 'staff-login' or current == 'staff-code' or current == 'staff-set-password' %} aria-current="page"{% endif %}><svg class="booking-icon" aria-hidden="true"><use href="#booking-users"/></svg><span>Staff sign-in</span></a>
+        {% endif %}
+        <a href="{% url 'profile' %}"{% if current == 'profile' %} aria-current="page"{% endif %}><svg class="booking-icon" aria-hidden="true"><use href="#booking-profile"/></svg><span>My profile</span></a>
+      </nav>
+      {% if workspace_staff_verified %}
+      <details class="workspace-staff-tools"{% if 'staff-' in current %} open{% endif %}>
+        <summary>Staff tools<span class="workspace-chevron" aria-hidden="true">⌄</span></summary>
+        <nav aria-label="Staff tools">
+          <a href="{% url 'staff-dashboard' %}"{% if current == 'staff-dashboard' %} aria-current="page"{% endif %}>Overview</a>
+          <a href="{% url 'staff-bookings-pending' %}"{% if current == 'staff-bookings-pending' %} aria-current="page"{% endif %}>Pending requests</a>
+          <a href="{% url 'staff-bookings' %}"{% if current == 'staff-bookings' or current == 'staff-booking-approve' or current == 'staff-booking-reject' or current == 'staff-checkin' %} aria-current="page"{% endif %}>All bookings</a>
+          <a href="{% url 'staff-rooms' %}"{% if current == 'staff-rooms' or current == 'staff-room-new' or current == 'staff-room-edit' or current == 'staff-room-approval' %} aria-current="page"{% endif %}>Manage rooms</a>
+          <a href="{% url 'staff-departments' %}"{% if current == 'staff-departments' or current == 'staff-department-new' or current == 'staff-department-edit' %} aria-current="page"{% endif %}>Departments</a>
+          <a href="{% url 'staff-blocks' %}"{% if current == 'staff-blocks' or current == 'staff-block-new' or current == 'staff-block-cancel' %} aria-current="page"{% endif %}>Room closures</a>
+          <a href="{% url 'staff-policy' %}"{% if current == 'staff-policy' %} aria-current="page"{% endif %}>Booking rules</a>
+          <a href="{% url 'staff-holidays' %}"{% if current == 'staff-holidays' or current == 'staff-holiday-import' or current == 'staff-holiday-template' or current == 'staff-holiday-delete' %} aria-current="page"{% endif %}>Holidays</a>
+          <a href="{% url 'staff-users' %}"{% if current == 'staff-users' or current == 'staff-user-save' or current == 'staff-user-setup' %} aria-current="page"{% endif %}>People and access</a>
+          <a href="{% url 'staff-audit' %}"{% if current == 'staff-audit' %} aria-current="page"{% endif %}>Audit log</a>
+        </nav>
+      </details>
+      {% endif %}
+      <div class="workspace-note"><svg class="booking-icon" aria-hidden="true"><use href="#booking-info"/></svg><p>Plan together.<br>All times are in Nepal time.</p></div>
+    </div>
+  </details>
+</aside>
+{% endwith %}

@@ -1,6 +1,6 @@
 {% extends "booking/base.html" %}{% block title %}Meeting check-in{% endblock %}
 {% block content %}
-{% include 'booking/_booking_icons.html' %}
+
 <div class="message-page page-container"><div class="message-card checkin-card">
   <div class="checkin-symbol {% if error %}checkin-symbol-error{% endif %}" aria-hidden="true"><svg class="booking-icon"><use href="{% if error %}#booking-info{% else %}#booking-check{% endif %}"/></svg></div>
   {% if success %}<p class="eyebrow">CHECKED IN</p><h1>You’re all set.</h1><p class="message-lead">Your meeting is checked in. Enjoy your time together.</p><div class="checkin-meeting-summary"><strong>{{ booking.title }}</strong><span>{{ booking.room.name }} · {{ booking.room.location }}</span><span>{{ booking.starts_at|date:'D, d M Y' }} · {{ booking.starts_at|date:'H:i' }}–{{ booking.ends_at|date:'H:i' }} NPT</span></div>

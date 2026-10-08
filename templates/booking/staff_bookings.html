@@ -1,7 +1,7 @@
 {% extends "booking/base.html" %}{% block title %}{% if pending_only %}Pending requests{% else %}Manage bookings{% endif %}{% endblock %}
 {% block content %}<div class="page-container app-page">
 <div class="page-heading"><div><p class="eyebrow">STAFF DESK</p><h1>{% if pending_only %}Pending booking requests{% else %}Bookings{% endif %}</h1><p class="lead">{% if pending_only %}Open a request to review its details and approve or reject it. Pending requests hold the room and time.{% else %}Search and manage company meetings.{% endif %} · Nepal time.</p></div><a class="button button-primary" href="{% url 'booking-new' %}">Book for employee +</a></div>
-{% include "booking/staff_nav.html" %}
+
 <form method="get" class="filter-bar">
 <label>Search<input name="q" value="{{ search }}" maxlength="100" placeholder="Meeting, room or organizer"></label>
 {% if not pending_only %}<label>Status<select name="status"><option value="">All statuses</option>{% for value,label in statuses %}<option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>{% endif %}

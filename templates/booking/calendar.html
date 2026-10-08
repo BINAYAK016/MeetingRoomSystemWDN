@@ -2,23 +2,11 @@
 {% load static %}
 {% block title %}Meeting calendar{% endblock %}
 {% block extra_head %}<link rel="stylesheet" href="{% static 'booking/calendar.css' %}">{% endblock %}
-{% block workspace_nav %}{% endblock %}
+
 {% block content %}
-{% include 'booking/_booking_icons.html' %}
-<div class="booking-workspace calendar-workspace">
-  <aside class="booking-sidebar" aria-label="Workspace navigation">
-    <a href="{% url 'home' %}" class="booking-sidebar-title">Meeting workspace<span>Transgate Tech</span></a>
-    <nav class="booking-side-nav">
-      <a href="{% url 'booking-new' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-calendar"/></svg>Book a room</a>
-      <a href="{% url 'my-bookings' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-clock"/></svg>My meetings</a>
-      {% if staff %}<a href="{% url 'staff-bookings' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-users"/></svg>All bookings</a>{% endif %}
-      <a href="{% url 'calendar' %}" aria-current="page"><svg class="booking-icon" aria-hidden="true"><use href="#booking-calendar"/></svg>Calendar view</a>
-      <a href="{% url 'rooms' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-room"/></svg>Rooms</a>
-      {% if staff %}<a href="{% url 'staff-reports' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-report"/></svg>Reports</a><a href="{% url 'staff-policy' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-facility"/></svg>Booking rules</a><a href="{% url 'staff-dashboard' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-profile"/></svg>Staff desk</a>{% elif request.user.is_staff %}<a href="{% url 'staff-login' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-profile"/></svg>Staff sign-in</a>{% endif %}
-      <a href="{% url 'profile' %}"><svg class="booking-icon" aria-hidden="true"><use href="#booking-profile"/></svg>My profile</a>
-    </nav>
-    <div class="booking-sidebar-note"><svg class="booking-icon" aria-hidden="true"><use href="#booking-info"/></svg><p>Book up to {{ policy.advance_days }} days ahead.<br>All times are in Nepal time.</p></div>
-  </aside>
+
+
+
   <div class="calendar-main">
     <header class="calendar-page-heading">
       <div><p class="eyebrow">MEETING WORKSPACE</p><h1>Calendar</h1><p>Find a room, see what’s coming up, and plan your next meeting.</p></div>
@@ -71,5 +59,4 @@
     <section class="calendar-legend" aria-label="Calendar legend"><h2>Legend</h2><ul><li><span class="calendar-swatch calendar-event-own"></span>Your meeting</li><li><span class="calendar-swatch calendar-event-invited"></span>Invited meeting</li><li><span class="calendar-swatch calendar-event-other"></span>Other booking</li><li><span class="calendar-swatch calendar-event-pending"></span>Awaiting approval</li><li><span class="calendar-swatch calendar-available-swatch"></span>Available start</li><li><span class="calendar-swatch calendar-event-closed"></span>Room / office closed</li><li><span class="calendar-swatch calendar-event-buffer"></span>Meeting buffer</li><li><span class="calendar-swatch calendar-short-swatch"></span>Short meeting (&lt;30 min)</li></ul></section>
     <p class="calendar-privacy-note"><svg class="booking-icon" aria-hidden="true"><use href="#booking-info"/></svg>Meeting details are visible to organizers, invited employees and verified staff. Availability is checked again when you save a booking.</p>
   </div>
-</div>
 {% endblock %}

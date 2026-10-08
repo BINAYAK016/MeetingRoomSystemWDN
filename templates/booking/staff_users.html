@@ -1,6 +1,6 @@
 {% extends "booking/base.html" %}{% block title %}People and access{% endblock %}
 {% block content %}<div class="page-container app-page"><p class="eyebrow">STAFF DESK</p><h1>People and access</h1><p class="lead">Front Desk and Administrators have identical staff permissions.</p>
-{% include "booking/staff_nav.html" %}
+
 <section class="panel"><h2>Add or update employee</h2><p class="muted">Use an existing email to update that employee. Access changes require staff to verify a new email code.</p>
 <form method="post" action="{% url 'staff-user-save' %}" class="app-form">{% csrf_token %}{{ form.non_field_errors }}
 <div class="form-grid">{% for field in form %}<div class="form-field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{{ field.errors }}</div>{% endfor %}</div>
