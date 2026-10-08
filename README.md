@@ -6,6 +6,10 @@ An internal meeting room application for employees with `wdn.com.np` or `transga
 
 The interface uses the Transgate navy/red palette and logo, with Times New Roman as approved. Front Desk and Administrators have identical staff permissions. Staff use a password plus a company-email code; employees use a company-email link.
 
+## Complete documentation
+
+Start with the [documentation index](docs/index.md). Detailed guides cover all features and use cases, employee and staff tasks, server operations, backups/restoration, and troubleshooting with log/diagnostic commands. A printable [complete handbook](docs/MBS_Complete_Handbook.pdf) accompanies the Markdown guides. [Build instructions](docs/handbook-build.md) explain regeneration.
+
 ## Features
 
 - Room search, details, capacity/facilities, and availability calendar.
@@ -85,7 +89,7 @@ Stop containers and preserve data with `docker compose down`. Restart with `dock
 | `AUTH_TRUSTED_PROXY_CIDRS` | Networks/IPs allowed to supply `X-Real-IP`; production trusts only its fixed proxy IP. |
 | `PROXY_NETWORK_SUBNET`, `PROXY_NETWORK_DYNAMIC_RANGE`, `PROXY_IP` | Production proxy network; keep the fixed proxy outside the automatic address range and update the trusted CIDR consistently if changed. |
 
-SMTP settings are intentionally empty. Disabled mode allows startup, logs a configuration warning, preserves queued notifications without consuming retries, and rejects sign-in email delivery. Selecting `smtp` without host/sender also disables delivery with a warning. No message is marked sent unless the backend accepts it. The local file mode records a message locally and performs no external delivery.
+Example files intentionally omit relay credentials. The selected office configuration is documented in the HTTP installation/runbook: `maildc01.wdn.com.np:25`, sender `mbs@wdn.com.np`, no relay AUTH, TLS/SSL false. Disabled mode allows startup, logs a configuration warning, preserves queued notifications without consuming retries, and rejects sign-in email delivery. Selecting `smtp` without host/sender also disables delivery with a warning. No message is marked sent unless the backend accepts it. The local file mode records a message locally and performs no external delivery.
 
 | SMTP variable | Deployment value |
 | --- | --- |
@@ -129,8 +133,8 @@ The worker reconciles approximately every 30 seconds and sends one message at a 
 
 After SMTP is repaired, `python manage.py retry_failed_mail --all` requeues eligible failures that exhausted retries; `--id NUMBER` targets one. It supersedes obsolete booking messages and records the action in audit history.
 
-This remains a single-server application. IT must monitor disk, certificates, service health, failed mail, and backups, and test restoration. Real SMTP, server networking, DNS, certificate trust, and representative company usage require validation on the provided server; no company deployment has been performed from this repository.
+This remains a single-server application. The owner has started company services on the selected HTTP installation. IT must verify employee-device DNS/routing, deployed-server relay authorization/mailbox receipt, representative usage, health monitoring and tested off-server backups. Certificate monitoring applies only if the alternative HTTPS profile is adopted. The agent's isolated test/rehearsal evidence does not replace company pilot acceptance.
 
-Guides: [employees](docs/user-guide.md), [staff](docs/staff-guide.md), [troubleshooting](docs/troubleshooting.md), [architecture](docs/architecture.md), and [database design](docs/database-design.md).
+Guides: [all documentation](docs/index.md), [features/use cases](docs/features-and-use-cases.md), [operations](docs/operations-runbook.md), [employees](docs/user-guide.md), [staff](docs/staff-guide.md), [troubleshooting](docs/troubleshooting.md), [architecture](docs/architecture.md), and [database design](docs/database-design.md).
 
 SMTP/email credentials must be supplied by the system administrator during production deployment. No production email credentials are included in this repository.

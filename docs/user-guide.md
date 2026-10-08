@@ -1,19 +1,246 @@
 # Employee guide
 
+**Meeting Booking System (MBS)**
 **Transgate Tech | Binayak Bhandari**
+Checked against application source on **7 October 2026**.
 
-1. Open the internal Meeting Booking System address and enter your `wdn.com.np` or `transgate.com.np` email. Open the one-time link in your company mailbox and confirm sign-in. Keep the same browser and address throughout sign-in.
-2. Update your name and department in **My profile**. Open **Rooms** to search by name, floor, location, or description and filter capacity and facilities. Open room details and **Calendar** to check availability. Other employees see occupancy without your private meeting details.
-3. On **New booking**, choose a room, working date, start/end time, meeting type, title, attendees, and preparation notes. For external meetings enter the guest company/count. Daily, weekly, and monthly recurring requests create only occurrences within the next two weeks; book later months manually when eligible.
-4. After submission, the request is **Pending** and the page says it is waiting for administrator approval. Pending requests hold the room and time. If another request or closure already occupies it, choose another slot. The normal 15-minute gap, working hours, holidays, duration, and booking horizon are checked again on the server.
-5. Use **My bookings** and booking details to see status. Each recurring occurrence is reviewed and managed separately. Staff approval changes it to **Approved** and sends confirmation. A rejected request shows the staff rejection reason and releases its slot. Submit a new request if you need another date or room.
-6. Edit a future pending or approved booking where allowed. An employee edit to an approved meeting requires approval again and invalidates its earlier check-in link. Checked-in and completed bookings cannot be edited. Cancel eligible requests or bookings if plans change. Cancellation releases the slot and keeps history.
-7. A request still pending when its meeting starts is cancelled automatically because its approval window has expired. Contact Front Desk in advance if approval is delayed.
-8. Approved confirmation/change emails and the one-hour reminder include an organizer-only secure check-in link. Open it **after the meeting starts** and confirm check-in within 15 minutes. An early attempt can be retried in the same browser after the start. Missing the deadline marks the booking **No show** and releases the room on the next successful worker cycle. Front Desk can check in during the same window.
-9. Use **Sign out** when finished. Your booking history and statuses persist when you sign in again.
+This guide explains employee use of **http://mbs.wdn.com.np** on the office network. Use a company email ending in **@wdn.com.np** or **@transgate.com.np**. All displayed meeting times are **Nepal time (NPT)**. For the complete behavior reference see [Features and use cases](features-and-use-cases.md); staff workflows are in the [staff guide](staff-guide.md).
 
-Daily recurrence skips weekends and holidays. Weekly/monthly dates on closed days require a different date or an audited staff exception. A series saves only if all requested occurrences are available.
+## Quick start
 
-Private details, notes, and attendee lists are available only to the owner and verified staff. Contact Front Desk for booking help and IT for technical problems. Email outages do not undo saved bookings; staff monitor failed notifications. Company sign-in requires a working approved SMTP relay.
+1. Open [Employee sign-in](http://mbs.wdn.com.np/sign-in/).
+2. Enter company email, request the link, open it within 15 minutes and press **Continue to workspace**.
+3. Open **My profile** and set name/department.
+4. Find a room using **Rooms** and a time using **Calendar**.
+5. Submit **New booking**. Employee requests start **Pending approval**; wait for approval.
+6. At meeting start, open the organizer check-in link in the approved email and press **Check in now** before the deadline.
+7. Use **My bookings** for changes, cancellation, status and history.
 
-SMTP credentials must be supplied separately during production deployment. No production email credentials are included in this repository.
+## Navigation
+
+| Menu / page | What to do there |
+| --- | --- |
+| [Overview](http://mbs.wdn.com.np/) | Room count, upcoming meetings, pending count and current booking window |
+| [Rooms](http://mbs.wdn.com.np/rooms/) | Search room, seat count, location and facilities; read instructions |
+| [Calendar](http://mbs.wdn.com.np/calendar/) | Day/week occupancy and available starts |
+| [My bookings](http://mbs.wdn.com.np/bookings/mine/) | Your Upcoming or History list |
+| [New booking](http://mbs.wdn.com.np/bookings/new/) | Request one meeting or recurring occurrences |
+| [My profile](http://mbs.wdn.com.np/profile/) | Your name and department |
+| Staff desk | Management interface; separate staff password/code authentication required |
+| Sign out | End this browser's session |
+
+## 1. Sign in using company email
+
+### First or returning sign-in
+
+1. Connect to the office network, or the company-approved connection that reaches the internal site.
+2. Open **http://mbs.wdn.com.np/sign-in/** in Chrome or Edge with cookies enabled. Keep this hostname throughout the workflow.
+3. Enter your exact company email. Capitalization is normalized; either approved domain is accepted.
+4. Submit and check that mailbox. The page says **Check your email** if delivery is configured.
+5. Open the link within **15 minutes**. It opens the confirmation page.
+6. Press **Continue to workspace**. You are now signed in; the overview shows your account email.
+
+An account is created on first successful confirmation. There is no employee password to remember. Possession of the emailed one-time link verifies access to that mailbox. Opening it alone does not complete sign-in, so mail scanners that inspect links do not normally consume it.
+
+Each completed session lasts **eight hours**. Use **Sign out** on shared devices. An account deactivated by staff cannot sign in. Account permissions/password changes can end an existing session and require fresh authentication.
+
+### If the link does not work
+
+| Situation | Action |
+| --- | --- |
+| Expired or already used link | Return to sign-in and request a new one; a completed link cannot be reused |
+| No mail arrives | Check Junk/quarantine and spelling/domain; contact Front Desk or IT |
+| Repeated requests | Limit is three per address per 15 minutes; wait for the window rather than repeatedly submitting |
+| “Email unavailable” | IT must configure/repair SMTP; there is no production local test inbox |
+| “Let's start fresh” / session check | Reopen the form at the same hostname, keep cookies enabled and retry; ask IT to inspect CSRF logs if persistent |
+| Staff pages require login again | Employee email-link authentication does not unlock staff powers; use staff password plus email code |
+
+The generic mail-request screen does not guarantee a message was sent, accepted or delivered. Share the screen text, time and ordinary page path with IT; keep email sign-in/check-in links and codes private. See [troubleshooting](troubleshooting.md) for the server-side checks.
+
+## 2. Set your profile
+
+1. Choose **My profile**.
+2. Enter first name, last name and department, for example “Operations”.
+3. Save and check the **Your profile has been saved** message.
+
+Department is used as the initial value on future booking forms. You can change it on a meeting where needed. Updating your profile does not rewrite the department already saved on earlier bookings. Email and access flags cannot be changed from this page; contact staff.
+
+## 3. Choose a room
+
+1. Open **Rooms**.
+2. Enter a search such as “3” for floor or a room name/description term.
+3. Set **Minimum seats**, for example `6`.
+4. Select a location or facility, for example “Projector”, when offered.
+5. Press **Find rooms**. Use **Reset** to clear filters; use pagination for additional results.
+6. Open **Room details** to read capacity, facilities, description and instructions.
+7. Use **Book this room** to preselect it, or **View availability** to compare times.
+
+Only active rooms are listed. A room's listed facility is a descriptive label; contact Front Desk if you need to verify equipment is ready. Employees cannot edit room records. If no room matches, widen filters or ask Front Desk about available rooms.
+
+## 4. Read the calendar
+
+1. Open **Calendar**.
+2. Select a date and **Day** or **Week**, then press **Show**. **Today** resets the selected date.
+3. In day view, find the row/time and room column.
+4. **Available +** opens a booking form with room/date/start preselected. Enter end time yourself.
+5. In week view, select a day to see its detailed slots.
+
+| Calendar marking | Meaning |
+| --- | --- |
+| Available + | A permitted start for at least a minimum meeting and required buffer appears free at page load |
+| Your booking | Occupied by a meeting you organize; select to open details |
+| Unavailable | Another booking/request, closure or buffer occupies the interval; details remain private |
+| Outside rule / past / holiday explanation | This start cannot be booked normally; read the displayed reason |
+
+Calendar availability is checked again on submission. Another person may hold the slot after you load the page. Staff can see month view; employees use day/week. Other employees see occupancy without your meeting title, notes or attendee details. Being on someone else's attendee list does not grant access to their booking details.
+
+## 5. Request a single internal meeting
+
+The following is an illustrative request. Choose a **future company working date within the current booking window** and an active room with enough seats; do not submit the placeholder addresses as real invitations.
+
+| Field | Example |
+| --- | --- |
+| Room | An available eight-seat room |
+| Date | A future working Thursday |
+| Start / End | 10:00 / 11:00 |
+| Title | Team planning |
+| Description | Review next week's work and outstanding actions |
+| Meeting type | Internal |
+| External attendee count | 0 |
+| Department | Operations |
+| Attendees | `colleague@wdn.com.np`, `teammate@transgate.com.np` (replace with real colleagues) |
+| Refreshments requested | Select only if needed |
+| Front Desk notes | Projector needed; please check remote batteries |
+| Recurrence | One meeting |
+| Until date | Leave blank |
+
+1. Open **New booking**, or use the room/calendar link.
+2. Fill the fields. Separate attendee emails with commas or new lines. Duplicate email addresses are normalized and removed.
+3. Read errors beside fields and at the top before resubmitting.
+4. Press **Submit booking request** once.
+5. On success, the detail page shows **Pending approval** and that room/time are held.
+6. Wait for staff approval before treating the meeting as confirmed. Follow the status in **My bookings**.
+
+### Normal initial rules
+
+Staff can change these under Rules. Current form/calendar messages and office policy take precedence over this default table.
+
+| Rule | Initial setting |
+| --- | --- |
+| Working days / hours | Monday–Friday, 09:00–17:00; configured holidays excluded |
+| Meeting length | 30–120 minutes |
+| Start/end increments | 15 minutes |
+| Gap after end | 15 minutes |
+| Advance limit | 14 calendar days |
+| Check-in deadline | Before 15 minutes after start |
+
+A 10:00–11:00 meeting holds the room until 11:15 under the default gap. The organizer counts as one person. Listed attendees other than organizer and the external attendee count are added to room capacity. Max 50 distinct listed addresses are permitted. End must be after start, on the same date; past start times are rejected.
+
+### Common submission failures
+
+| Message / cause | How to resolve |
+| --- | --- |
+| Room unavailable | Another hold/booking/closure or required gap conflicts; choose another room/time |
+| Room seats fewer than listed | Choose a larger room or correct attendee/guest count |
+| Meeting length outside permitted range | Adjust start/end to current duration rules |
+| Outside office hours or increments | Choose aligned times inside current hours |
+| Not a company working day | Choose weekday not listed as a holiday; staff can review a justified exception |
+| Too far ahead | Choose a date within current horizon |
+| Invalid attendee email | Correct the identified address; text names alone are not email addresses |
+
+A failed submission does not create a booking. On a failed edit, the previously saved booking remains. Refresh the calendar when correcting a conflict; do not create repeated duplicate requests for the same planned meeting.
+
+## 6. Request an external meeting
+
+1. Select **External** as meeting type.
+2. Enter guest company name, for example **Example Partners**.
+3. Enter the number of additional external people who are not individually listed as email attendees.
+4. List colleague/guest email addresses that should receive approved meeting notifications.
+5. Enter refreshment or preparation requirements in the relevant fields and submit.
+
+Example: organizer + two listed colleagues + three unlisted guests = **six people**. If a guest has already been counted as a listed email attendee, do not count them again as an unlisted external attendee. External addresses may receive attendee notifications, but cannot use account sign-in unless their domain is in the employee allowlist. Refreshments are a request for Front Desk to handle manually, not an automatically fulfilled order.
+
+## 7. Create a recurring series
+
+1. Enter room, first date, time and common meeting details.
+2. Set Recurrence to **Daily**, **Weekly** or **Monthly**.
+3. Choose an inclusive **Until date** inside the current booking horizon.
+4. Submit; the detail page opens the first created occurrence.
+5. Open **My bookings** to inspect all occurrences. Every employee occurrence starts Pending and requires its own approval/check-in.
+
+| Example | Expected behavior |
+| --- | --- |
+| Daily 09:00–09:30 through a future working week | Creates eligible weekdays; skips holidays/weekends |
+| Weekly next Thursday and the following Thursday | Creates both if dates are working days and both slots free |
+| Monthly with until date inside next two weeks | Usually creates first occurrence only; book later months manually when eligible |
+| Any requested occurrence conflicts | Entire series fails; no partial series is saved |
+| Weekly/monthly date lands on holiday/weekend | Entire normal request rejected; alter dates or ask staff about an exception |
+| Until date three months away with 14-day rule | Rejected; the application does not truncate a distant series automatically |
+
+At most **15 occurrences** are allowed in one creation. Monthly dates use the original day number, clamped to shorter month-end when necessary. The application does not extend a series automatically. Editing/cancelling one occurrence leaves other occurrences unchanged. There is no whole-series edit/cancel button.
+
+## 8. Follow approval and status
+
+Open **My bookings** and select the meeting title. The detail page shows room, date/time, requester, request time, department, guests, attendees, description, preparation notes, state and available actions.
+
+| State | Meaning / next step |
+| --- | --- |
+| Pending approval | Slot held; contact Front Desk before start if approval is delayed |
+| Approved | Meeting confirmed; organizer receives check-in instructions |
+| Rejected | Read staff reason; slot released; make a new request if needed |
+| Checked in | Arrival confirmed; meeting becomes Completed after scheduled end |
+| Completed | Historical record; cannot edit/cancel normally |
+| Cancelled | Released by cancellation or approval-window expiry; reason shown |
+| No show | Deadline missed; room released; old check-in link cannot restore it |
+
+**Upcoming** lists active Pending/Approved/Checked in meetings whose end has not passed. **History** shows all your booking records, including future records in other states; it is not exclusively past meetings. You cannot open another organizer's private record, even if you know its ID or were invited.
+
+A request still Pending at meeting start is automatically cancelled because its approval window expired. Approval does not happen automatically.
+
+## 9. Edit or cancel
+
+### Edit
+
+1. Open your meeting from **My bookings**.
+2. For a future Pending or Approved record, select **Edit booking**.
+3. Adjust fields and press **Save changes**.
+4. Check the resulting state and confirmation message.
+
+A substantive employee edit of Approved returns it to **Pending** for another review and invalidates earlier check-in links. An unchanged save retains the state. Current room capacity, availability and policy apply to edits. Started, Checked in, Completed, Rejected, Cancelled and No show records cannot be edited through normal workflow.
+
+### Cancel
+
+1. Open the eligible Pending, Approved or Checked in record.
+2. Enter a cancellation reason, for example **Client visit postponed**.
+3. Select **Cancel booking** and confirm the prompt.
+4. Check the Cancelled state and reason.
+
+The room is released; history remains and event emails are queued. Cancellation affects one occurrence only. There is no undo button; make a new request if needed.
+
+## 10. Check in at meeting start
+
+1. Find the organizer check-in link in the latest approved confirmation/change email or reminder.
+2. Open it at the scheduled start time.
+3. Press **Check in now** before the configured deadline.
+4. Check the **You're all set** confirmation and meeting/room name.
+
+For a 10:00 meeting with the default rule, check-in opens at **10:00** and closes at **10:15**. The deadline is exclusive: at 10:15 it is too late. Opening the link before start is allowed, but confirming early is rejected; keep the page and use **Try check-in again** after start.
+
+Check-in uses possession of the emailed organizer link; a prior employee login is not required. It still requires browser cookies and the confirmation button. Attendees do not receive the organizer's private check-in link. A used or superseded link will fail, and a cancelled/rejected/No show booking cannot be checked in.
+
+If mail is missing while attendees have arrived, contact Front Desk **before the deadline**. Verified staff can perform Manual check-in during the same window. Email problems do not automatically extend it. A missed deadline marks the record No show and releases the room on the next successful worker reconciliation, normally about every 30 seconds.
+
+## 11. Notifications and support
+
+You receive submission/decision/change/cancellation/check-in/no-show messages for your meetings. After approval, listed attendees and active staff receive the corresponding meeting events; unapproved submission and rejection are sent to organizer/staff, not attendees. Reminder scheduling begins within one hour of an Approved start and depends on worker/relay delivery; it is not guaranteed at precisely 60 minutes before.
+
+A saved booking remains saved during a mail outage. Use the application state as the record of the meeting and ask staff/IT about missing email. HCL/Outlook calendar integration and calendar invitation files are deferred; an MBS email does not automatically create another calendar entry.
+
+When reporting an issue, provide:
+
+- Ordinary page path, such as `/bookings/mine/`, and approximate Nepal time.
+- Action attempted, expected result and visible error text.
+- Booking ID, if relevant, and whether it was Pending/Approved/another state.
+- Browser name and whether a fresh page/reload reproduces it.
+
+Do not send passwords, sign-in/check-in/setup links, email codes or `.env` contents. Contact Front Desk for booking decisions/room preparation and IT for access, mail or server issues. Diagnostic commands are in [troubleshooting](troubleshooting.md).

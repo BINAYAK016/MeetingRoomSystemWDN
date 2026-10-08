@@ -3,6 +3,7 @@
 !.env.production.example
 !.env.production.http.example
 .venv/
+.venv-docs/
 __pycache__/
 *.py[cod]
 .pytest_cache/

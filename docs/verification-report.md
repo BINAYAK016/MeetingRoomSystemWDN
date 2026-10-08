@@ -143,3 +143,18 @@ See [deployment](deployment.md) for exact updates, mail enablement, setup, monit
 ## Remaining verification
 
 Company-server DNS, firewall/VPN, actual SMTP authorization and both domains' mailbox delivery, backup storage/retention, an on-server restore drill and representative office load await operator verification. The server OS, internal domain and office-interface IP have been supplied; the isolated local rehearsal does not prove those company-server checks. The specific earlier intermittent incident remains unattributed. No company deployment or sustained capacity benchmark is claimed. Direct HCL/Outlook integration remains deferred by agreement. Single-server failure, periodic worker release and possible duplicate SMTP delivery after an ambiguous response remain documented operating limits. For the optional HTTPS profile, HSTS domain-wide flags require IT approval.
+
+## Documentation release verification - 7 October 2026
+
+This release changes documentation and adds an optional ReportLab handbook builder, with no application behavior or database migration changes. Existing application test evidence above remains the baseline; the full application suite was not rerun for prose changes.
+
+- Reviewed feature/employee/staff documentation against models, forms, views, services, templates and worker: permission/state/notification matrices, complete URL catalogue and 28 use cases.
+- Validated all 13 Markdown documents: 106 local links/anchors, balanced fences, 90 Bash/sh code blocks, nine embedded Python snippets and 12 PowerShell blocks. Syntax-only checks did not execute operational examples.
+- The feature catalogue covers all 43 configured URL patterns, including protected actions and generated private-link routes.
+- Ruff lint and formatting pass across all 70 Python source files, including the optional builder; Git whitespace checks pass.
+- Ran the six read-only troubleshooting Django diagnostics against a separate PostgreSQL 17 project with SMTP disabled. Confirmed configured policy, queue metadata, restricted runtime identity and audit SELECT/INSERT-only permissions.
+- Exercised the documented separate-database restore pattern on that isolated project: a trusted 87,294-byte custom-format dump restored one user, room, reservation, notification and audit event each; all five counts matched. Verified restored runtime audit INSERT/UPDATE/DELETE privileges `(True, False, False)` and the validated overlap constraint. The live-target name guard rejected creation against the selected source database.
+- No worker was started for the restore drill and no external email, company account or company server mutation was performed. Isolated containers/networks were removed with the QA volume retained; the existing local demo was left healthy.
+- Generated the complete handbook from 11 maintained guides, rendered its pages and checked contents/bookmarks, tables, diagrams, command displays, margins and glyphs. Long command displays wrap for print; Markdown remains the copyable source.
+
+The optional documentation dependency is separate from application requirements. Rebuild the handbook after source-guide changes and review the latest rendered pages before committing it. Company-side acceptance, monitoring and recovery arrangements remain the operator's responsibility.

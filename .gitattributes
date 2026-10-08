@@ -2,3 +2,6 @@
 *.py text eol=lf
 *.yaml text eol=lf
 *.conf.template text eol=lf
+
+# Preserve printable handbook bytes and avoid treating PDF objects as source text.
+*.pdf binary
