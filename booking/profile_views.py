@@ -5,10 +5,17 @@ from django.db import transaction
 from django.shortcuts import redirect, render
 from django.views.decorators.http import require_http_methods
 
+from booking.department_choices import department_choices
 from booking.models import AuditEvent, User
 
 
 class ProfileForm(forms.ModelForm):
+    department = forms.ChoiceField(required=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["department"].choices = department_choices(self.instance.department)
+
     class Meta:
         model = User
         fields = ["first_name", "last_name", "department"]

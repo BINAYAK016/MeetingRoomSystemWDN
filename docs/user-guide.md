@@ -60,10 +60,12 @@ The generic mail-request screen does not guarantee a message was sent, accepted 
 ## 2. Set your profile
 
 1. Choose **My profile**.
-2. Enter first name, last name and department, for example “Operations”.
+2. Enter first name and last name, then select your department from the dropdown, for example **Accounts**. Department is optional.
 3. Save and check the **Your profile has been saved** message.
 
-Department is used as the initial value on future booking forms. You can change it on a meeting where needed. Updating your profile does not rewrite the department already saved on earlier bookings. Email and access flags cannot be changed from this page; contact staff.
+Department is used as the initial value on future booking forms. You can choose a different department for a meeting where needed. Initial choices are **Accounts, Administrative, Logistics, Sales, Oracle Support, Dell Support, Toshiba and ATM support**. Staff can add further options through **Staff desk → Departments**. If your department is missing, ask staff to add or reactivate it. Updating your profile does not rewrite the department already saved on earlier bookings. Email and access flags cannot be changed from this page; contact staff.
+
+An existing profile or booking can retain its previously saved department even if staff renamed or deactivated that option; it is shown as the current value when absent from the active list. New bookings use active options only. If your saved profile department is no longer active, a new booking leaves Department blank until you choose an active option.
 
 ## 3. Choose a room
 
@@ -112,7 +114,7 @@ The following is an illustrative request. Choose a **future company working date
 | Description | Review next week's work and outstanding actions |
 | Meeting type | Internal |
 | Additional guests without email addresses | 0 |
-| Department | Operations |
+| Department | Accounts (select from the dropdown) |
 | Attendees | `colleague@wdn.com.np`, `teammate@transgate.com.np` (replace with real colleagues) |
 | Refreshments requested | Select only if needed |
 | Special requirements | Projector needed; please check remote batteries |

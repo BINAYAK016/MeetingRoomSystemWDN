@@ -76,7 +76,7 @@ Verify branded HTML/plain-text authentication and event mail, organizer/staff re
 
 The repository's automated tests and isolated deployment verification do not replace company-server checks for actual mail delivery, DNS, certificate trust, firewall/VPN access, backup storage, and representative load.
 
-The invited-meeting, attendee-suggestion and professional-email update introduces no migration beyond 0011. Rebuild/recreate web and worker to load UI/API/mail changes; keep current database, media, `.env` and SMTP settings. The standard update still applies committed migrations and runtime permissions.
+The department dropdown update requires migration `0012_department` and runtime grants from `db_setup`; the earlier invited-meeting, attendee-suggestion and professional-email update added no migration beyond 0011. Follow the standard update below, then rebuild/recreate web and worker; keep current database, media, `.env` and SMTP settings.
 
 ## Update
 
@@ -93,7 +93,7 @@ docker compose -f compose.prod.yaml up -d web worker proxy
 curl --fail https://YOUR-INTERNAL-HOST/healthz/
 ```
 
-Current updates apply `0009_mixed_meeting_type`, `0010_room_photo` and `0011_room_requires_approval` after the approval schema; they preserve existing records and do not reseed rooms. Migration 0011 defaults existing/new rooms to Requires approval checked and does not rewrite saved booking statuses. Staff may then choose each room's policy through Rooms; no new environment setting is required. Take paired database/photo backups for an installation with uploaded files, using [Room photo backup and recovery](operations-runbook.md#room-photo-backup-and-recovery) with the HTTPS Compose profile. Migration 0008 preserves existing confirmed meetings as approved and adds pending request occupancy. Reversing it cancels pending/rejected requests; use a reviewed rollback/restore plan. Stop all writers during migration, then reapply runtime grants.
+Current updates apply the complete committed migration chain through `0012_department`; they preserve existing records and do not reseed rooms. Migration 0011 defaults existing/new rooms to Requires approval checked and does not rewrite saved booking statuses. Migration 0012 seeds the eight requested department options and imports existing nonblank user/booking labels without rewriting their strings. Staff manage these options through Departments; no new environment setting is required. Take paired database/photo backups for an installation with uploaded files, using [Room photo backup and recovery](operations-runbook.md#room-photo-backup-and-recovery) with the HTTPS Compose profile. Migration 0008 preserves existing confirmed meetings as approved and adds pending request occupancy. Reversing it cancels pending/rejected requests; use a reviewed rollback/restore plan. Stop all writers during migration, then reapply runtime grants.
 
 Preserve the Django secret, database administrator credentials, PostgreSQL volume and `room_media` photo volume across updates. Review migrations before applying them; restore planning is required for schema rollback. Stop with `docker compose -f compose.prod.yaml down` to preserve database storage. Never use `down --volumes` on production unless intentionally destroying its data.
 

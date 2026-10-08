@@ -41,6 +41,9 @@ urlpatterns = [
     path("staff/rooms/new/", staff_views.room_form, name="staff-room-new"),
     path("staff/rooms/<int:room_id>/", staff_views.room_form, name="staff-room-edit"),
     path("staff/rooms/<int:room_id>/approval/", staff_views.room_approval, name="staff-room-approval"),
+    path("staff/departments/", staff_views.departments, name="staff-departments"),
+    path("staff/departments/new/", staff_views.department_form, name="staff-department-new"),
+    path("staff/departments/<int:department_id>/", staff_views.department_form, name="staff-department-edit"),
     path("staff/bookings/", staff_views.bookings, name="staff-bookings"),
     path(
         "staff/bookings/pending/",

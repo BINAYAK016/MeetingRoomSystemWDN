@@ -6,13 +6,14 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.http import urlsafe_base64_encode
 
-from booking.models import AuditEvent, Reservation, Room, User
+from booking.models import AuditEvent, Department, Reservation, Room, User
 from booking.services.bookings import create_booking
 
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
 class ApprovalRouteTests(TestCase):
     def setUp(self):
+        Department.objects.get_or_create(name="Operations")
         self.employee = User.objects.create_user("requester@transgate.com.np", department="Operations")
         self.other = User.objects.create_user("other@wdn.com.np")
         self.staff = User.objects.create_user("reviewer@wdn.com.np", is_staff=True)

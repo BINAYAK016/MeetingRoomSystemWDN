@@ -15,6 +15,7 @@ Start with the [documentation index](docs/index.md). Detailed guides cover all f
 - Room search, details, capacity/facilities, optional staff-managed real photos, and a room-filtered Month/Week/Day calendar with private meeting cards, date navigation and available-start booking links.
 - Three-step booking flow: Schedule & details → Attendees → Review & confirm, with real room availability for every selected recurring occurrence. Native form fallback keeps booking usable without JavaScript.
 - Internal, External and Internal + External meetings; guest company is required for external/mixed meetings.
+- Department dropdowns for bookings and profiles, with an active catalog managed by staff. Initial options are Accounts, Administrative, Logistics, Sales, Oracle Support, Dell Support, Toshiba and ATM support; existing department labels are also retained.
 - Own bookings and profile; booking requests, modification, and cancellation.
 - Per-room approval: checked **Requires approval** rooms create Pending employee requests; unchecked rooms confirm them immediately. Pending requests reserve the slot; staff approval confirms the meeting, rejection records a reason and releases the slot.
 - Daily, weekly, and monthly recurrence within the two-week advance window. Later monthly dates are reserved manually.
@@ -59,7 +60,7 @@ docker compose run --rm migrate
 docker compose up -d web worker
 ```
 
-Protect the dump; backup archives are Git-ignored. Preserve `.env`, its database password, Django secret, database volume and optional `room_media` volume. A database dump does not contain uploaded photos: back up/restore that volume alongside the matching database snapshot. Existing confirmed meetings become approved. Current upgrades apply `0009_mixed_meeting_type`, `0010_room_photo` and `0011_room_requires_approval` after `0008`; they preserve existing rooms/bookings and do not seed rooms. Migration 0011 sets Requires approval to checked for existing rooms, preserving their review requirement. See [photo backup/recovery](docs/operations-runbook.md#room-photo-backup-and-recovery) before updating an installation with uploads.
+Protect the dump; backup archives are Git-ignored. Preserve `.env`, its database password, Django secret, database volume and optional `room_media` volume. A database dump does not contain uploaded photos: back up/restore that volume alongside the matching database snapshot. Existing confirmed meetings become approved. Current upgrades apply the complete committed migration chain through `0012_department`; they preserve existing rooms/bookings and do not seed rooms. Migration 0011 sets Requires approval to checked for existing rooms, preserving their review requirement. Migration 0012 adds the department dropdown catalog while preserving saved department strings. See [photo backup/recovery](docs/operations-runbook.md#room-photo-backup-and-recovery) before updating an installation with uploads.
 
 Open <http://127.0.0.1:8000/>. Local `.env.example` explicitly selects `DJANGO_EMAIL_BACKEND=file`; messages are written to a Docker volume and appear in the development inbox at <http://127.0.0.1:8000/dev/mail/>. This local convenience does not verify mailbox ownership. It is unavailable in either production profile and must never be used for company rollout.
 
@@ -74,7 +75,7 @@ Open the staff setup link in the development inbox, set a password, and use `/st
 
 Stop containers and preserve data with `docker compose down`. Restart with `docker compose up -d web worker`. Database, optional room photos (`room_media`) and local email persist in named volumes. Never add `--volumes` to the stop command unless intentionally deleting the data.
 
-The invited-meeting, attendee-suggestion and professional-email update introduces no additional database migration beyond 0011. Rebuild and recreate both web and worker to load the new UI/API/mail templates; preserve database, media, `.env` and existing settings. The normal maintenance procedure still runs committed migrations and reapplies runtime permissions.
+The department catalog requires migration `0012_department`. It creates the catalog, adds the eight initial options and imports existing nonblank profile/booking labels case-insensitively without rewriting their saved strings. Follow the normal maintenance procedure: back up, stop writers, apply committed migrations, reapply runtime permissions with `db_setup` in production, and recreate web/worker. Preserve database, media, `.env` and existing settings; no new environment variable is required. Earlier calendar, invited-meeting, attendee-suggestion and professional-email updates added no migration beyond 0011.
 
 ## Environment and email
 

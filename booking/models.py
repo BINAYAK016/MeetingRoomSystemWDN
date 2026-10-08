@@ -65,6 +65,21 @@ class User(AbstractUser):
         return self.email
 
 
+class Department(models.Model):
+    name = models.CharField(max_length=120)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        db_table = "departments"
+        ordering = ["name"]
+        constraints = [
+            models.UniqueConstraint(Lower("name"), name="departments_name_ci_unique"),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
 class Room(models.Model):
     name = models.CharField(max_length=120)
     location = models.CharField(max_length=120)

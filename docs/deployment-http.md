@@ -148,10 +148,11 @@ Open **`http://mbs.wdn.com.np/`** using the HTTP prefix. Verify employee email s
 - Three-step booking, attendee headcount, Internal + External guest company, all-occurrence availability and native form fallback work.
 - Reports, audit history, recurring dates, holiday rules, closures, and room deactivation work with real office data.
 - Optional staff-uploaded room photos display only while authenticated, survive recreation, and restore from the matching media archive.
+- Booking/profile/People department dropdowns contain the eight initial options and imported legacy names. Verified staff can add or deactivate an option through Departments; existing booking labels remain intact.
 
 Check that company laptops can reach the office IP and resolve the domain. Do not expose port 80 to the public internet. Existing HTTPS rehearsal results in `verification-report.md` remain evidence for that profile; verify this actual server's DNS, mail, firewall, and restore procedure before rollout.
 
-The calendar redesign, invited-meeting, attendee-suggestion and professional-email updates introduce no additional database migration beyond 0011. Rebuild and recreate both web and worker to load the new UI/API/mail templates; preserve database, media, `.env` and existing settings. The normal maintenance procedure still runs committed migrations and reapplies runtime permissions.
+The department update adds migration `0012_department` and requires the full update procedure below, including `migrate` and `db_setup` for the new catalog table/sequence. The earlier calendar redesign, invited-meeting, attendee-suggestion and professional-email updates added no migration beyond 0011. Rebuild and recreate both web and worker to load current code/templates; preserve database, media, `.env` and existing settings. No new environment variable is needed.
 
 ## Backups and updates
 
@@ -203,7 +204,7 @@ git log -1 --oneline
 
 Keep the printed database dump, media archive and release commit together as one recovery point and copy them to approved separate storage. Archive listing validates structure, not a successful restore. If a command fails after services were stopped, leave the writers stopped, inspect the failure and use the recovery runbook before resuming; do not delete volumes or start old code against a newer schema.
 
-Preserve `.env`, the database credentials, Django secret, PostgreSQL volume and `room_media` photo volume. For an installation with photos, stop writers and take the paired database/photo backup before updating. This release requires committed migrations `0009_mixed_meeting_type`, `0010_room_photo` and `0011_room_requires_approval`; they preserve existing records, and no room reseeding is required. Migration 0011 checks Requires approval for existing rooms and does not change saved booking statuses. Verify all applied using `docker compose -f compose.prod.http.yaml exec web python manage.py showmigrations booking`. Migration 0008 preserves legacy confirmed meetings as approved; reversing it cancels pending/rejected records, so review rollback/restore separately. Stop web/worker writers before any migration.
+Preserve `.env`, the database credentials, Django secret, PostgreSQL volume and `room_media` photo volume. For an installation with photos, stop writers and take the paired database/photo backup before updating. This release requires the complete committed migration chain through `0012_department`; it preserves existing records, and no room reseeding is required. Migration 0011 checks Requires approval for existing rooms without changing saved booking statuses. Migration 0012 adds the eight requested departments and imports existing nonblank user/booking labels without rewriting their saved strings. Verify all applied using `docker compose -f compose.prod.http.yaml exec web python manage.py showmigrations booking`; then inspect **Staff desk → Departments**. Migration 0008 preserves legacy confirmed meetings as approved; reversing it cancels pending/rejected records, so review rollback/restore separately. Stop web/worker writers before any migration.
 
 Stop containers while preserving the database:
 

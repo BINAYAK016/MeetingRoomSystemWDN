@@ -15,6 +15,7 @@ from booking.models import (
     AuditEvent,
     BookingPolicy,
     BookingSeries,
+    Department,
     EmailToken,
     Notification,
     Reservation,
@@ -54,6 +55,7 @@ def booking_values(room, **changes):
 class RoomApprovalFixtures:
     def setUp(self):
         super().setUp()
+        Department.objects.get_or_create(name="Operations")
         clock = patch("django.utils.timezone.now", return_value=NOW)
         clock.start()
         self.addCleanup(clock.stop)

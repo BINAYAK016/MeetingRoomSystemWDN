@@ -395,6 +395,26 @@ PY
 
 Inspect individual bookings/audit in Staff desk. Direct SQL status/time edits bypass locking, notifications, revisions and audit.
 
+### Department dropdowns
+
+| Symptom | Check/action |
+| --- | --- |
+| A department is missing from a new booking/profile dropdown | Verified staff should check **Staff desk → Departments** and add/reactivate the option. New selections use active departments only. |
+| Previously saved department appears as “current value” | Its catalog entry was renamed/deactivated or the saved string differs from the active label. Existing records may retain that saved value; new bookings choose an active option or leave the field blank. |
+| “Department name already exists” | Names are unique case-insensitively. Find/edit/reactivate the existing entry instead of adding a capitalization variant. |
+| Departments page gives a missing-table or permission error after update | Check that `0012_department` is applied and that the maintenance procedure ran `db_setup` afterward. Preserve volumes and follow the supported update; do not generate migrations on production. |
+| A department rename does not update old report groups | Expected: bookings retain label snapshots. Catalog administration does not rewrite meeting history. |
+
+Read-only checks, with no email addresses or secrets:
+
+```bash
+docker compose -f compose.prod.http.yaml exec -T web python manage.py showmigrations booking
+docker compose -f compose.prod.http.yaml exec -T web python manage.py shell -c "from booking.models import Department; print(list(Department.objects.values('name', 'is_active').order_by('name')))"
+docker compose -f compose.prod.http.yaml logs --since 15m --tail=100 --no-color web
+```
+
+Apply repairs through the [HTTP maintenance update](deployment-http.md#backups-and-updates), which stops writers, backs up database/media, runs committed migrations, reapplies runtime grants and recreates services. Department names are company configuration; review them before sharing a diagnostic output outside IT.
+
 ### Invited meetings and attendee suggestions
 
 First check **My meetings** with All meetings, no status/search filter, and History if the record is no longer active. Confirm the organizer saved the correct full address. Request a current page rather than relying on an old tab or already delivered email. Adding/removing attendees is an organizer/staff booking edit and follows the room's approval policy; invitation itself creates no staff rights.

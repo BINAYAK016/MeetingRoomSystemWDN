@@ -15,6 +15,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from booking.calendar_presenter import build_calendar_context
+from booking.department_choices import active_department_name
 from booking.forms import BookingForm, BookingScheduleForm
 from booking.meeting_access import personal_meetings, with_meeting_membership
 from booking.models import ACTIVE_RESERVATION_STATUSES, BookingPolicy, CompanyHoliday, Reservation, Room, User
@@ -108,7 +109,7 @@ def _new_booking_initial(request):
         "end_time": end,
         "meeting_type": "internal",
         "recurrence": "none",
-        "department": request.user.department,
+        "department": active_department_name(request.user.department),
     }
 
 
@@ -432,6 +433,7 @@ def booking_edit(request, booking_id):
         request.POST if request.method == "POST" else None,
         initial=initial if request.method == "GET" else None,
         staff=staff,
+        current_department=booking.department,
     )
     form.fields.pop("recurrence")
     form.fields.pop("until_date")

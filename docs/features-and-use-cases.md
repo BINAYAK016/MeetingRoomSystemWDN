@@ -68,7 +68,7 @@ Staff permissions are checked against the active account and the session's verif
 | Approve/reject requests | No | Yes |
 | Enter a booking-policy exception | No | Yes, with an override reason |
 | Manual check-in within the check-in window | No | Yes |
-| Manage rooms, closures, rules, holidays and access | No | Yes |
+| Manage rooms, departments, closures, rules, holidays and access | No | Yes |
 | View reports, Excel exports and audit log | No | Yes |
 | Use local test inbox on the office production server | No | No |
 
@@ -103,6 +103,9 @@ Paths below are relative to `http://mbs.wdn.com.np`. Numeric identifiers in `{br
 | `/staff/rooms/` | Active and inactive room administration | Verified staff |
 | `/staff/rooms/new/` | Add a room | Verified staff |
 | `/staff/rooms/{room_id}/` | Edit a room | Verified staff |
+| `/staff/departments/` | Active and inactive department catalog | Verified staff |
+| `/staff/departments/new/` | Add a department | Verified staff |
+| `/staff/departments/{department_id}/` | Rename, activate or deactivate a department | Verified staff |
 | `/staff/blocks/` | List room closures and remove them | Verified staff |
 | `/staff/blocks/new/` | Reserve an unavailable period | Verified staff |
 | `/staff/policy/` | Configure booking rules | Verified staff |
@@ -199,7 +202,7 @@ If JavaScript is unavailable, the underlying native form displays room/date/star
 | Meeting type | Internal, External, or Internal + External (`mixed`) |
 | Guest company name | Required for External and Internal + External; at most 200 characters |
 | Additional guests without email addresses | Stored as external attendee count; numeric value from 0 to 500; do not double-count email-listed people |
-| Department | Optional, at most 120 characters; initially copied from profile |
+| Department | Optional dropdown from the active staff-managed catalog; initially copied from profile. Saved labels remain snapshots rather than department foreign keys |
 | Attendees | Up to 50 distinct valid email addresses; newline, comma, semicolon or whitespace separated |
 | Refreshments requested | A request flag visible to Front Desk, not a fulfilment or stock workflow |
 | Front Desk notes | Optional preparation information, at most 10,000 characters; visible to organizer and staff |
@@ -393,6 +396,14 @@ Changes apply to subsequent validation. Existing occupied buffers are stored wit
 
 Holidays use a unique date and a name (up to 160 characters). Saving an existing date updates its name. Remove deletes that entry and records an audit event. Weekends remain closed independently of holidays.
 
+### Departments
+
+Booking and My profile offer a department dropdown. The initial catalog contains **Accounts, Administrative, Logistics, Sales, Oracle Support, Dell Support, Toshiba and ATM support**. Migration `0012_department` also imports existing nonblank user/booking labels, deduplicating names case-insensitively without rewriting their stored strings.
+
+Verified Front Desk and Administrators have identical access to **Staff desk → Departments**. They can add a department, edit its name and change its Active setting; these changes are audited. Names are required, at most 120 characters and unique case-insensitively. Deactivate an unused option instead of deleting it. Catalog changes apply to future selections without a restart. Renaming/deactivating a department does not rewrite previously saved user or reservation department labels, so reports retain the booked label. Department remains optional and does not change booking permissions or approval policy.
+
+My profile, booking edits and staff People edits may retain the specific record's existing label when it is absent from the active catalog, displayed as the current value. This does not permit selecting another inactive/unknown label. New bookings use active choices only; an inactive or renamed profile label is not prefilled into a new booking. Staff People uses the same department dropdown for new accounts and active options plus that account's current label for edits.
+
 ### People and access
 
 People searches email/name/department and filters Everyone, Staff or Inactive. Staff create/update names, department, Active state and Front Desk / Administrator flag. Email identifies the account: changing the email field creates or updates the account at that address; it is **not** an email-rename feature.
@@ -465,6 +476,9 @@ Examples assume an illustrative eight-seat room and default policy. Adjust dates
 | UC-32 | Attend a colleague's meeting | Active signed-in employee listed by email | My meetings → I’m invited → read detail/status; no edit, cancel or organizer check-in |
 | UC-33 | Select colleague address | Active colleague registered in MBS | Type at least two email/name letters → choose suggested full email → existing headcount/server validation applies |
 | UC-34 | Use HTML check-in action | Organizer, Approved meeting, current email | Check in in email → browser confirmation → deliberate Check in now during window; preview alone changes nothing |
+| UC-35 | Choose a department | Signed-in employee | Booking/Profile → select Accounts or another active catalog option → save; department remains optional |
+| UC-36 | Add a department | Verified staff | Departments → Add department → required unique name and Active → Save; option appears in dropdowns immediately |
+| UC-37 | Retire or rename a department | Verified staff, saved bookings use the existing name | Departments → Edit → rename or clear Active → Save; existing profile/booking labels and report history remain intact |
 
 ## Implemented scope and limitations
 

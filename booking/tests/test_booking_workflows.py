@@ -8,7 +8,7 @@ from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from booking.models import EmailToken, Notification, Reservation, Room, User
+from booking.models import Department, EmailToken, Notification, Reservation, Room, User
 from booking.services.bookings import BookingError, approve_booking, create_booking, occurrence_dates
 from booking.services.checkin import confirm_checkin, release_due_no_shows
 from booking.services.notifications import queue_due_reminders, send_due_notifications
@@ -17,6 +17,7 @@ from booking.services.notifications import queue_due_reminders, send_due_notific
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
 class BookingWorkflowTests(TestCase):
     def setUp(self):
+        Department.objects.get_or_create(name="Operations")
         self.user = User.objects.create_user("person@wdn.com.np")
         self.room = Room.objects.create(name="Board room", location="WDN", floor="3", capacity=8)
         self.day = timezone.localdate() + timedelta(days=1)

@@ -4,6 +4,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 
+from booking.department_choices import department_choices
 from booking.models import BookingPolicy, Reservation, Room
 from booking.services.email_login import employee_email_domain_label, normalized_employee_email
 from booking.services.room_photos import normalize_room_photo
@@ -61,7 +62,10 @@ class BookingForm(forms.Form):
     external_attendee_count = forms.IntegerField(
         label="External guests", min_value=0, max_value=500, initial=0
     )
-    department = forms.CharField(max_length=120, required=False)
+    department = forms.ChoiceField(
+        required=False,
+        help_text="Choose a department. Staff can add options in Staff desk → Departments.",
+    )
     attendees = forms.CharField(
         label="Attendee email addresses",
         max_length=15000,
@@ -88,9 +92,10 @@ class BookingForm(forms.Form):
         help_text="Staff only: required when overriding booking rules.",
     )
 
-    def __init__(self, *args, staff=False, **kwargs):
+    def __init__(self, *args, staff=False, current_department="", **kwargs):
         super().__init__(*args, **kwargs)
         self.staff = staff
+        self.fields["department"].choices = department_choices(current_department)
         self.fields["room"].queryset = Room.objects.filter(is_active=True).order_by(
             "location", "floor", "name"
         )

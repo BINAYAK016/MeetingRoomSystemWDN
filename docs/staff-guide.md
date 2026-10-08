@@ -16,6 +16,7 @@ Related documents: [employee guide](user-guide.md), [features/use cases](feature
 | Pending requests | [Pending queue](http://mbs.wdn.com.np/staff/bookings/pending/) | Review earliest upcoming requests |
 | Bookings | [Company bookings](http://mbs.wdn.com.np/staff/bookings/) | Search/filter all records and open management actions |
 | Rooms | [Manage rooms](http://mbs.wdn.com.np/staff/rooms/) | Add/edit/deactivate rooms |
+| Departments | [Manage departments](http://mbs.wdn.com.np/staff/departments/) | Add, rename, activate or deactivate booking/profile options |
 | Closures | [Room closures](http://mbs.wdn.com.np/staff/blocks/) | Block/release unavailable periods |
 | Rules | [Booking rules](http://mbs.wdn.com.np/staff/policy/) | Office-wide booking/check-in policy |
 | Holidays | [Company holidays](http://mbs.wdn.com.np/staff/holidays/) | Non-bookable dates |
@@ -283,12 +284,30 @@ Changed rules apply to new/edited bookings. Existing occupied buffers remain the
 
 Dates must be valid and name is required (up to 160 characters). Holiday entries are unique by date. Daily normal recurrence skips these dates; weekly/monthly series containing a holiday are rejected unless staff enters an exception. Existing meetings are not automatically cancelled. Removing a holiday does not open weekends, which remain closed independently.
 
-## 10. Manage people and access
+## 10. Manage departments
+
+Front Desk and Administrators have identical access to this catalog.
+
+1. Open **Staff desk → Departments**.
+2. Select **Add department** and enter the required name (up to 120 characters).
+3. Keep **Active** selected to offer the option in booking/profile dropdowns, then save.
+4. To rename or retire an option, select **Edit** in its row, change the name or clear **Active**, and save.
+5. Check the department list and relevant dropdown. Changes take effect without restarting the application and are recorded in the audit log.
+
+Names must be unique regardless of capitalization; for example, **Sales** and **sales** cannot be separate entries. Initial options are **Accounts, Administrative, Logistics, Sales, Oracle Support, Dell Support, Toshiba and ATM support**. Upgrade migration `0012_department` also imports existing nonblank department labels so that legacy choices are retained.
+
+Use deactivation instead of deletion. Renaming/deactivation does not rewrite department labels already saved on profiles or bookings. Reports continue to group meetings by their saved labels. Department is optional; a blank value appears as **Unspecified** in reports. This catalog does not grant staff privileges or impose a separate approval rule.
+
+When editing a profile, a booking or an existing person in People, their previously saved label can remain as the current value even if it is inactive or renamed. New bookings/accounts select active options only. An inactive/renamed profile label is not prefilled into new booking requests; choose an active option or leave the optional field blank.
+
+Direct links: [Department list](http://mbs.wdn.com.np/staff/departments/) and [Add department](http://mbs.wdn.com.np/staff/departments/new/).
+
+## 11. Manage people and access
 
 ### Add/update an employee
 
 1. Open **People**.
-2. Enter an eligible company email, names and department.
+2. Enter an eligible company email and names, then choose an optional department from the dropdown.
 3. Select **Active account** for normal employee sign-in.
 4. Select **Front Desk / Administrator access** only for staff who need full management powers.
 5. Save and check the directory row.
@@ -315,7 +334,7 @@ Active approved-domain employee accounts also supply name/email suggestions in t
 
 An access change invalidates existing login sessions and pending sign-in challenges. Password changes invalidate existing sessions as well. Records/bookings/audit history remain; account deactivation does not cancel bookings automatically. You cannot remove your own staff role or deactivate your own account through People. There is no separate administrator-only permission tier or grant approval chain.
 
-## 11. Generate reports and export Excel
+## 12. Generate reports and export Excel
 
 1. Open **Reports**.
 2. Choose Today, This week, This month, This quarter or This year, or set From/To.
@@ -339,7 +358,7 @@ Example under default rules: one room has 480 bookable minutes on a normal weekd
 
 Excel contains **Bookings**, **Room usage**, **Departments** and **Organizers** sheets, with headers, filters and frozen first row. Booking rows include ID/date/start/end/room/organizer/department/status/title. Notes, full attendee lists, authentication tokens and audit records are not exported. Excel is a report, not a backup.
 
-## 12. Use audit history
+## 13. Use audit history
 
 1. Open **Audit log**.
 2. Select an action, for example `booking_approved`, `booking_modified`, `user_access_modified` or `room_modified`.
@@ -349,7 +368,7 @@ Excel contains **Bookings**, **Room usage**, **Departments** and **Organizers** 
 
 The UI is read-only and displays 50 events per page. “System” means no actor was attached to that automated/anonymous event. Audit supports investigation of booking decisions, access/password actions, room/rule/holiday changes and selected sign-in/mail failures. It does not log every page view, provide full email bodies or replace IT's service logs. There is no UI audit delete/export button or automatic one-year purge.
 
-## 13. Email issues and escalation
+## 14. Email issues and escalation
 
 Booking events are queued independently of saved reservation transactions. Login links, staff codes and setup messages are sent directly during the request, so their failure may appear in audit/logs rather than the Failed emails dashboard count.
 
@@ -367,7 +386,7 @@ If users report missing mail:
 
 Record ordinary page/action, approximate Nepal time, booking ID and visible error/request reference if present. Keep passwords, email codes, token-bearing links and `.env` contents private. Direct HCL/Outlook calendar sync is deferred; missing entries in those calendars are not evidence of failed MBS confirmation delivery.
 
-## 14. Handover and retention
+## 15. Handover and retention
 
 Front Desk owns review, guest/preparation requests, manual priority arrangements, room records and appropriate access changes. IT owns server/worker/mail health, database credentials, backups/restores, Docker updates, logs/disk monitoring and technical incident diagnosis. Staff should escalate service errors rather than change database rows to bypass workflows.
 

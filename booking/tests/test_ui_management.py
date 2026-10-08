@@ -10,13 +10,15 @@ from django.urls import reverse
 from django.utils import timezone
 from openpyxl import load_workbook
 
-from booking.models import AuditEvent, EmailToken, Reservation, Room, RoomFacility, User
+from booking.models import AuditEvent, Department, EmailToken, Reservation, Room, RoomFacility, User
 from booking.services.bookings import create_booking
 
 
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
 class UserInterfaceTests(TestCase):
     def setUp(self):
+        Department.objects.get_or_create(name="Operations")
+        Department.objects.get_or_create(name="Finance")
         self.employee = User.objects.create_user("person@wdn.com.np", department="Operations")
         self.staff = User.objects.create_user("desk@wdn.com.np", is_staff=True)
         self.room = Room.objects.create(name="Board room", location="WDN", floor="3", capacity=12)
@@ -80,7 +82,8 @@ class UserInterfaceTests(TestCase):
         self.client.force_login(self.employee)
         response = self.client.post(reverse("profile"), {"department": "x" * 121})
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "at most 120")
+        self.assertEqual(response.context["form"].errors.as_data()["department"][0].code, "invalid_choice")
+        self.assertNotIn("department", response.context["form"].cleaned_data)
         self.employee.refresh_from_db()
         self.assertEqual(self.employee.department, "Operations")
 

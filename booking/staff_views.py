@@ -25,11 +25,12 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 
 from booking.forms import BookingRejectionForm, PolicyForm, RoomBlockForm, RoomForm
-from booking.management_forms import UserAccessForm
+from booking.management_forms import DepartmentForm, UserAccessForm
 from booking.models import (
     AuditEvent,
     BookingPolicy,
     CompanyHoliday,
+    Department,
     EmailToken,
     Notification,
     Reservation,
@@ -40,6 +41,7 @@ from booking.models import (
 from booking.services.auth_security import staff_session_verified
 from booking.services.bookings import BookingError, approve_booking, reject_booking
 from booking.services.checkin import CheckInError, manual_checkin
+from booking.services.email_login import normalized_employee_email
 from booking.services.email_templates import staff_setup_email_html
 from booking.services.mail_delivery import deliver_mail
 from booking.services.reporting import report_data
@@ -149,6 +151,61 @@ def _locked_verified_staff(request):
     ):
         return None
     return actor
+
+
+@staff_required
+@require_GET
+def departments(request):
+    context = paginate(request, Department.objects.all())
+    context["departments"] = context["page_obj"]
+    return render(request, "booking/staff_departments.html", context)
+
+
+@staff_required
+@require_http_methods(["GET", "POST"])
+@transaction.atomic
+def department_form(request, department_id=None):
+    actor = None
+    if request.method == "POST":
+        actor = _locked_verified_staff(request)
+        if actor is None:
+            return redirect("staff-login")
+    queryset = (
+        Department.objects.select_for_update() if request.method == "POST" else Department.objects.all()
+    )
+    department = get_object_or_404(queryset, pk=department_id) if department_id else None
+    previous = {"name": department.name, "active": department.is_active} if department else None
+    form = DepartmentForm(request.POST if request.method == "POST" else None, instance=department)
+    if request.method == "POST" and form.is_valid():
+        try:
+            with transaction.atomic():
+                saved = form.save()
+                AuditEvent.objects.create(
+                    actor=actor,
+                    action="department_modified" if department else "department_created",
+                    target_type="department",
+                    target_id=saved.pk,
+                    outcome="success",
+                    details={"previous": previous, "name": saved.name, "active": saved.is_active},
+                )
+        except IntegrityError:
+            form.add_error(
+                "name", "A department with this name already exists. Check the department directory."
+            )
+        else:
+            messages.success(
+                request, "Department saved. Existing meetings keep their original department text."
+            )
+            return redirect("staff-departments")
+    return render(
+        request,
+        "booking/staff_form.html",
+        {
+            "form": form,
+            "heading": "Edit department" if department else "Add department",
+            "cancel_url": reverse("staff-departments"),
+        },
+    )
 
 
 @staff_required
@@ -561,7 +618,9 @@ def _user_directory(request, form=None):
             "users": context["page_obj"],
             "search": search,
             "access": access,
-            "form": form if form is not None else UserAccessForm(initial=initial),
+            "form": form
+            if form is not None
+            else UserAccessForm(initial=initial, current_department=initial.get("department", "")),
         }
     )
     return render(request, "booking/staff_users.html", context)
@@ -569,8 +628,13 @@ def _user_directory(request, form=None):
 
 @staff_required
 @require_POST
+@transaction.atomic
 def user_save(request):
-    form = UserAccessForm(request.POST)
+    email = normalized_employee_email(request.POST.get("email", ""))
+    existing = (
+        User.objects.select_for_update(no_key=True).filter(email__iexact=email).first() if email else None
+    )
+    form = UserAccessForm(request.POST, current_department=existing.department if existing else "")
     if not form.is_valid():
         return _user_directory(request, form)
     data = form.cleaned_data
