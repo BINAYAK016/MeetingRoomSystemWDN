@@ -2,7 +2,7 @@
 
 **Meeting Booking System (MBS)**
 **Transgate Tech | Binayak Bhandari**
-Documentation checked against application source on **8 October 2026**.
+Documentation checked against application source on **12 October 2026**.
 
 This reference describes implemented behavior. The selected office deployment is **http://mbs.wdn.com.np**, bound to **192.168.50.222:80**, with PostgreSQL and Docker Compose. Both `@wdn.com.np` and `@transgate.com.np` are accepted employee domains in the production profile. Staff means Front Desk or Administrator: both have the same permissions.
 
@@ -147,7 +147,7 @@ These routes complement the page directory. Buttons/forms supply the required se
 
 ### Workspace overview
 
-After sign-in, the overview shows active room count, accessible upcoming organized/invited approved meetings, pending request count, booking-window length and office hours. It previews up to six active rooms and links to the full directory, calendar and booking form. The staff overview is a separate page with company-wide operational counts.
+After sign-in, the overview shows active room count, accessible upcoming organized/invited approved meetings, pending request count, booking-window length and office hours. The shared overview and room-page headings use **Company workspace**. It previews up to six active rooms and links to the full directory, calendar and booking form. The staff overview is a separate page with company-wide operational counts.
 
 ### Room directory and detail
 
@@ -157,8 +157,8 @@ The employee room directory supports:
 - Minimum seat count.
 - Exact location and facility filters selected from active room values.
 - Resetting filters and pagination, with **12 rooms per page**.
-- Room cards with name, location, floor, capacity, facilities and **Staff approval required** or **Automatic approval**; staff can supply an optional real photo used by the booking wizard.
-- Detail pages with descriptions, instructions, equipment labels and **Book this room**.
+- Room cards with uploaded real photos, name, location, floor, capacity, facilities and **Staff approval required** or **Automatic approval**. A labelled placeholder appears when no photo is uploaded.
+- Detail pages with a larger uploaded photo or labelled placeholder, descriptions, instructions, equipment labels and **Book this room**. Booking-wizard thumbnails use the same staff-managed image.
 
 Facilities are descriptive free-text labels such as “Projector” or “Whiteboard”. They are not separate reservable inventory items. Minimum seats filters room capacity; it does not reserve seats or check attendee schedules. Only active rooms appear in employee search, detail and calendar views.
 
@@ -168,7 +168,7 @@ All booking times are **Nepal time (Asia/Kathmandu, NPT)**. Calendar opens in **
 
 Month is a Monday-to-Sunday calendar with surrounding dates to complete its weeks, a highlighted today, and meeting cards showing times and authorized titles. Select a date for Day view. A day initially shows up to three events; expand **more** for the remainder. Week shows seven day columns with meeting cards and Day links. Room labels are included when viewing all rooms. Pending requests, personal organized/invited meetings, other occupancy, closures, buffers and permitted short meetings have distinct labelled markings; short meetings require a compatible rule or staff exception and are not enabled by a calendar color.
 
-Unrelated employees see generic occupancy with no private title, booking ID, attendee or notes. Organizers, current listed attendees and verified staff can open authorized detail links; attendees retain read-only rights. Calendar permissions are identical across Month, Week and Day. Pending holds, approved bookings, checked-in/completed occupied intervals, room closures and buffers continue to block overlapping bookings. Calendar reads do not change reservation status.
+Unrelated employees see **Booked**, the occupied meeting time and room, with no private title, organizer, description, booking ID, attendees, notes or detail link. Pending and approved meetings use the same generic marking for unrelated viewers; meeting buffers have no private booking link. Organizers, current listed attendees and verified staff/admin can open authorized detail links; attendees retain read-only rights. Staff using only employee email sign-in have ordinary employee visibility. Calendar permissions are identical across Month, Week and Day, including overflow cards, accessible labels and tooltips. Pending holds, approved bookings, checked-in/completed occupied intervals, room closures and buffers continue to block overlapping bookings. Calendar reads do not change reservation status.
 
 Day displays one column per selected active room and one row per configured booking increment. **Available** opens the booking wizard with room/date/start preselected. The wizard keeps those selections, proposes an end time under the current policy, and validates every occurrence again when saving. Closed weekends, holidays, past times, dates outside the horizon, insufficient time before closing and insufficient minimum-meeting-plus-buffer space prevent normal available-start links. Month/Week date links can inspect historical or future occupancy without extending the booking horizon.
 
@@ -205,7 +205,7 @@ If JavaScript is unavailable, the underlying native form displays room/date/star
 | Meeting type | Internal or External |
 | Guest company name | Required for External; at most 200 characters |
 | Additional guests without email addresses | Stored as external attendee count; numeric value from 0 to 500; do not double-count email-listed people |
-| Department | Optional dropdown from the active staff-managed catalog; initially copied from profile. Saved labels remain snapshots rather than department foreign keys |
+| Department | Required dropdown for both Internal and External, including staff bookings/overrides; initially copied from an active profile value. New selections use the active staff-managed catalog. Saved labels remain snapshots rather than department foreign keys |
 | Attendees | Up to 50 distinct valid email addresses; newline, comma, semicolon or whitespace separated |
 | Refreshments requested | A request flag visible to Front Desk, not a fulfilment or stock workflow |
 | Front Desk notes | Optional preparation information, at most 10,000 characters; visible to organizer and staff |
@@ -214,7 +214,7 @@ If JavaScript is unavailable, the underlying native form displays room/date/star
 | Organizer email | Verified staff only; blank means current staff user; otherwise eligible active employee |
 | Override reason | Verified staff only, at most 500 characters; a nonempty reason enables policy exceptions |
 
-Historical Internal + External (`mixed`) records remain readable. Their edit forms initially select External. Saving without other changes preserves the original record, approval, revision and check-in state; a substantive edit saves the selected Internal or External type through the normal workflow. New mixed submissions are rejected.
+Historical Internal + External (`mixed`) records remain readable. Their edit forms initially select External. An unchanged save with all required fields valid preserves the original record, approval, revision and check-in state; a substantive edit saves the selected Internal or External type through the normal workflow. A historical blank department must be selected before saving. New mixed submissions are rejected.
 
 ### Employee directory suggestions
 
@@ -278,13 +278,13 @@ Completed meetings keep their historical interval to preserve conflict integrity
 
 ### Submission and review
 
-The selected room's **Requires approval** setting determines employee submission status. It defaults to checked: submission creates Pending, queues a request message to the organizer and active staff, and does not issue approved invitations to attendees. The detail page shows that review is required. Staff review each future Pending request and approve it or reject it with an explanation of up to 500 characters.
+The selected room's **Requires approval** setting determines employee submission status. It defaults to checked: submission creates Pending, queues a request message to the organizer and designated Front Desk contact, and does not issue approved invitations to attendees. The detail page shows that review is required. Staff review each future Pending request and approve it or reject it with an explanation of up to 500 characters.
 
-For an unchecked room, a valid employee submission starts Approved immediately and queues normal confirmation to organizer/attendees/staff, including eligible organizer check-in instructions. No staff reviewer is invented: automatic approval records a timestamp with no approval actor. The current room setting is read under a transaction lock when saving; a preview does not override it. Capacity, conflicts, buffers, date/duration rules and ownership checks are identical for both policies.
+For an unchecked room, a valid employee submission starts Approved immediately and queues normal confirmation to the organizer, attendees and designated Front Desk contact, including eligible organizer check-in instructions. No staff reviewer is invented: automatic approval records a timestamp with no approval actor. The current room setting is read under a transaction lock when saving; a preview does not override it. Capacity, conflicts, buffers, date/duration rules and ownership checks are identical for both policies.
 
 Approval records the staff actor and time, changes state to Approved and queues confirmation. The room and organizer must still be active; the meeting must not have started. Approval confirms the stored request; it does not re-run every changed holiday/policy/capacity value. If room details or rules changed after submission, staff should review the request manually.
 
-Rejection records staff actor, time and reason, releases the interval and queues a rejection message to the organizer and active staff. The organizer can read the reason. A rejected occurrence is not editable or approvable again; submit a new request if arrangements change.
+Rejection records staff actor, time and reason, releases the interval and queues a rejection message to the organizer and designated Front Desk contact. The organizer can read the reason. A rejected occurrence is not editable or approvable again; submit a new request if arrangements change.
 
 ### Modification
 
@@ -323,7 +323,7 @@ There is no automatic rolling creation, “cancel whole series”, series-wide e
 
 ## Check-in and automatic release
 
-The organizer's approved confirmation/change emails and reminder may include a prominent **Check in** button backed by a one-time private link; the plain-text part includes that link. Attendees and staff receive event notifications, but only the organizer recipient gets the check-in action. The email button opens a confirmation page; arrival is recorded only when **Check in now** is pressed through the protected POST form. It is not a mail-client checkbox and a link preview cannot mark arrival.
+The organizer's approved confirmation/change emails and reminder may include a prominent **Check in** button backed by a one-time private link; the plain-text part includes that link. Attendees and the designated Front Desk contact receive event notifications, but only the organizer recipient gets the check-in action. The email button opens a confirmation page; arrival is recorded only when **Check in now** is pressed through the protected POST form. It is not a mail-client checkbox and a link preview cannot mark arrival.
 
 Check-in is allowed from scheduled start **inclusive** until the configured deadline **exclusive**. A 10:00 meeting with a 15-minute rule can be checked in at 10:00 through just before 10:15; at 10:15 it is too late. Early confirmation is rejected and can be retried from the same staged page after start.
 
@@ -337,9 +337,9 @@ After the deadline an unchecked Approved meeting becomes **No show**, releases t
 
 ### Who receives what
 
-Recipients are deduplicated by address. “Staff” below means every currently active staff account when that event/reminder is queued.
+Recipients are deduplicated by address. **Designated Front Desk** means `BOOKING_FRONT_DESK_EMAIL`, default **`mijala.maharjan@wdn.com.np`**, only when that approved-domain account is currently active and staff-enabled. No other staff/admin receives company-wide copies. Other staff still receive mail as organizer or listed attendee on their own meetings. Configuring this address does not grant account access.
 
-| Event | Organizer | Listed attendees | Active staff | Check-in link |
+| Event | Organizer | Listed attendees | Designated Front Desk | Check-in link |
 | --- | --- | --- | --- | --- |
 | Employee request / updated Pending request | Yes | No | Yes | No |
 | Rejection | Yes, with reason | No | Yes | No |
@@ -355,13 +355,15 @@ Authentication and meeting messages are multipart email: a plain-text part for c
 
 Login links, staff codes and password setup emails are sent directly during their requests. Booking events use a separate database queue, so a saved meeting is not rolled back because subsequent SMTP delivery fails. The existing plain-text/event snapshot is retained; HTML is rendered at delivery using the current booking under revision/state/lease checks. Private check-in URLs are generated for the outgoing organizer message, not stored as HTML snapshots.
 
+Migration `0013_notification_recipient_role` records whether a newly queued message is for a meeting participant or an operational Front Desk copy. Delivery rechecks the designated staff contact, so changing that contact or revoking its staff/active status suppresses obsolete operational copies. Existing undelivered jobs are marked as legacy audience: only a current organizer/attendee or the current designated staff contact remains eligible. A legacy job for a removed participant with unknown original purpose is superseded rather than risking a former staff-wide broadcast. Newly recorded approved-change notices preserve intentional delivery to removed attendees/former organizers without restoring their application access. Already delivered email cannot be recalled.
+
 ### Timing and retry behavior
 
 Approved future meetings become eligible for a reminder within **one hour** of start. The worker queues it once per recipient, booking revision and scheduled start. This is not an exact timer guaranteeing delivery at T−60 minutes. A booking approved inside that hour becomes eligible on the next reconciliation. Pending/rejected/cancelled meetings do not get an approved reminder.
 
 The worker normally reconciles states/reminders every 30 seconds and attempts one queued email per iteration. Backlog and SMTP latency can delay delivery. Failed queued mail retries up to **five total attempts**, with automatic retry delays of 2, 4, 8 and 16 minutes after failures one through four. After the fifth failure it remains Failed until IT requeues an eligible job; its recorded next-attempt timestamp is 32 minutes ahead but does not trigger an automatic sixth send. Recovery uses leases to avoid concurrent claims; a crash after SMTP acceptance can still cause duplicate mail when its lease is recovered. Mail delivery is not exactly-once.
 
-Obsolete events are marked **Superseded** when state/revision changes. Worker checks current booking state before delivering related queued mail. Disabled/unconfigured SMTP leaves notifications waiting; it does not verify mailbox delivery. An SMTP “accepted” response proves relay acceptance, not final inbox placement. See [troubleshooting](troubleshooting.md) for queue inspection, worker checks and retry commands.
+Obsolete events are marked **Superseded** when state/revision or recipient authorization changes. Worker checks current booking state and recipient purpose before delivering related queued mail. Disabled/unconfigured SMTP leaves notifications waiting; it does not verify mailbox delivery. An SMTP “accepted” response proves relay acceptance, not final inbox placement. See [troubleshooting](troubleshooting.md) for queue inspection, worker checks and retry commands.
 
 ## Staff administration
 
@@ -405,13 +407,13 @@ Holidays use a unique date and a name (up to 160 characters). Saving an existing
 
 The staff preview labels dates as new, name update (with previous name), or unchanged and shows affected Pending/Approved/Checked in meeting counts in Nepal time. A warning requires acknowledgment when such meetings exist. Confirmation adds/updates the entire batch atomically, keeps holiday dates omitted from the file, and leaves every saved booking/status intact. Imported holidays immediately appear in the calendar and enforce normal non-working-day rules. Staff review meeting conflicts separately using Bookings and the existing override process; the upload sends no meeting cancellation notifications.
 
-Previews are tied to the active verified staff session and account authentication version, expire after **15 minutes** and are consumed once. Expired or reused previews require another upload. A changed holiday list or affected meeting set refreshes the preview and requires review/confirmation again. The import is audited as `holiday_imported`; individual added/updated holidays are `holiday_saved`. No new database migration beyond `0012_department` is required.
+Previews are tied to the active verified staff session and account authentication version, expire after **15 minutes** and are consumed once. Expired or reused previews require another upload. A changed holiday list or affected meeting set refreshes the preview and requires review/confirmation again. The import is audited as `holiday_imported`; individual added/updated holidays are `holiday_saved`. Holiday import itself needs no additional schema beyond the existing holiday table; the current release separately requires notification migration 0013.
 
 ### Departments
 
 Booking and My profile offer a department dropdown. The initial catalog contains **Accounts, Administrative, Logistics, Sales, Oracle Support, Dell Support, Toshiba and ATM support**. Migration `0012_department` also imports existing nonblank user/booking labels, deduplicating names case-insensitively without rewriting their stored strings.
 
-Verified Front Desk and Administrators have identical access to **Staff desk → Departments**. They can add a department, edit its name and change its Active setting; these changes are audited. Names are required, at most 120 characters and unique case-insensitively. Deactivate an unused option instead of deleting it. Catalog changes apply to future selections without a restart. Renaming/deactivating a department does not rewrite previously saved user or reservation department labels, so reports retain the booked label. Department remains optional and does not change booking permissions or approval policy.
+Verified Front Desk and Administrators have identical access to **Staff desk → Departments**. They can add a department, edit its name and change its Active setting; these changes are audited. Names are required, at most 120 characters and unique case-insensitively. Deactivate an unused option instead of deleting it. Catalog changes apply to future selections without a restart. Renaming/deactivating a department does not rewrite previously saved user or reservation department labels, so reports retain the booked label. Department is required when creating or editing either booking type, including staff bookings and policy overrides. Profile/People department is optional. Historical blank bookings remain readable and need a department before an edit can be saved; no migration invents their department. Department does not change booking permissions or approval policy.
 
 My profile, booking edits and staff People edits may retain the specific record's existing label when it is absent from the active catalog, displayed as the current value. This does not permit selecting another inactive/unknown label. New bookings use active choices only; an inactive or renamed profile label is not prefilled into a new booking. Staff People uses the same department dropdown for new accounts and active options plus that account's current label for edits.
 
@@ -487,7 +489,7 @@ Examples assume an illustrative eight-seat room and default policy. Adjust dates
 | UC-32 | Attend a colleague's meeting | Active signed-in employee listed by email | My meetings → I’m invited → read detail/status; no edit, cancel or organizer check-in |
 | UC-33 | Select colleague address | Active colleague registered in MBS | Type at least two email/name letters → choose suggested full email → existing headcount/server validation applies |
 | UC-34 | Use HTML check-in action | Organizer, Approved meeting, current email | Check in in email → browser confirmation → deliberate Check in now during window; preview alone changes nothing |
-| UC-35 | Choose a department | Signed-in employee | Booking/Profile → select Accounts or another active catalog option → save; department remains optional |
+| UC-35 | Choose a department | Signed-in employee or verified staff | Internal/External booking → select compulsory Accounts or another active catalog option → save; profile department remains optional |
 | UC-36 | Add a department | Verified staff | Departments → Add department → required unique name and Active → Save; option appears in dropdowns immediately |
 | UC-37 | Retire or rename a department | Verified staff, saved bookings use the existing name | Departments → Edit → rename or clear Active → Save; existing profile/booking labels and report history remain intact |
 | UC-38 | Load company holiday schedule | Verified staff, approved Gregorian schedule | Holidays → template → fill Date/Occasion → Upload Excel → Preview → confirm; omitted saved dates remain |

@@ -210,6 +210,7 @@ class UserInterfaceTests(TestCase):
         self.assertEqual(self.room.facilities.count(), 2)
 
     def test_excel_user_text_is_literal_and_web_output_is_escaped(self):
+        Department.objects.create(name="=1+1")
         booking = self.booking(title='=HYPERLINK("https://example.invalid", "Click")', department="=1+1")
         self.sign_in_staff()
         response = self.client.get(

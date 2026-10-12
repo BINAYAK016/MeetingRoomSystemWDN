@@ -2,7 +2,7 @@
 {% block title %}Rooms{% endblock %}
 {% block content %}
 <div class="page-container app-page">
-  <div class="page-heading"><div><p class="eyebrow">WDN WORKSPACE</p><h1>Meeting rooms</h1><p class="lead">Find a space that fits your team.</p></div><a class="button button-primary" href="{% url 'calendar' %}">View availability →</a></div>
+  <div class="page-heading"><div><p class="eyebrow">COMPANY WORKSPACE</p><h1>Meeting rooms</h1><p class="lead">Find a space that fits your team.</p></div><a class="button button-primary" href="{% url 'calendar' %}">View availability →</a></div>
   <form method="get" class="filter-bar">
     <label>Search rooms<input name="q" value="{{ search }}" maxlength="100" placeholder="Name, floor or description"></label>
     <label>Minimum seats<input name="capacity" type="number" min="1" max="65535" value="{{ capacity }}" placeholder="Any capacity"></label>
@@ -11,7 +11,11 @@
     <button class="button button-primary">Find rooms</button><a class="button button-quiet" href="{% url 'rooms' %}">Reset</a>
   </form>
   <div class="room-grid">{% for room in rooms %}<article class="panel room-card">
-    <div class="room-card-top"><span class="room-card-mark" aria-hidden="true">▦</span><span class="capacity-chip">{{ room.capacity }} seats</span></div>
+    <a class="room-card-photo" href="{% url 'room-detail' room.pk %}" aria-label="View {{ room.name }} details">
+      {% if room.photo %}<img src="{% url 'room-photo' room.pk %}" alt="{{ room.name }}" loading="lazy" width="640" height="360">
+      {% else %}<span class="room-photo-placeholder"><span aria-hidden="true">▦</span>Room photo not added</span>{% endif %}
+    </a>
+    <div class="room-card-top"><span class="capacity-chip">{{ room.capacity }} seats</span></div>
     <h2>{{ room.name }}</h2><p class="muted">{{ room.location }} · Floor {{ room.floor }}</p>
     {% if room.description %}<p>{{ room.description|truncatechars:200 }}</p>{% endif %}
     <div class="facility-list">{% for facility in room.facilities.all %}<span>{{ facility.name }}</span>{% empty %}<span>No equipment listed</span>{% endfor %}</div>

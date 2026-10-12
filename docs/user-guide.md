@@ -2,7 +2,7 @@
 
 **Meeting Booking System (MBS)**
 **Transgate Tech | Binayak Bhandari**
-Checked against application source on **8 October 2026**.
+Checked against application source on **12 October 2026**.
 
 This guide explains employee use of **http://mbs.wdn.com.np** on the office network. Use a company email ending in **@wdn.com.np** or **@transgate.com.np**. All displayed meeting times are **Nepal time (NPT)**. For the complete behavior reference see [Features and use cases](features-and-use-cases.md); staff workflows are in the [staff guide](staff-guide.md).
 
@@ -19,6 +19,8 @@ This guide explains employee use of **http://mbs.wdn.com.np** on the office netw
 ## Navigation
 
 All signed-in pages share the left sidebar. On a phone, open **Workspace menu** to reach the same links. The current page stays highlighted, including room and meeting details. Staff management links appear after staff email-code verification.
+
+The overview and room pages use **Company workspace** for the shared WDN/Transgate workspace.
 
 | Menu / page | What to do there |
 | --- | --- |
@@ -67,7 +69,7 @@ The generic mail-request screen does not guarantee a message was sent, accepted 
 
 Department is used as the initial value on future booking forms. You can choose a different department for a meeting where needed. Initial choices are **Accounts, Administrative, Logistics, Sales, Oracle Support, Dell Support, Toshiba and ATM support**. Staff can add further options through **Staff desk → Departments**. If your department is missing, ask staff to add or reactivate it. Updating your profile does not rewrite the department already saved on earlier bookings. Email and access flags cannot be changed from this page; contact staff.
 
-An existing profile or booking can retain its previously saved department even if staff renamed or deactivated that option; it is shown as the current value when absent from the active list. New bookings use active options only. If your saved profile department is no longer active, a new booking leaves Department blank until you choose an active option.
+An existing profile or booking can retain its previously saved nonblank department even if staff renamed or deactivated that option; it is shown as the current value when absent from the active list. New bookings use active options only. Department is compulsory when creating or saving an edit to either an Internal or External booking. If your profile has no active department, choose one in the booking form. Older bookings with no department remain readable, but you must choose a department before saving an edit. Profile department remains optional.
 
 ## 3. Choose a room
 
@@ -76,7 +78,7 @@ An existing profile or booking can retain its previously saved department even i
 3. Set **Minimum seats**, for example `6`.
 4. Select a location or facility, for example “Projector”, when offered.
 5. Press **Find rooms**. Use **Reset** to clear filters; use pagination for additional results.
-6. Open **Room details** to read capacity, facilities, description and instructions.
+6. View each room's uploaded photo on its directory card, then open **Room details** for a larger image, capacity, facilities, description and instructions. A room with no uploaded image shows a clearly labelled placeholder; ask staff to upload its real photo.
 7. Use **Book this room** to preselect it, or **View availability** to compare times.
 
 Only active rooms are listed. A room's listed facility is a descriptive label; contact Front Desk if you need to verify equipment is ready. Employees cannot edit room records. If no room matches, widen filters or ask Front Desk about available rooms.
@@ -92,8 +94,8 @@ Only active rooms are listed. A room's listed facility is a descriptive label; c
 | Calendar marking | Meaning |
 | --- | --- |
 | Your meeting / Invited meeting | You organize or attend it; select the card for authorized details |
-| Awaiting approval | A Pending request already holds room time |
-| Other booking | Generic occupancy; private title/details are hidden from unrelated employees |
+| Awaiting approval | Your or an invited Pending request already holds room time; verified staff can see all Pending requests |
+| Booked / Other booking | Another employee's meeting holds this room/time; its title, organizer, description and detail link are hidden |
 | Available start | A permitted start for at least a minimum meeting and required buffer appears free at page load |
 | Room / office closed | Closure, weekend or configured company holiday |
 | Meeting buffer | Room time reserved around a meeting; not a free start |
@@ -103,7 +105,7 @@ All times use **Nepal time**. Month and Week can show dates beyond the booking h
 
 Staff can upload the company's approved holiday schedule. Saved holiday names appear in the calendar and those dates close normal employee bookings across every room. Refresh the page after a schedule update. Adding a holiday does not cancel a meeting already saved on that date; contact Front Desk if your meeting needs to be moved. A staff member may approve a justified booking exception through the existing override process. Employees do not upload or change the holiday list.
 
-Calendar availability is checked again on submission. Another person may hold the slot after you load the page. A signed-in employee listed as an attendee may open that meeting's details; unrelated employees see occupancy without title, notes, private booking ID or attendee details. Invitation never grants editing, cancellation, approval or organizer check-in rights. Refresh to see other users' changes.
+Calendar availability is checked again on submission. Another person may hold the slot after you load the page. In Month, Week and Day, unrelated employees see **Booked**, the time and room, without title, organizer, description, notes, private booking ID or detail links, including buffer links. Organizers and current invited employees can open their meeting; verified staff/admin can see and manage all meetings. A staff account using only employee sign-in has the ordinary employee view. Invitation never grants editing, cancellation, approval or organizer check-in rights. Refresh to see other users' changes.
 
 ## 5. Request a single internal meeting
 
@@ -128,7 +130,7 @@ The following is an illustrative request. Choose a **future company working date
 1. Open **New booking**, or use the room/calendar link.
 2. In **Schedule & details**, choose a date, duration and start time. Use **Custom** for explicit start/end. All times are Nepal time; the choices follow current office rules.
 3. Wait for the room cards to update. Check capacity, location, facilities and any real photo; select a room marked available for the selected schedule.
-4. Enter meeting title and information, select **Internal**, set refreshments to Yes/No, and add special requirements. Keep Repeat meeting as **One meeting**.
+4. Enter meeting title and information, select **Internal**, choose the compulsory **Department**, set refreshments to Yes/No, and add special requirements. Keep Repeat meeting as **One meeting**.
 5. Select **Next: attendees**. Type at least two letters from the start of a colleague's email, first name or last name and choose a directory suggestion, or enter complete addresses manually separated by commas or new lines. Duplicate addresses are normalized and removed; the organizer is already included. Enter `0` additional guests and check the displayed headcount fits the room.
 6. Continue to **Review & confirm**. Read the room, date/time, meeting details and attendee list. Use **Edit** or **Back** to correct them without restarting.
 7. Press **Submit booking request** for a room requiring review, or **Confirm booking** for an automatically approved room, once. Availability and the current room policy are checked again while saving.
@@ -173,20 +175,21 @@ A 10:00–11:00 meeting holds the room until 11:15 under the default gap. The or
 | Not a company working day | Choose weekday not listed as a holiday; staff can review a justified exception |
 | Too far ahead | Choose a date within current horizon |
 | Invalid attendee email | Correct the identified address; text names alone are not email addresses |
+| Choose a department | Select an active department for Internal or External meetings; ask staff to add a missing option |
 
 A failed submission does not create a booking. On a failed edit, the previously saved booking remains. Refresh the calendar when correcting a conflict; do not create repeated duplicate requests for the same planned meeting.
 
 ## 6. Request an external meeting
 
 1. In Schedule & details, select **External** for a meeting with guests. The two booking choices are Internal and External; External requires a guest company name.
-2. Enter guest company name, for example **Example Partners**.
+2. Choose the compulsory **Department** and enter guest company name, for example **Example Partners**. Department stays visible and required when External is selected.
 3. In Attendees, enter the number of additional guests who are not individually listed by email.
 4. List colleague/guest email addresses that should receive approved meeting notifications.
 5. Select refreshments if needed and enter preparation needs in **Special requirements**, review, then submit.
 
 Example: organizer + two listed colleagues + three unlisted guests = **six people**. If a guest has already been counted as a listed email attendee, do not count them again as an unlisted external attendee. External addresses may receive attendee notifications, but cannot use account sign-in unless their domain is in the employee allowlist. Refreshments are a request for Front Desk to handle manually, not an automatically fulfilled order.
 
-Older Internal + External meetings remain visible in history and details. Editing one initially selects External. Saving it without other changes keeps its original classification and approval/check-in state; changing meeting details saves the selected Internal or External type through the usual approval workflow.
+Older Internal + External meetings remain visible in history and details. Editing one initially selects External. An unchanged save with all required fields valid keeps its original classification and approval/check-in state; changing meeting details saves the selected Internal or External type through the usual approval workflow. If its historical department is blank, choose a department before saving.
 
 ## 7. Create a recurring series
 
@@ -264,7 +267,7 @@ If mail is missing while attendees have arrived, contact Front Desk **before the
 
 ## 11. Notifications and support
 
-You receive submission/decision/change/cancellation/check-in/no-show messages for your meetings. After approval, listed attendees and active staff receive the corresponding meeting events; unapproved submission and rejection are sent to organizer/staff, not attendees. Reminder scheduling begins within one hour of an Approved start and depends on worker/relay delivery; it is not guaranteed at precisely 60 minutes before.
+You receive submission/decision/change/cancellation/check-in/no-show messages for your meetings. After approval, listed attendees receive the corresponding meeting events. The designated Front Desk contact, **Mijala Maharjan (`mijala.maharjan@wdn.com.np`)**, receives operational copies while her account is active and has staff access; other staff/admin do not receive blanket copies. They still receive their own organizer/attendee messages normally. Unapproved submission and rejection are sent to the organizer and designated Front Desk contact, not attendees. Reminder scheduling begins within one hour of an Approved start and depends on worker/relay delivery; it is not guaranteed at precisely 60 minutes before.
 
 Messages provide a branded HTML layout with a clear event heading, meeting summary, Nepal-time schedule and relevant action. Mail clients that block or do not render HTML can use the plain-text alternative. Approved organizer messages show the private Check in action when valid; messages to current company-domain participants and active staff link to the meeting without that private action. External guests and former participants with neither current participation nor active staff access receive **Contact organizer** and the current organizer's email instead. A change notice does not restore a removed recipient's meeting access or make an external address eligible to sign in. The supplied Transgate wordmark is attached within the message rather than loaded from a tracking/external image server. Do not forward sign-in, password setup or organizer check-in links.
 

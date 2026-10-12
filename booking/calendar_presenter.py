@@ -122,16 +122,14 @@ def _event_for_day(item, day, room, user_id, staff):
             )
         else:
             pending = item.status == Reservation.Status.PENDING
-            title = item.title if accessible else "Pending approval" if pending else "Busy"
+            title = item.title if accessible else "Booked"
             relation = "Your meeting" if own else "Invited meeting" if attending else ""
-            style = "pending" if pending else "own" if own else "invited" if attending else "other"
+            style = (
+                "pending" if pending and accessible else "own" if own else "invited" if attending else "other"
+            )
             event.update(
                 title=title,
-                status_label=item.get_status_display()
-                if accessible
-                else "Pending approval"
-                if pending
-                else "Busy",
+                status_label=item.get_status_display() if accessible else "Booked",
                 css_class=f"calendar-event-{style}",
                 kind="booking",
                 relation_label=relation,

@@ -17,6 +17,7 @@ from PIL import Image
 from booking.models import (
     BookingAttendee,
     BookingPolicy,
+    Department,
     EmailToken,
     Notification,
     Reservation,
@@ -152,6 +153,7 @@ class AuthenticationEmailPresentationTests(TestCase):
 )
 class BookingEmailPresentationTests(TestCase):
     def setUp(self):
+        Department.objects.get_or_create(name="Operations")
         clock = patch("django.utils.timezone.now", return_value=NOW)
         clock.start()
         self.addCleanup(clock.stop)
@@ -257,6 +259,7 @@ class BookingEmailPresentationTests(TestCase):
 
     def test_changed_meeting_notifies_removed_members_with_contact_action_and_current_members_with_view(self):
         staff = User.objects.create_user("desk@wdn.com.np", is_staff=True)
+        front_desk = User.objects.create_user("mijala.maharjan@wdn.com.np", is_staff=True)
         inactive_staff = User.objects.create_user("former.desk@wdn.com.np", is_staff=True, is_active=False)
         new_organizer = User.objects.create_user("new.organizer@wdn.com.np")
         BookingAttendee.objects.create(reservation=self.booking, email=inactive_staff.email)
@@ -292,7 +295,8 @@ class BookingEmailPresentationTests(TestCase):
             self.assertNotIn(details_url, message.body)
             self.assertNotIn("/check-in/link/", html)
             self.assertNotIn("/check-in/link/", message.body)
-        for email in (new_organizer.email, invited_email, staff.email):
+        self.assertFalse(any(message.to == [staff.email] for message in mail.outbox))
+        for email in (new_organizer.email, invited_email.casefold(), front_desk.email):
             message = next(item for item in mail.outbox if item.to == [email])
             self.assertIn("View meeting", html_part(message))
             self.assertIn(details_url, html_part(message))

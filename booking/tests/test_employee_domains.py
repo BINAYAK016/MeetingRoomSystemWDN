@@ -40,6 +40,7 @@ class EmployeeDomainTests(TestCase):
             "end_time": "12:00",
             "title": "Joint planning",
             "meeting_type": "internal",
+            "department": "Accounts",
             "external_attendee_count": "0",
             "attendees": "WDN.COLLEAGUE@WDN.COM.NP, TRANS.COLLEAGUE@TRANSGATE.COM.NP",
             "recurrence": "none",
@@ -76,6 +77,7 @@ class EmployeeDomainTests(TestCase):
         self.assertFalse(EmailToken.objects.exists())
         self.assertFalse(User.objects.exists())
 
+    @override_settings(BOOKING_FRONT_DESK_EMAIL="reviewer@wdn.com.np")
     def test_transgate_employee_can_book_with_attendees_from_both_companies(self):
         employee = User.objects.create_user("organizer@transgate.com.np")
         self.client.force_login(employee)

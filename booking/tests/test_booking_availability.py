@@ -78,6 +78,7 @@ class BookingAvailabilityTests(TestCase):
             "occupied_from": begins,
             "occupied_until": finishes + timedelta(minutes=15),
             "title": "Private salary discussion",
+            "department": "Accounts",
         }
         if status == Reservation.Status.REJECTED:
             values.update(rejected_at=NOW, rejection_reason="Private rejection reason")
@@ -103,7 +104,7 @@ class BookingAvailabilityTests(TestCase):
             "meeting_type": "internal",
             "guest_company_name": "",
             "external_attendee_count": 0,
-            "department": "",
+            "department": "Accounts",
             "attendees": [],
             "refreshments_requested": False,
             "front_desk_notes": "",

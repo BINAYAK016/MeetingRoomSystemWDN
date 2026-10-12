@@ -326,12 +326,36 @@ docker compose -f compose.prod.http.yaml exec -T web python manage.py shell <<'P
 from django.db.models import Count
 from booking.models import Notification
 print('counts=', list(Notification.objects.values('status').annotate(total=Count('id')).order_by('status')))
-rows = Notification.objects.filter(status__in=['pending', 'sending', 'failed']).order_by('next_attempt_at').values('id', 'reservation_id', 'reservation_revision', 'event_type', 'status', 'attempts', 'next_attempt_at', 'last_error')[:50]
+rows = Notification.objects.filter(status__in=['pending', 'sending', 'failed']).order_by('next_attempt_at').values('id', 'reservation_id', 'reservation_revision', 'recipient_role', 'event_type', 'status', 'attempts', 'next_attempt_at', 'last_error')[:50]
 print('queue_metadata=', list(rows))
 PY
 ```
 
-`pending` awaits delivery; `sending` holds a five-minute lease; `sent` means backend acceptance; `failed` retains error class; `skipped` displays **Superseded** for obsolete events. Failed attempts retry after approximately 2, 4, 8 and 16 minutes. The fifth failure is terminal until requeued. Its timestamp may be 32 minutes ahead, but there is no automatic sixth attempt. Interrupted leases recover after expiry; an interrupted final attempt becomes `WorkerInterrupted`. Ambiguous SMTP outcomes may cause duplicate delivery.
+`pending` awaits delivery; `sending` holds a five-minute lease; `sent` means backend acceptance; `failed` retains error class; `skipped` displays **Superseded** for obsolete events or no-longer-eligible recipients. Failed attempts retry after approximately 2, 4, 8 and 16 minutes. The fifth failure is terminal until requeued. Its timestamp may be 32 minutes ahead, but there is no automatic sixth attempt. Interrupted leases recover after expiry; an interrupted final attempt becomes `WorkerInterrupted`. Ambiguous SMTP outcomes may cause duplicate delivery.
+
+### Front Desk operational email
+
+Only **`mijala.maharjan@wdn.com.np`** receives company-wide booking/approval operational copies by default. `BOOKING_FRONT_DESK_EMAIL` can configure the designated contact. The matching account must already be active, staff-enabled and in an allowed employee domain; configuration never grants access. Other administrators retain all management permissions and mail for meetings they organize/attend, but do not receive blanket copies. Normal organizer/attendee delivery continues even when the designated contact is ineligible.
+
+| Symptom | Check/action |
+| --- | --- |
+| Mijala receives no booking/approval copy | Check the effective setting and account eligibility in both web and worker, then worker/outbox/revision/SMTP. Inspect Staff desk → People for her authorized active/staff status. No fallback broadcast goes to other staff. |
+| Other staff no longer receive every meeting email | Intended. They get organizer/attendee mail for their own meetings; use Staff desk for company-wide management. |
+| Old staff-wide mail becomes Superseded after update | Intended delivery-time filtering. Legacy unknown-purpose jobs go only to current participants or the current designated contact. |
+| Old removed-attendee notice becomes Superseded | Legacy jobs cannot establish original participant purpose safely. New participant-purpose approved-change notices still notify intentionally removed attendees/former organizers without granting access. |
+| Setting differs between web and worker | A `.env` change requires both services to be recreated through maintenance; `restart` retains existing environments. |
+| Missing `recipient_role` column | Apply committed migration `0013_notification_recipient_role` with writers stopped, then `db_setup`; do not generate production migrations. |
+
+Read-only checks send no mail or message bodies/recipient lists:
+
+```bash
+docker compose -f compose.prod.http.yaml exec -T web python manage.py shell -c "from django.conf import settings; from booking.services.notifications import _front_desk_email; print('configured_front_desk=', settings.BOOKING_FRONT_DESK_EMAIL); print('eligible_front_desk=', _front_desk_email())"
+docker compose -f compose.prod.http.yaml exec -T worker python manage.py shell -c "from django.conf import settings; from booking.services.notifications import _front_desk_email; print('configured_front_desk=', settings.BOOKING_FRONT_DESK_EMAIL); print('eligible_front_desk=', _front_desk_email())"
+docker compose -f compose.prod.http.yaml exec -T web python manage.py showmigrations booking
+docker compose -f compose.prod.http.yaml exec -T web python manage.py shell -c "from django.db.models import Count; from booking.models import Notification; print(list(Notification.objects.values('recipient_role', 'status').annotate(total=Count('id')).order_by('recipient_role', 'status')))"
+```
+
+Expected eligible address is Mijala's normalized address; `None` means blank/invalid/disallowed configuration or no active staff match. A deliberate contact change does not backfill old jobs for the replacement. Already delivered messages cannot be recalled. See [notification operations](operations-runbook.md#designated-front-desk-delivery) before repairing access/configuration.
 
 After SMTP repair, intentionally requeue eligible failures:
 
@@ -364,6 +388,7 @@ Replace 123 with the diagnosed notification ID. Output is `requeued=N superseded
 | Deactivated room still has bookings | Deactivation prevents new reservations, not retroactive cancellation; staff reviews existing meetings. |
 | New holiday/policy leaves meetings unchanged | No retroactive cancellation; staff reviews affected records. Current check-in deadline applies to existing approved meetings. |
 | Other employee details denied | Must be organizer, current listed attendee or verified staff; unrelated details remain private. An invited attendee is read-only. |
+| Calendar shows Booked instead of another meeting's name | Intended privacy in Month/Week/Day. Other employees see time/room only, without title, description, organizer or private links. Organizers/current attendees see their meetings; staff/admin need password-plus-code verification to see all. |
 | Invited meeting missing from My meetings | Check signed-in email matches current saved attendee email, role/status/search filters and Upcoming versus History; reload after changes. Removed attendees lose access. |
 | Attendee has no Edit/Cancel | Expected read-only access; organizer or verified staff manages the booking. Invitation does not grant organizer check-in. |
 | No attendee suggestion | Type at least two letters in current token; account must exist, be active and use an approved domain. Already selected addresses/organizer are omitted; enter a full address manually if needed. |
@@ -375,7 +400,7 @@ Replace 123 with the diagnosed notification ID. Output is `requeued=N superseded
 | Only one room listed | Staff must configure actual active rooms; production never seeds demo data. |
 | Wizard shows unavailable for a free first date | All eligible recurring occurrences must be free, including gaps; inspect later dates in the preview/review. |
 | Selected Available room fails final submission | Preview does not hold space; final save detects intervening conflicts, inactive rooms and capacity/policy changes. Retain entries and choose a valid alternative. |
-| External rejected | Guest company is required; count email-listed people and additional no-email guests once each. Internal and External are the supported booking choices. |
+| External rejected | Department and guest company are required; count email-listed people and additional no-email guests once each. Internal and External are the supported booking choices. |
 | Wizard controls absent or room cards never update | Native form remains usable. Inspect browser console/Network for the static wizard asset and `/bookings/availability/` response; rebuild/recreate a stale image and load a fresh page. Share status/error text, not full request values. |
 | Invalid form cannot be retried | Load current assets; client validation must not leave a prevented submission locked. Server errors retain data for correction. |
 
@@ -435,7 +460,9 @@ Holiday names and import counts are company information. Review diagnostic outpu
 | Symptom | Check/action |
 | --- | --- |
 | A department is missing from a new booking/profile dropdown | Verified staff should check **Staff desk → Departments** and add/reactivate the option. New selections use active departments only. |
-| Previously saved department appears as “current value” | Its catalog entry was renamed/deactivated or the saved string differs from the active label. Existing records may retain that saved value; new bookings choose an active option or leave the field blank. |
+| Previously saved department appears as “current value” | Its catalog entry was renamed/deactivated or the saved string differs from the active label. Existing records may retain their own nonblank saved value; new bookings must choose an active option. |
+| “Choose a department” / required field on Internal or External | Department is compulsory for both booking types and for staff/override bookings. Profiles remain optional; choose an active catalog option before booking. |
+| Historical blank-department booking opens but its edit is rejected | History is preserved without inventing a department; select a department before saving its edit. |
 | “Department name already exists” | Names are unique case-insensitively. Find/edit/reactivate the existing entry instead of adding a capitalization variant. |
 | Departments page gives a missing-table or permission error after update | Check that `0012_department` is applied and that the maintenance procedure ran `db_setup` afterward. Preserve volumes and follow the supported update; do not generate migrations on production. |
 | A department rename does not update old report groups | Expected: bookings retain label snapshots. Catalog administration does not rewrite meeting history. |
@@ -489,6 +516,7 @@ This is a diagnostic of saved data, not proof of a verified staff session or per
 | Photo save reports storage problem | Check named `room_media` volume mounted at `/app/media`, directory ownership UID/GID 1000 and writable volume; application root remains read-only. |
 | Photo request redirects to sign-in | Images require an authenticated session. Ordinary employee sessions cannot view inactive room photos. |
 | Room has no photo | Optional and valid; staff can add one under Staff desk → Rooms → Edit. |
+| Directory/detail shows a room-photo placeholder | No photo has been uploaded for that room. Once staff saves a real photo, directory cards, details and booking-wizard thumbnails use it. A broken image after upload needs the authenticated media/storage checks below. |
 | Stored photo returns 404 after recovery | Database has only a filename; restore the matching photo archive, not only the dump. Missing files are not recreated from room records. |
 | New schema field/endpoint fails after upgrade | Apply committed 0009/0010/0011 using the maintenance workflow, rerun `db_setup`, rebuild/recreate services; do not reseed rooms. |
 

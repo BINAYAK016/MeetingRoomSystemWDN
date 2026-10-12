@@ -201,12 +201,26 @@ class CalendarTests(TestCase):
                 ):
                     self.assertNotContains(response, private)
                 events = self.events(response)
-                hidden = [event for event in events if event["title"] in ("Busy", "Pending approval")]
-                self.assertTrue(hidden)
+                hidden = [event for event in events if event["title"] == "Booked"]
+                self.assertEqual(len(hidden), 2)
                 for event in hidden:
                     self.assertFalse(event["url"])
+                    self.assertEqual(event["status_label"], "Booked")
+                    self.assertEqual(event["css_class"], "calendar-event-other")
+                    self.assertFalse(event["relation_label"])
                     for unsafe in ("id", "pk", "reservation", "organizer", "description", "attendees"):
                         self.assertNotIn(unsafe, event)
+                if view == "day":
+                    unrelated_cells = [
+                        cell
+                        for row in response.context["slots"]
+                        for cell in row["cells"]
+                        if cell["occupied"] and not cell["can_open"]
+                    ]
+                    self.assertTrue(any(cell["buffer"] for cell in unrelated_cells))
+                    for cell in unrelated_cells:
+                        self.assertFalse(cell["occupied"]["url"])
+                        self.assertIn(cell["occupied"]["title"], ("Booked", "Meeting buffer"))
                 self.assertContains(response, self.own.title)
                 self.assertContains(response, reverse("booking-detail", args=[self.own.pk]))
                 self.assertContains(response, self.invited.title)
@@ -227,16 +241,26 @@ class CalendarTests(TestCase):
             response = self.response(view=view)
             self.assertNotContains(response, self.foreign.title)
             self.assertNotContains(response, reverse("booking-detail", args=[self.foreign.pk]))
+            hidden = [event for event in self.events(response) if event["title"] == "Booked"]
+            self.assertEqual(len(hidden), 4)
+            self.assertTrue(all(not event["url"] for event in hidden))
             self.assertContains(response, reverse("staff-login"))
             self.assertNotContains(response, f'href="{reverse("staff-dashboard")}"')
         self.verify_staff()
         for view in ("month", "week", "day"):
             with self.subTest(view=view):
                 response = self.response(view=view)
-                self.assertContains(response, self.foreign.title)
-                self.assertContains(response, reverse("booking-detail", args=[self.foreign.pk]))
-                self.assertContains(response, self.pending.title)
+                for item in (self.own, self.invited, self.foreign, self.pending):
+                    self.assertContains(response, item.title)
+                    self.assertContains(response, reverse("booking-detail", args=[item.pk]))
                 self.assertContains(response, f'href="{reverse("staff-dashboard")}"')
+                if view == "day":
+                    occupied = [
+                        cell for row in response.context["slots"] for cell in row["cells"] if cell["occupied"]
+                    ]
+                    self.assertTrue(any(cell["buffer"] for cell in occupied))
+                    self.assertTrue(all(cell["can_open"] for cell in occupied))
+                    self.assertTrue(all(cell["occupied"]["url"] for cell in occupied))
 
     def test_month_overflow_keeps_all_events_including_private_occupancy(self):
         response = self.response()

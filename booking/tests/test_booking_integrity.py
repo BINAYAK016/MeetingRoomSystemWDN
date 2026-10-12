@@ -16,6 +16,7 @@ from booking.models import (
     BookingPolicy,
     BookingSeries,
     CompanyHoliday,
+    Department,
     Notification,
     Reservation,
     Room,
@@ -57,9 +58,12 @@ def booking_data(room, **changes):
     return values
 
 
-@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+@override_settings(
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend", BOOKING_FRONT_DESK_EMAIL="desk@wdn.com.np"
+)
 class BookingIntegrityTests(TestCase):
     def setUp(self):
+        Department.objects.get_or_create(name="Operations")
         self.clock = patch("django.utils.timezone.now", return_value=NOW)
         self.clock.start()
         self.addCleanup(self.clock.stop)
@@ -302,9 +306,12 @@ class BookingIntegrityTests(TestCase):
         self.assertEqual(item.updated_at, completed_at)
 
 
-@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+@override_settings(
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend", BOOKING_FRONT_DESK_EMAIL="desk@wdn.com.np"
+)
 class BookingConcurrencyTests(TransactionTestCase):
     def setUp(self):
+        Department.objects.get_or_create(name="Operations")
         self.clock = patch("django.utils.timezone.now", return_value=NOW)
         self.clock.start()
         self.addCleanup(self.clock.stop)

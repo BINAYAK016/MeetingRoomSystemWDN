@@ -68,7 +68,8 @@ class BookingForm(forms.Form):
         label="External guests", min_value=0, max_value=500, initial=0
     )
     department = forms.ChoiceField(
-        required=False,
+        required=True,
+        error_messages={"required": "Choose a department"},
         help_text="Choose a department. Staff can add options in Staff desk → Departments.",
     )
     attendees = forms.CharField(

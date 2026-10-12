@@ -1,7 +1,7 @@
 # MBS complete documentation
 
 **Transgate Tech | Binayak Bhandari**
-**Reviewed:** 8 October 2026. **Application branch:** `mbs-prod`.
+**Reviewed:** 12 October 2026. **Application branch:** `mbs-prod`.
 
 This is the documentation entry point for the existing Meeting Booking System: employee tasks, Front Desk/Administrator workflows, feature definitions, business examples, server operation, troubleshooting and recovery. It describes implemented behavior, including approval, rather than only the original requirements. The owner's later decisions take precedence over the questionnaire.
 
@@ -38,6 +38,7 @@ Read employees/staff first for everyday use. For a server incident, begin with t
 | SMTP | `maildc01.wdn.com.np:25`, sender `mbs@wdn.com.np`, no relay username/password, TLS/SSL false |
 | Timezone | `Asia/Kathmandu` for screens/rules; timezone-aware database instants |
 | Staff role | Front Desk and Administrators have identical powers; individual accounts |
+| Booking staff notifications | Only `mijala.maharjan@wdn.com.np`, while active staff; organizer/attendee copies remain |
 
 HTTP intentionally requires no certificate/private CA; browsers show **Not secure**. The selected profile still enforces production restrictions, CSRF, staff password plus email code, ownership and database conflict constraints. Keep access restricted to the approved office network/VPN. SMTP settings describe the previously accepted relay; new-server authorization and actual mailbox delivery must be checked on that installation.
 

@@ -12,7 +12,16 @@ from django.db.migrations.executor import MigrationExecutor
 from django.test import RequestFactory, TestCase, TransactionTestCase, override_settings
 
 from booking.management.commands.retry_failed_mail import retry_failed_mail
-from booking.models import AuditEvent, BookingPolicy, EmailToken, Notification, Reservation, Room, User
+from booking.models import (
+    AuditEvent,
+    BookingPolicy,
+    Department,
+    EmailToken,
+    Notification,
+    Reservation,
+    Room,
+    User,
+)
 from booking.services.bookings import (
     BookingError,
     approve_booking,
@@ -62,9 +71,14 @@ def staff_request(user, verified=True):
     return request
 
 
-@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend", EMAIL_READY=True)
+@override_settings(
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+    EMAIL_READY=True,
+    BOOKING_FRONT_DESK_EMAIL="desk@wdn.com.np",
+)
 class BookingApprovalTests(TestCase):
     def setUp(self):
+        Department.objects.get_or_create(name="Operations")
         clock = patch("django.utils.timezone.now", return_value=NOW)
         clock.start()
         self.addCleanup(clock.stop)
@@ -337,9 +351,12 @@ class BookingApprovalTests(TestCase):
         self.assertTrue(all("approved" not in message.subject for message in mail.outbox))
 
 
-@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+@override_settings(
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend", BOOKING_FRONT_DESK_EMAIL="desk@wdn.com.np"
+)
 class ApprovalConcurrencyTests(TransactionTestCase):
     def setUp(self):
+        Department.objects.get_or_create(name="Operations")
         clock = patch("django.utils.timezone.now", return_value=NOW)
         clock.start()
         self.addCleanup(clock.stop)

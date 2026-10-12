@@ -2,7 +2,7 @@
 
 **Meeting Booking System (MBS)**
 **Transgate Tech | Binayak Bhandari**
-Checked against application source on **8 October 2026**.
+Checked against application source on **12 October 2026**.
 
 Front Desk and Administrators have **identical permissions**. The custom staff desk is the administration interface at **http://mbs.wdn.com.np/staff/**; there is no exposed `/admin/` page. Employee booking screens remain available, but staff powers require password-plus-email-code verification. All displayed meeting dates/times use **Nepal time**.
 
@@ -27,6 +27,8 @@ The same left sidebar is used throughout the workspace. After staff verification
 | Audit log | [Action history](http://mbs.wdn.com.np/staff/audit/) | Read-only decisions and administration outcomes |
 
 The main **Rooms** menu opens the employee directory. To find the room edit control choose **Staff tools → Manage rooms → Edit** in the room's row.
+
+Company-wide booking/approval operational email goes only to designated Front Desk contact **Mijala Maharjan (`mijala.maharjan@wdn.com.np`)**, while her approved-domain account is active and staff-enabled. Other administrators retain identical management permissions and their normal organizer/attendee mail, but do not receive blanket operational copies. IT configures the contact with `BOOKING_FRONT_DESK_EMAIL`; that setting does not create an account or grant staff access.
 
 ## 1. First access and staff sign-in
 
@@ -104,7 +106,7 @@ Pending requests already hold room/time, including the normal post-meeting gap. 
 2. Press **Approve request** and confirm the prompt.
 3. Check **Approved**, approval time and success message.
 
-Approval records who approved it and queues confirmation to organizer, listed attendees and active staff. Only the organizer recipient gets its check-in link. If capacity, hours or holidays changed after request submission, review manually: approval does not revalidate every changed policy value.
+Approval records who approved it and queues confirmation to the organizer, listed attendees and designated Front Desk contact. Only the organizer recipient gets its check-in link. If capacity, hours or holidays changed after request submission, review manually: approval does not revalidate every changed policy value.
 
 ### Reject
 
@@ -112,7 +114,7 @@ Approval records who approved it and queues confirmation to organizer, listed at
 2. Press **Reject request** and confirm.
 3. Check **Rejected** and the reason.
 
-Reason is required and limited to 500 characters. The organizer sees it, the occupied interval is released and organizer/staff rejection messages are queued. Rejected records cannot be edited or approved again normally; the employee makes a new request.
+Reason is required and limited to 500 characters. The organizer sees it, the occupied interval is released and rejection messages are queued for the organizer and designated Front Desk contact. Rejected records cannot be edited or approved again normally; the employee makes a new request.
 
 ### Expired/stale request
 
@@ -165,12 +167,12 @@ The worker normally reconciles every 30 seconds: Approved meetings missing the d
 ## 5. Book on behalf and manage exceptions
 
 1. From **Bookings**, select **Book for employee +**, or use **New booking** while in a verified staff session.
-2. Complete **Schedule & details** as in the employee guide: date/duration/start, an available room, title, type, department, purpose, refreshments and special requirements. Choose Internal or External; External meetings require a guest company.
+2. Complete **Schedule & details** as in the employee guide: date/duration/start, an available room, title, type, department, purpose, refreshments and special requirements. **Department is required for both Internal and External**, including staff-created bookings. External meetings also require a guest company.
 3. For a justified policy exception, open **Staff booking options** and enter **Booking rule override reason**. Use custom/manual times for an exceptional schedule; preview and saving still enforce non-bypassable rules.
 4. In **Attendees**, enter **Book on behalf of an employee** at `@wdn.com.np` or `@transgate.com.np`. Blank uses your own account. An eligible email not already registered creates an employee account; an inactive organizer is rejected.
 5. Add email attendees/additional guests, check the headcount, and continue to **Review & confirm**. For recurrence, review every actual occurrence and its availability.
 6. Press **Confirm booking** once.
-7. Check Approved state and correct organizer; queued confirmation goes to that organizer/attendees/staff.
+7. Check Approved state and correct organizer; queued confirmation goes to that organizer, attendees and designated Front Desk contact.
 
 A newly created staff booking is Approved without the employee Pending stage. It still needs check-in. New recurring staff bookings create Approved occurrences; existing Pending requests stay Pending after a room-policy toggle or unchanged save, but a substantive valid edit in an unchecked room can approve them automatically.
 
@@ -185,6 +187,7 @@ The following cannot be bypassed:
 - Room capacity calculation.
 - Conflicts with bookings, Pending holds, closures and buffers.
 - Recurring creation limits of 15 occurrences and at most 366 days.
+- A required department and a supported meeting type; External also requires a guest company.
 
 The configured post-meeting gap still applies. The calendar normally marks closed times as unavailable even for staff; an approved exception is entered through the booking form. Staff edit values, including original custom times and override reason, are prefilled; a substantive edit to Pending confirms it only if the selected room is unchecked; a checked-room request still needs explicit approval. Without JavaScript, the native form supports the same fields/validation, including staff organizer and override fields.
 
@@ -201,7 +204,7 @@ Priority is manual, with no automatic ranking/displacement. Review impacted meet
 5. Optionally choose a real room **Photo**. Use a still JPEG, PNG or WebP no larger than 5 MiB and 12 million pixels; no photo is required.
 6. Select **Active** to offer it for bookings; clear Active to retire it.
 7. Set **Requires approval**: checked means employee requests require staff review; unchecked means valid employee requests are immediately Approved. New rooms default to checked.
-8. Save and check **Room saved**, the updated row and room image in the booking wizard when appropriate.
+8. Save and check **Room saved**, the updated row, employee room directory card, room detail image and booking wizard thumbnail. Without an upload, those views use a labelled room-photo placeholder.
 
 Example: name **Room 1**, location **Kantipat**, floor **3**, capacity **8**, instructions **Leave the room tidy and switch off the projector**. Use actual office data; example rooms are not automatically imported into production.
 
@@ -319,9 +322,9 @@ Front Desk and Administrators have identical access to this catalog.
 
 Names must be unique regardless of capitalization; for example, **Sales** and **sales** cannot be separate entries. Initial options are **Accounts, Administrative, Logistics, Sales, Oracle Support, Dell Support, Toshiba and ATM support**. Upgrade migration `0012_department` also imports existing nonblank department labels so that legacy choices are retained.
 
-Use deactivation instead of deletion. Renaming/deactivation does not rewrite department labels already saved on profiles or bookings. Reports continue to group meetings by their saved labels. Department is optional; a blank value appears as **Unspecified** in reports. This catalog does not grant staff privileges or impose a separate approval rule.
+Use deactivation instead of deletion. Renaming/deactivation does not rewrite department labels already saved on profiles or bookings. Reports continue to group meetings by their saved labels. **Every new or edited Internal/External booking requires a department**, including staff bookings and policy overrides. Profiles and People department remain optional; historical blank booking departments remain readable and appear as **Unspecified** in reports, but need a department before an edit can be saved. This catalog does not grant staff privileges or impose a separate approval rule.
 
-When editing a profile, a booking or an existing person in People, their previously saved label can remain as the current value even if it is inactive or renamed. New bookings/accounts select active options only. An inactive/renamed profile label is not prefilled into new booking requests; choose an active option or leave the optional field blank.
+When editing a profile, a booking or an existing person in People, their previously saved nonblank label can remain as the current value even if it is inactive or renamed. New booking selections use active options only. An inactive/renamed profile label is not prefilled into new booking requests; choose an active option. Profiles/People may still leave department blank.
 
 Direct links: [Department list](http://mbs.wdn.com.np/staff/departments/) and [Add department](http://mbs.wdn.com.np/staff/departments/new/).
 

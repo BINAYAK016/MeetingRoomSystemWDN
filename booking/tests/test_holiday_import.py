@@ -13,7 +13,16 @@ from django.urls import reverse
 from openpyxl import Workbook, load_workbook
 from openpyxl.utils.datetime import CALENDAR_MAC_1904
 
-from booking.models import AuditEvent, BookingPolicy, CompanyHoliday, Notification, Reservation, Room, User
+from booking.models import (
+    AuditEvent,
+    BookingPolicy,
+    CompanyHoliday,
+    Department,
+    Notification,
+    Reservation,
+    Room,
+    User,
+)
 from booking.services.auth_security import staff_session_verified
 from booking.services.bookings import BookingError, create_booking
 from booking.services.holiday_import import (
@@ -610,6 +619,7 @@ class HolidayImportTests(TestCase):
 @override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
 class HolidayImportConcurrencyTests(TransactionTestCase):
     def test_booking_waits_for_import_commit_then_rejects_new_holiday(self):
+        Department.objects.get_or_create(name="Accounts")
         clock = patch("django.utils.timezone.now", return_value=NOW)
         clock.start()
         self.addCleanup(clock.stop)

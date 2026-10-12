@@ -19,6 +19,27 @@ MAX_ATTEMPTS = 5
 logger = logging.getLogger(__name__)
 
 
+def _front_desk_email():
+    """Only the designated, currently authorized staff member receives desk copies."""
+    email = normalized_employee_email(settings.BOOKING_FRONT_DESK_EMAIL)
+    if email and User.objects.filter(email__iexact=email, is_staff=True, is_active=True).exists():
+        return email
+    return None
+
+
+def _booking_recipients(booking, *, include_attendees=True, extra_recipients=()):
+    participants = {booking.organizer.email, *extra_recipients}
+    if include_attendees:
+        participants.update(booking.attendees.values_list("email", flat=True))
+    recipients = {
+        email.strip().casefold(): Notification.RecipientRole.PARTICIPANT for email in participants if email
+    }
+    front_desk = _front_desk_email()
+    if front_desk:
+        recipients.setdefault(front_desk, Notification.RecipientRole.FRONT_DESK)
+    return recipients
+
+
 def queue_booking_event(booking, event, *, extra_recipients=()):
     labels = {
         "request": "submitted and awaiting administrator approval",
@@ -29,10 +50,9 @@ def queue_booking_event(booking, event, *, extra_recipients=()):
         "no_show": "released after no check-in",
         "check_in": "checked in",
     }
-    recipients = {booking.organizer.email, *extra_recipients}
-    if event not in {"request", "rejection"}:
-        recipients.update(booking.attendees.values_list("email", flat=True))
-    recipients.update(User.objects.filter(is_staff=True, is_active=True).values_list("email", flat=True))
+    recipients = _booking_recipients(
+        booking, include_attendees=event not in {"request", "rejection"}, extra_recipients=extra_recipients
+    )
     local_start = timezone.localtime(booking.starts_at).strftime("%A %d %B %Y, %H:%M")
     local_end = timezone.localtime(booking.ends_at).strftime("%H:%M")
     subject = safe_subject(f"Meeting room booking {labels[event]}: {booking.title}")
@@ -60,13 +80,13 @@ def queue_booking_event(booking, event, *, extra_recipients=()):
                 reservation=booking,
                 reservation_revision=booking.revision,
                 recipient_email=email,
+                recipient_role=role,
                 event_type=event,
                 subject=subject,
                 body=body,
                 next_attempt_at=timezone.now(),
             )
-            for email in sorted(recipients)
-            if email
+            for email, role in sorted(recipients.items())
         ]
     )
 
@@ -106,12 +126,8 @@ def queue_due_reminders(now=None):
             ):
                 continue
             marker = f"start={booking.starts_at.isoformat()}"
-            recipients = {booking.organizer.email}
-            recipients.update(booking.attendees.values_list("email", flat=True))
-            recipients.update(
-                User.objects.filter(is_staff=True, is_active=True).values_list("email", flat=True)
-            )
-            for email in recipients:
+            recipients = _booking_recipients(booking)
+            for email, role in recipients.items():
                 if Notification.objects.filter(
                     reservation=booking,
                     reservation_revision=booking.revision,
@@ -124,6 +140,7 @@ def queue_due_reminders(now=None):
                     reservation=booking,
                     reservation_revision=booking.revision,
                     recipient_email=email,
+                    recipient_role=role,
                     event_type="reminder",
                     subject=safe_subject(f"Meeting room reminder: {booking.title}"),
                     body=marker,
@@ -177,6 +194,19 @@ def _recipient_can_view_meeting(booking, recipient_email):
         or booking.attendees.filter(email__iexact=email).exists()
         or User.objects.filter(email__iexact=email, is_active=True, is_staff=True).exists()
     )
+
+
+def _recipient_can_receive_notification(notification, booking):
+    email = notification.recipient_email.strip().casefold()
+    if email == booking.organizer.email.casefold() or booking.attendees.filter(email__iexact=email).exists():
+        return True
+    if notification.recipient_role == Notification.RecipientRole.PARTICIPANT:
+        # Change notices deliberately include removed attendees and former
+        # organizers. Their loss of current access must not hide the update.
+        return True
+    # Recheck staff authorization at delivery, including jobs queued before the
+    # designated recipient changed or before staff-wide broadcasts were removed.
+    return email == _front_desk_email()
 
 
 def _booking_email_html(notification, booking, checkin_url, *, can_view_meeting=None):
@@ -333,6 +363,8 @@ def _delivery_content(notification):
         .select_related("room", "organizer")
         .get(pk=notification.reservation_id)
     )
+    if not _recipient_can_receive_notification(notification, booking):
+        return None
     if (
         notification.reservation_revision is not None
         and notification.reservation_revision != booking.revision

@@ -2,7 +2,7 @@
 
 **Transgate Tech | Binayak Bhandari**
 **Applies to:** the `mbs-prod` application and the selected private-network HTTP installation.
-**Reviewed:** 7 October 2026.
+**Reviewed:** 12 October 2026.
 
 This handbook is for the person operating the Linux server. For screen-by-screen business work, read the [employee guide](user-guide.md) and [staff guide](staff-guide.md). For symptom-based diagnosis, use [troubleshooting](troubleshooting.md). The [HTTP deployment guide](deployment-http.md) covers the initial installation. The [HTTPS deployment guide](deployment.md) remains available for a future transport change.
 
@@ -131,6 +131,7 @@ Keep exactly one occurrence of every key. The earlier duplicate `DJANGO_PUBLIC_B
 | `SMTP_PORT` | `25`; valid range 1–65535 |
 | `SMTP_USER` / `SMTP_PASSWORD` | Empty for this IP-authorized relay |
 | `SMTP_USE_TLS` / `SMTP_USE_SSL` | Both `false` here; never enable both together |
+| `BOOKING_FRONT_DESK_EMAIL` | `mijala.maharjan@wdn.com.np` by default; sole operational booking/approval recipient, eligible only while an active staff account in an allowed employee domain |
 | `PROXY_NETWORK_SUBNET` | `172.29.16.0/28` unless deliberately changed with IT |
 | `PROXY_NETWORK_DYNAMIC_RANGE` | `172.29.16.0/29` |
 | `PROXY_IP` | `172.29.16.14`; inside subnet, outside dynamic range |
@@ -171,7 +172,7 @@ PY
 To print **effective nonsecret** Django settings from the running image:
 
 ```bash
-mbs exec web python manage.py shell -c "from django.conf import settings; keys=('PRODUCTION_ENABLED','HTTPS_ENABLED','PUBLIC_BASE_URL','ALLOWED_HOSTS','EMPLOYEE_EMAIL_DOMAINS','MAIL_MODE','EMAIL_READY','SESSION_COOKIE_SECURE','CSRF_TRUSTED_ORIGINS','SECURE_REFERRER_POLICY'); print({k:getattr(settings,k,'MISSING') for k in keys})"
+mbs exec web python manage.py shell -c "from django.conf import settings; keys=('PRODUCTION_ENABLED','HTTPS_ENABLED','PUBLIC_BASE_URL','ALLOWED_HOSTS','EMPLOYEE_EMAIL_DOMAINS','MAIL_MODE','EMAIL_READY','BOOKING_FRONT_DESK_EMAIL','SESSION_COOKIE_SECURE','CSRF_TRUSTED_ORIGINS','SECURE_REFERRER_POLICY'); print({k:getattr(settings,k,'MISSING') for k in keys})"
 ```
 
 Expected transport values are production true, HTTPS false, HTTP public origin, session Secure false, trusted origin `http://mbs.wdn.com.np`, and referrer policy `same-origin`. CSRF tokens live in the server-side session; a separate `csrftoken` cookie is not expected.
@@ -280,7 +281,7 @@ mbs ps
 curl --fail --show-error http://mbs.wdn.com.np/healthz/
 ```
 
-If room photos exist, take a paired database/photo backup from [Room photo backup and recovery](#room-photo-backup-and-recovery) before the update; the database-only command above does not include files. Apply the complete migration chain through `0012_department` before starting new web code, then reapply `db_setup`. Migrations preserve existing records and do not import/reset room inventory. Migration 0011 checks Requires approval for all existing rooms; room policy changes do not rewrite booking statuses. Migration 0012 creates the department catalog, seeds the eight requested names and imports existing nonblank profile/booking labels without rewriting their saved strings. Its new table/sequence needs runtime grants from `db_setup`. No additional environment variable or service is required. Web mounts the named `room_media` volume, initialized for application UID/GID 1000.
+If room photos exist, take a paired database/photo backup from [Room photo backup and recovery](#room-photo-backup-and-recovery) before the update; the database-only command above does not include files. Apply the complete migration chain through `0013_notification_recipient_role` before starting new web code, then reapply `db_setup`. Migrations preserve existing records and do not import/reset room inventory. Migration 0011 checks Requires approval for all existing rooms; room policy changes do not rewrite booking statuses. Migration 0012 creates the department catalog, seeds the eight requested names and imports existing nonblank profile/booking labels without rewriting their saved strings. Its new table/sequence needs runtime grants from `db_setup`. Migration 0013 labels existing notification audience as legacy and records participant/Front Desk purpose for new jobs. `BOOKING_FRONT_DESK_EMAIL` defaults to Mijala's address; verify her existing account is active/staff instead of expecting the configuration to grant access. No new service is needed. Web mounts the named `room_media` volume, initialized for application UID/GID 1000.
 
 Record the previous commit, new commit, backup filenames, migration results, and acceptance checks. `git pull --ff-only` deliberately stops if local commits/history conflict; review instead of forcing Git history. Preserve `.env`, secret storage, and the PostgreSQL volume.
 
@@ -403,7 +404,7 @@ mbs exec web python manage.py showmigrations booking
 mbs exec web python manage.py migrate --plan
 ```
 
-All committed booking migrations through `0012_department` should be marked applied on a deployed current release. If changes are needed, follow the maintenance workflow using `mbs run --rm migrate` and `mbs run --rm db_setup`. Do not create migrations on the server or manually rewrite existing department labels to populate the catalog.
+All committed booking migrations through `0013_notification_recipient_role` should be marked applied on a deployed current release. If changes are needed, follow the maintenance workflow using `mbs run --rm migrate` and `mbs run --rm db_setup`. Do not create migrations on the server or manually rewrite existing department labels to populate the catalog.
 
 ### Runtime identity and privileges
 
@@ -465,7 +466,23 @@ Then it attempts at most one queued message per loop, with SMTP timeout 10 secon
 
 Notification states are `pending`, `sending`, `sent`, `failed`, and `skipped` (superseded). Sending uses an exclusive row claim plus a five-minute lease. The lease supports recovery after a worker interruption. Each send increments attempts; maximum is five. After failures on attempts one through four, automatic retries wait 2, 4, 8, and 16 minutes. A failure on attempt five is terminal for automatic delivery and remains for operator review; its recorded next-attempt timestamp is 32 minutes later, but there is no automatic sixth send. There is no guarantee of exactly-once delivery if a process dies after the relay accepts mail but before the DB records success.
 
-For queued booking mail, `reservation_revision` and current booking state prevent stale reminders/confirmations from being sent after edits/cancellation. `skipped` is usually deliberate supersession, not a mail outage. A reminder includes the organizer's private Check in button/link only for the organizer; attendees receive meeting timing and are told the organizer handles check-in. Current eligible employee participants and active staff can use View meeting after the appropriate sign-in. External guests and former participants with neither current participation nor active staff access receive Contact organizer; their intentional change notice creates no meeting access or misleading My meetings invitation. Authentication and meeting emails have a branded HTML alternative and plain-text fallback. The email action opens the existing browser confirmation; it cannot submit a check-in within a mail client. The exact wordmark is a bundled inline CID attachment, with no external tracking image. HTML is rendered by the updated worker at delivery using the existing text/event snapshot and current lease/revision/status checks; no new notification column/migration is needed. HTML rendering, SMTP acceptance and mailbox receipt are distinct checks. Do not expose rendered email bodies or links in logs/tickets.
+For queued booking mail, `reservation_revision`, current booking state and recipient purpose prevent stale or unauthorized messages from being sent after edits/cancellation/access changes. `skipped` is usually deliberate supersession, not a mail outage. A reminder includes the organizer's private Check in button/link only for the organizer; attendees receive meeting timing and are told the organizer handles check-in. Current eligible employee participants and active staff can use View meeting after the appropriate sign-in. External guests and former participants with neither current participation nor active staff access receive Contact organizer; their intentional change notice creates no meeting access or misleading My meetings invitation. Authentication and meeting emails have a branded HTML alternative and plain-text fallback. The email action opens the existing browser confirmation; it cannot submit a check-in within a mail client. The exact wordmark is a bundled inline CID attachment, with no external tracking image. HTML is rendered by the updated worker at delivery using the existing text/event snapshot and current checks. Migration 0013 supplies recipient-role provenance independently of HTML rendering. HTML rendering, SMTP acceptance and mailbox receipt are distinct checks. Do not expose rendered email bodies or links in logs/tickets.
+
+### Designated Front Desk delivery
+
+`BOOKING_FRONT_DESK_EMAIL` defaults to **`mijala.maharjan@wdn.com.np`**. It is the only company-wide operational recipient for requests, approvals, changes, cancellations, check-in, no-show and reminders. The address must belong to an active staff account in an allowed employee domain, checked both when queuing and delivering. Other staff/admin retain management powers and normal organizer/attendee mail but receive no blanket operational copies. The setting never creates/reactivates an account or grants staff access; use the supported People/access workflow when authorized.
+
+The new outbox `recipient_role` is `participant`, `front_desk` or `legacy`. New participant-purpose notices preserve intentional delivery to removed attendees/former organizers after an approved change. Legacy undelivered messages with unknown purpose are delivered only to current participants or the current designated contact; other old staff copies and removed-participant legacy jobs are superseded. Already delivered messages cannot be recalled. Changing the configured contact does not backfill old jobs for the replacement.
+
+Read-only checks below inspect the effective setting, eligibility and aggregate role/status counts; they send no mail and print no message bodies or recipient lists:
+
+```bash
+mbs exec -T web python manage.py shell -c "from django.conf import settings; from booking.services.notifications import _front_desk_email; print('configured_front_desk=', settings.BOOKING_FRONT_DESK_EMAIL); print('eligible_front_desk=', _front_desk_email())"
+mbs exec -T worker python manage.py shell -c "from django.conf import settings; from booking.services.notifications import _front_desk_email; print('configured_front_desk=', settings.BOOKING_FRONT_DESK_EMAIL); print('eligible_front_desk=', _front_desk_email())"
+mbs exec -T web python manage.py shell -c "from django.db.models import Count; from booking.models import Notification; print(list(Notification.objects.values('recipient_role', 'status').annotate(total=Count('id')).order_by('recipient_role', 'status')))"
+```
+
+Expected contact is Mijala's normalized address in both services. `None` means the configured value is blank/invalid/disallowed or the matching account is absent, inactive or not staff. Inspect **Staff desk → People** before repairing access; no fallback staff broadcast is sent. After a planned `.env` contact change, recreate both web and worker through the maintenance procedure; `restart` retains their old environment. Participant mail is unaffected by contact ineligibility. To investigate mail absence, also check worker, queue, current event/revision and SMTP receipt.
 
 Employee login links, staff codes, and password setup messages are sent synchronously, outside the booking notification queue. Retrying queued booking mail does not recreate an expired login challenge. Request a fresh login/setup message through its supported flow after fixing SMTP.
 
@@ -850,8 +867,10 @@ If rollback is needed, stop every writer again and review which database has acc
 - Stop all writers for migrations, apply committed migrations, rerun runtime grants.
 - All health checks return expected status; inspect safe startup/error logs.
 - Employee can request/confirm a login; staff can authenticate with password/code.
-- Room search/details/calendar work; the booking wizard previews every selected occurrence and preserves edit values. Staff can add/edit room photos under Staff desk → Rooms.
-- Existing inventory remains; migrations through 0012 are applied, existing rooms initially require approval and named media volume is writable by UID 1000. Department options include the eight initial names/imported labels, active selections work, and staff changes preserve saved booking labels. Paired database/photo restore has been checked when photos exist.
+- Room search/details/calendar work; Company workspace headings are present. Uploaded room photos appear in directory cards/detail/wizard, with labelled placeholders for rooms without uploads. The booking wizard previews every selected occurrence and preserves edit values. Staff can add/edit room photos under Staff desk → Rooms.
+- Existing inventory remains; migrations through 0013 are applied, existing rooms initially require approval and named media volume is writable by UID 1000. Department options include the eight initial names/imported labels. Department is required for new/edited Internal and External bookings, including staff; profiles remain optional and historical blanks remain readable. Staff catalog changes preserve saved booking labels. Paired database/photo restore has been checked when photos exist.
+- Ordinary employees see Booked/time/room for unrelated calendar meetings, with no private names/descriptions/organizer/link; organizers/current attendees and verified staff retain authorized details in every view.
+- Only the eligible designated Front Desk contact gets operational booking/approval copies; other staff receive their normal participant messages. Verify contact eligibility and outbox recipient roles without sending bulk test mail.
 - Submit a checked-room test workflow: Pending hold → approval/rejection, employee edit requiring review, cancellation, recurring occurrence horizon, valid check-in/no-show handling.
 - Verify an unchecked room creates Approved employee bookings, including recurrence; toggling the setting does not convert existing Pending/Approved records, and unchanged saves preserve their status. Verify current selected-room policy on substantive edits and an audited staff checkbox change.
 - Confirm reports/audit/access controls and actual mailbox delivery; do not infer all this from HTTP 200 alone.

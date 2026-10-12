@@ -23,6 +23,9 @@ EMPLOYEE_EMAIL_DOMAINS = tuple(
 )
 if not EMPLOYEE_EMAIL_DOMAINS:
     raise RuntimeError("At least one employee email domain is required")
+BOOKING_FRONT_DESK_EMAIL = (
+    os.environ.get("BOOKING_FRONT_DESK_EMAIL", "mijala.maharjan@wdn.com.np").strip().lower()
+)
 HTTPS_ENABLED = os.environ.get("DJANGO_HTTPS", "false").lower() == "true"
 production_flag = os.environ.get("DJANGO_PRODUCTION", "false").lower()
 if production_flag not in {"true", "false"}:

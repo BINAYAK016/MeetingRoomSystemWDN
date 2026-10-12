@@ -13,6 +13,7 @@ from booking.models import (
     BookingPolicy,
     BookingSeries,
     CompanyHoliday,
+    Department,
     EmailToken,
     Reservation,
     Room,
@@ -134,6 +135,16 @@ def _validate_meeting_type(data):
         raise BookingError("Enter the guest company name")
 
 
+def _validate_department(data, *, current_department=""):
+    department = data.get("department", "")
+    if not isinstance(department, str) or not department.strip():
+        raise BookingError("Choose a department")
+    if department == current_department:
+        return
+    if not Department.objects.filter(name=department, is_active=True).exists():
+        raise BookingError("Choose an active department")
+
+
 def _organizer(actor, data, *, staff):
     email = data.get("organizer_email") if staff else ""
     if not email:
@@ -228,6 +239,7 @@ def create_booking(data, *, actor, staff=False):
 
     _require_actor(actor, staff=staff)
     _validate_meeting_type(data)
+    _validate_department(data)
     release_due_no_shows()
     return _create_booking(data, actor=actor, staff=staff)
 
@@ -344,6 +356,7 @@ def _update_booking(booking_id, data, *, actor, staff):
         raise BookingError("Only upcoming pending or approved bookings can be edited")
     if not staff and booking.organizer_id != actor.pk:
         raise BookingError("You cannot edit another employee's booking")
+    _validate_department(data, current_department=booking.department)
     old_attendees = list(booking.attendees.values_list("email", flat=True))
     old_organizer_email = booking.organizer.email
     new_room = locked_rooms.get(requested_room_id)

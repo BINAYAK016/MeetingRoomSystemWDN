@@ -306,6 +306,7 @@
   }
   function updateMeetingControls() {
     form.querySelectorAll("[data-meeting-type]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.meetingType === field("meeting_type").value)));
+    field("department").required = true;
     guestCompany.required = isExternal();
     get("booking-guest-company-field").hidden = !isExternal();
     form.querySelectorAll("[data-refreshments]").forEach(button => button.setAttribute("aria-pressed", String((button.dataset.refreshments === "yes") === field("refreshments_requested").checked)));

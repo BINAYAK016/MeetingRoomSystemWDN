@@ -174,7 +174,14 @@ class ApprovalRouteTests(TestCase):
         occupied = [cell for slot in response.context["slots"] for cell in slot["cells"] if cell["occupied"]]
         self.assertTrue(occupied)
         self.assertTrue(all(not cell["available"] and not cell["can_open"] for cell in occupied))
-        self.assertContains(response, "Awaiting approval")
+        self.assertContains(response, "Booked")
+        booking_cells = [cell for cell in occupied if not cell["buffer"]]
+        self.assertTrue(booking_cells)
+        self.assertTrue(all(cell["occupied"]["title"] == "Booked" for cell in booking_cells))
+        self.assertTrue(all(cell["occupied"]["status_label"] == "Booked" for cell in booking_cells))
+        self.assertTrue(
+            all(cell["occupied"]["css_class"] == "calendar-event-other" for cell in booking_cells)
+        )
         self.assertContains(response, "Meeting buffer")
 
     def test_calendar_uses_same_room_snapshot_during_concurrent_activation(self):

@@ -11,6 +11,7 @@ from django.urls import reverse
 from booking.forms import BookingForm
 from booking.models import AuditEvent, BookingPolicy, Department, Notification, Reservation, Room, User
 from booking.services.auth_security import staff_session_verified
+from booking.services.bookings import BookingError, create_booking, update_booking
 
 LOCAL_TZ = ZoneInfo("Asia/Kathmandu")
 NOW = datetime(2026, 10, 8, 8, tzinfo=LOCAL_TZ)
@@ -81,6 +82,7 @@ class DepartmentBookingTests(TestCase):
         self.assertIsInstance(field.widget, forms.Select)
         self.assertTrue(DEFAULT_DEPARTMENTS.issubset(self.choices(response)))
         self.assertIn("", self.choices(response))
+        self.assertTrue(field.required)
         self.assertContains(response, 'name="department"')
         self.assertContains(response, '<option value="Oracle Support"')
 
@@ -229,6 +231,87 @@ class DepartmentBookingTests(TestCase):
         form = BookingForm(self.values())
         self.assertFalse(form.is_valid())
         self.assertIn("department", form.errors)
+
+    def test_department_is_required_for_internal_and_external_employee_and_staff_forms(self):
+        for meeting_type in ("internal", "external"):
+            for staff in (False, True):
+                for department in ("", "   "):
+                    with self.subTest(meeting_type=meeting_type, staff=staff, department=department):
+                        form = BookingForm(
+                            self.values(
+                                meeting_type=meeting_type,
+                                guest_company_name="Guest company",
+                                department=department,
+                            ),
+                            staff=staff,
+                        )
+                        self.assertFalse(form.is_valid())
+                        self.assertIn("department", form.errors)
+                        self.assertTrue(form.fields["department"].widget.is_required)
+        self.assertFalse(Reservation.objects.exists())
+        self.assertFalse(Notification.objects.exists())
+
+    def test_department_required_create_service_rejects_missing_and_unavailable_values(self):
+        staff = User.objects.create_user("department.desk@wdn.com.np", is_staff=True)
+        Department.objects.create(name="Retired division", is_active=False)
+        for meeting_type in ("internal", "external"):
+            form = BookingForm(self.values(meeting_type=meeting_type, guest_company_name="Guest company"))
+            self.assertTrue(form.is_valid(), form.errors)
+            for actor, staff_booking in ((self.employee, False), (staff, True)):
+                for department in (None, "", "   ", "Invented division", "Retired division"):
+                    data = {**form.cleaned_data, "department": department}
+                    if department is None:
+                        data.pop("department")
+                    with self.subTest(meeting_type=meeting_type, staff=staff_booking, department=department):
+                        with self.assertRaisesMessage(BookingError, "department"):
+                            create_booking(data, actor=actor, staff=staff_booking)
+        self.assertFalse(Reservation.objects.exists())
+        self.assertFalse(Notification.objects.exists())
+        self.assertFalse(AuditEvent.objects.filter(action="booking_created").exists())
+
+    def test_legacy_blank_department_booking_remains_readable_but_edit_requires_selection(self):
+        booking = self.existing_booking(department="")
+        self.assertEqual(self.client.get(reverse("booking-detail", args=[booking.pk])).status_code, 200)
+        edit_url = reverse("booking-edit", args=[booking.pk])
+        response = self.client.get(edit_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["form"].fields["department"].required)
+        response = self.client.post(edit_url, self.values(department=""))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("department", response.context["form"].errors)
+        booking.refresh_from_db()
+        self.assertEqual(booking.department, "")
+        self.assertEqual(booking.revision, 1)
+        self.assertFalse(AuditEvent.objects.filter(action="booking_modified").exists())
+        self.assertEqual(self.client.post(edit_url, self.values(department="Sales")).status_code, 302)
+        booking.refresh_from_db()
+        self.assertEqual(booking.department, "Sales")
+
+    def test_update_service_requires_department_and_cannot_select_another_retired_label(self):
+        booking = self.existing_booking()
+        staff = User.objects.create_user("department.desk@wdn.com.np", is_staff=True)
+        Department.objects.create(name="Retired division", is_active=False)
+        form = BookingForm(self.values())
+        self.assertTrue(form.is_valid(), form.errors)
+        for actor, staff_booking in ((self.employee, False), (staff, True)):
+            for department in (None, "", "   ", "Invented division", "Retired division"):
+                data = {**form.cleaned_data, "department": department}
+                if department is None:
+                    data.pop("department")
+                with self.subTest(staff=staff_booking, department=department):
+                    with self.assertRaisesMessage(BookingError, "department"):
+                        update_booking(booking.pk, data, actor=actor, staff=staff_booking)
+        booking.refresh_from_db()
+        self.assertEqual(booking.department, "Legacy Operations")
+        self.assertEqual(booking.revision, 1)
+        self.assertFalse(Notification.objects.exists())
+        self.assertFalse(AuditEvent.objects.filter(action="booking_modified").exists())
+
+    def test_profile_department_remains_optional(self):
+        response = self.client.post(reverse("profile"), {"department": ""})
+        self.assertRedirects(response, reverse("profile"))
+        self.employee.refresh_from_db()
+        self.assertEqual(self.employee.department, "")
 
 
 class DepartmentManagementTests(TestCase):

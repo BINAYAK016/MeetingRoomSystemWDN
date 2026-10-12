@@ -14,7 +14,10 @@ from booking.services.checkin import confirm_checkin, release_due_no_shows
 from booking.services.notifications import queue_due_reminders, send_due_notifications
 
 
-@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+@override_settings(
+    EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend",
+    BOOKING_FRONT_DESK_EMAIL="approver@wdn.com.np",
+)
 class BookingWorkflowTests(TestCase):
     def setUp(self):
         Department.objects.get_or_create(name="Operations")
@@ -186,6 +189,7 @@ class BookingWorkflowTests(TestCase):
                 "end_time": "12:00",
                 "title": "Other meeting",
                 "meeting_type": "internal",
+                "department": "Operations",
                 "external_attendee_count": "0",
                 "recurrence": "none",
             },

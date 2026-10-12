@@ -55,6 +55,9 @@ def booking_values(room, **changes):
 class RoomApprovalFixtures:
     def setUp(self):
         super().setUp()
+        front_desk = override_settings(BOOKING_FRONT_DESK_EMAIL="desk@wdn.com.np")
+        front_desk.enable()
+        self.addCleanup(front_desk.disable)
         Department.objects.get_or_create(name="Operations")
         clock = patch("django.utils.timezone.now", return_value=NOW)
         clock.start()

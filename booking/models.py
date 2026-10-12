@@ -336,9 +336,17 @@ class Notification(models.Model):
         FAILED = "failed", "Failed"
         SKIPPED = "skipped", "Superseded"
 
+    class RecipientRole(models.TextChoices):
+        LEGACY = "legacy", "Legacy audience"
+        PARTICIPANT = "participant", "Meeting participant"
+        FRONT_DESK = "front_desk", "Front desk"
+
     reservation = models.ForeignKey(Reservation, null=True, blank=True, on_delete=models.PROTECT)
     reservation_revision = models.PositiveIntegerField(null=True, blank=True)
     recipient_email = models.EmailField()
+    recipient_role = models.CharField(
+        max_length=12, choices=RecipientRole.choices, default=RecipientRole.LEGACY
+    )
     event_type = models.CharField(max_length=40)
     subject = models.CharField(max_length=240)
     body = models.TextField()

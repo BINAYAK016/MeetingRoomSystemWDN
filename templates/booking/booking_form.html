@@ -37,7 +37,7 @@
             <div class="booking-meeting-grid">
               {% include 'booking/_booking_field.html' with field=form.title label='Meeting title' %}
               <div class="booking-field"><label for="{{ form.meeting_type.id_for_label }}">Meeting type<span class="required-mark" aria-hidden="true">*</span></label><div class="booking-native-meeting-type">{{ form.meeting_type }}</div><div class="meeting-type-options booking-js-only" role="group" aria-label="Meeting type">{% for value,label in form.meeting_type.field.choices %}<button type="button" data-meeting-type="{{ value }}"><span class="choice-dot" aria-hidden="true"></span>{{ label }}</button>{% endfor %}</div>{% for error in form.meeting_type.errors %}<p class="field-error">{{ error }}</p>{% endfor %}</div>
-              {% include 'booking/_booking_field.html' with field=form.department label='Department' optional=True %}
+              {% include 'booking/_booking_field.html' with field=form.department label='Department' %}
               {% include 'booking/_booking_field.html' with field=form.description label='Purpose / description' optional=True %}
               {% include 'booking/_booking_field.html' with field=form.guest_company_name label='Guest company name' field_id='booking-guest-company-field' %}
               <div class="booking-meeting-end booking-field-wide">

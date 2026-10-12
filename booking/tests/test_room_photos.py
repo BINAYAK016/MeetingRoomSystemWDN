@@ -110,6 +110,35 @@ class RoomPhotoTests(TestCase):
         self.assertFalse(Room.objects.exists())
         self.assertFalse(list(Path(self.media.name).rglob("*.jpg")))
 
+    def test_uploaded_photo_appears_on_room_directory_details_and_booking(self):
+        room = self.create()
+        employee = Client()
+        employee.force_login(self.employee)
+        photo_url = reverse("room-photo", args=[room.pk])
+        for url in (reverse("rooms"), reverse("room-detail", args=[room.pk]), reverse("booking-new")):
+            with self.subTest(url=url):
+                response = employee.get(url)
+                self.assertContains(response, f'src="{photo_url}"')
+                self.assertNotContains(response, room.photo.name)
+        directory = employee.get(reverse("rooms"))
+        self.assertContains(directory, "COMPANY WORKSPACE")
+        self.assertNotContains(directory, "Room photo not added")
+        overview = employee.get(reverse("home"))
+        self.assertContains(overview, "COMPANY WORKSPACE / OVERVIEW")
+        self.assertNotContains(overview, "WDN WORKSPACE")
+
+    def test_room_without_photo_has_placeholder_and_no_broken_image(self):
+        self.client.post(reverse("staff-room-new"), self.data())
+        room = Room.objects.get()
+        employee = Client()
+        employee.force_login(self.employee)
+        response = employee.get(reverse("rooms"))
+        self.assertContains(response, "Room photo not added")
+        self.assertNotContains(response, reverse("room-photo", args=[room.pk]))
+        self.assertNotContains(
+            employee.get(reverse("room-detail", args=[room.pk])), 'class="room-detail-photo"'
+        )
+
     def test_inactive_photo_is_visible_only_to_verified_staff(self):
         room = self.create()
         room.is_active = False
