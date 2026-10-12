@@ -4,7 +4,7 @@
 
 An internal meeting room application for employees with `wdn.com.np` or `transgate.com.np` email addresses. Django renders the employee and staff interface; PostgreSQL stores records, sessions, notification jobs, and audit history. A worker sends email and reconciles reminders, completed meetings, and missed check-ins. Docker Compose runs the application, worker, and persistent PostgreSQL database; production adds an Nginx proxy on the company network. Separate deployment profiles support HTTPS and the explicitly selected private-network HTTP installation.
 
-The interface uses the Transgate navy/red palette and logo, with Times New Roman as approved. Front Desk and Administrators have identical staff permissions. Staff use a password plus a company-email code; employees use a company-email link.
+The interface uses the Transgate navy/red palette and logo, with self-hosted DM Sans and Arial/sans-serif fallbacks. Font files ship with the application, so employee browsers need no external font service. Front Desk and Administrators have identical staff permissions. Staff use a password plus a company-email code; employees use a company-email link.
 
 ## Complete documentation
 
@@ -15,7 +15,7 @@ Start with the [documentation index](docs/index.md). Detailed guides cover all f
 - A consistent left sidebar across all signed-in pages, with active-page highlights, verified staff tools and an expandable phone menu.
 - Room search, details, capacity/facilities, optional staff-managed real photos, and a room-filtered Month/Week/Day calendar with private meeting cards, date navigation and available-start booking links.
 - Three-step booking flow: Schedule & details → Attendees → Review & confirm, with real room availability for every selected recurring occurrence. Native form fallback keeps booking usable without JavaScript.
-- Internal, External and Internal + External meetings; guest company is required for external/mixed meetings.
+- Internal and External booking choices; guest company is required for External. Historical mixed meetings remain readable.
 - Department dropdowns for bookings and profiles, with an active catalog managed by staff. Initial options are Accounts, Administrative, Logistics, Sales, Oracle Support, Dell Support, Toshiba and ATM support; existing department labels are also retained.
 - Own bookings and profile; booking requests, modification, and cancellation.
 - Per-room approval: checked **Requires approval** rooms create Pending employee requests; unchecked rooms confirm them immediately. Pending requests reserve the slot; staff approval confirms the meeting, rejection records a reason and releases the slot.

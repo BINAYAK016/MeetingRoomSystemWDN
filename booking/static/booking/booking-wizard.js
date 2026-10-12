@@ -77,7 +77,7 @@
   const closing = minuteValue(config.closes_at);
   const increment = Number(config.slot_minutes);
   const overrideActive = () => Boolean(config.staff && override?.value.trim());
-  const isExternal = () => ["external", "mixed"].includes(field("meeting_type").value);
+  const isExternal = () => field("meeting_type").value === "external";
   const organizer = () => (organizerField?.value.trim() || (config.staff ? config.actor_email : initialOrganizer) || initialOrganizer).toLowerCase();
   const addresses = () => Array.from(new Set(attendees.value.split(/[\s,;]+/).filter(Boolean).map(email => email.toLowerCase())));
   const headcount = () => 1 + addresses().filter(email => email !== organizer()).length + (Number.parseInt(extraGuests.value, 10) || 0);

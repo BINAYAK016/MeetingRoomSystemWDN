@@ -375,7 +375,7 @@ Replace 123 with the diagnosed notification ID. Output is `requeued=N superseded
 | Only one room listed | Staff must configure actual active rooms; production never seeds demo data. |
 | Wizard shows unavailable for a free first date | All eligible recurring occurrences must be free, including gaps; inspect later dates in the preview/review. |
 | Selected Available room fails final submission | Preview does not hold space; final save detects intervening conflicts, inactive rooms and capacity/policy changes. Retain entries and choose a valid alternative. |
-| External or Internal + External rejected | Guest company is required for both; count email-listed people and additional no-email guests once each. |
+| External rejected | Guest company is required; count email-listed people and additional no-email guests once each. Internal and External are the supported booking choices. |
 | Wizard controls absent or room cards never update | Native form remains usable. Inspect browser console/Network for the static wizard asset and `/bookings/availability/` response; rebuild/recreate a stale image and load a fresh page. Share status/error text, not full request values. |
 | Invalid form cannot be retried | Load current assets; client validation must not leave a prevented submission locked. Server errors retain data for correction. |
 
@@ -562,7 +562,7 @@ docker compose -f compose.prod.http.yaml images
 
 Older sync Gunicorn could time out on idle browser connections. Current image uses two threaded workers/four threads each and no unused control socket, supporting the read-only filesystem. If logs show `WORKER TIMEOUT`/socket startup errors, verify current image/build; resource pressure/database slowness need separate diagnosis.
 
-CSS/logo/static manifest errors may indicate stale/mismatched builds or asset paths. Assets collect/fingerprint during image build. Rebuild/recreate through controlled updates and hard-refresh; do not write files into a read-only production container. Branding/fonts are local/system assets; no CDN font dependency is required.
+CSS/logo/static manifest errors may indicate stale/mismatched builds or asset paths. Assets collect/fingerprint during image build. Rebuild/recreate through controlled updates and hard-refresh; do not write files into a read-only production container. DM Sans is bundled with local static assets and falls back to Arial/sans-serif if unavailable; no CDN font dependency is required.
 
 Alternative HTTPS deployment uses its own Compose/certificate guide. Selected HTTP intentionally has no certificate, redirect, HSTS or secure-cookie transport flag. `check --deploy` may report these transport warnings; maintain the chosen profile consistently while troubleshooting. [Django deployment checklist](https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/).
 

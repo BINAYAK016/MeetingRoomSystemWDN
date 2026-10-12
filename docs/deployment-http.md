@@ -145,7 +145,7 @@ Open **`http://mbs.wdn.com.np/`** using the HTTP prefix. Verify employee email s
 - Branded HTML and plain-text authentication/meeting emails arrive and remain usable in company mail clients. Organizer Check in opens browser confirmation and works during the valid window; a preview performs no action and attendee emails contain no organizer token. Missed check-in releases the slot after the deadline.
 - A saved attendee signs in and sees the meeting in My meetings, overview/calendar and read-only detail. Role/status/search filters work; unrelated employees cannot read details. Attendee edit/cancel is denied and removal ends access.
 - Typing two letters in Attendees offers up to eight registered active company accounts with mouse/keyboard selection; manual external addresses remain valid.
-- Three-step booking, attendee headcount, Internal + External guest company, all-occurrence availability and native form fallback work.
+- Three-step booking, attendee headcount, Internal/External choices, required External guest company, all-occurrence availability and native form fallback work. Historical mixed records remain readable and unchanged saves preserve their state.
 - Reports, audit history, recurring dates, holiday rules, closures, and room deactivation work with real office data.
 - Optional staff-uploaded room photos display only while authenticated, survive recreation, and restore from the matching media archive.
 - Booking/profile/People department dropdowns contain the eight initial options and imported legacy names. Verified staff can add or deactivate an option through Departments; existing booking labels remain intact.

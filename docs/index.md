@@ -27,7 +27,7 @@ Read employees/staff first for everyday use. For a server incident, begin with t
 
 | Item | Selected configuration |
 | --- | --- |
-| Application | Meeting Booking System (MBS), Transgate branding, Times New Roman/system fallback |
+| Application | Meeting Booking System (MBS), Transgate branding, self-hosted DM Sans with Arial/sans-serif fallback |
 | Site | [http://mbs.wdn.com.np](http://mbs.wdn.com.np) on the office network/VPN |
 | Server | Oracle Linux 9.8, x86_64; office IP `192.168.50.222` |
 | Repository/branch | [BINAYAK016/MeetingRoomSystemWDN](https://github.com/BINAYAK016/MeetingRoomSystemWDN/tree/mbs-prod), `mbs-prod` |

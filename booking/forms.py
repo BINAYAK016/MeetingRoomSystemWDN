@@ -57,7 +57,12 @@ class BookingForm(forms.Form):
     end_time = forms.TimeField(widget=forms.TimeInput(attrs={"type": "time", "step": "900"}))
     title = forms.CharField(label="Meeting title", max_length=200)
     description = forms.CharField(max_length=10000, required=False, widget=forms.Textarea(attrs={"rows": 3}))
-    meeting_type = forms.ChoiceField(choices=Reservation.MeetingType.choices)
+    meeting_type = forms.ChoiceField(
+        choices=[
+            (Reservation.MeetingType.INTERNAL, Reservation.MeetingType.INTERNAL.label),
+            (Reservation.MeetingType.EXTERNAL, Reservation.MeetingType.EXTERNAL.label),
+        ]
+    )
     guest_company_name = forms.CharField(label="Guest company", max_length=200, required=False)
     external_attendee_count = forms.IntegerField(
         label="External guests", min_value=0, max_value=500, initial=0
@@ -136,10 +141,9 @@ class BookingForm(forms.Form):
 
     def clean(self):
         data = super().clean()
-        if data.get("meeting_type") in [
-            Reservation.MeetingType.EXTERNAL,
-            Reservation.MeetingType.MIXED,
-        ] and not data.get("guest_company_name"):
+        if data.get("meeting_type") == Reservation.MeetingType.EXTERNAL and not data.get(
+            "guest_company_name"
+        ):
             self.add_error("guest_company_name", "Enter the guest company name")
         _clean_recurrence(self, data)
         return data

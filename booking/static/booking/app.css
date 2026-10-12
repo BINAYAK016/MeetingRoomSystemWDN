@@ -1,4 +1,21 @@
+@font-face {
+  font-family: "DM Sans";
+  font-style: normal;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url("fonts/dm-sans-variable.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "DM Sans";
+  font-style: italic;
+  font-weight: 100 1000;
+  font-display: swap;
+  src: url("fonts/dm-sans-italic-variable.ttf") format("truetype");
+}
+
 :root {
+  --font-ui: "DM Sans", Arial, sans-serif;
   --navy: #104068;
   --navy-deep: #0b2c4b;
   --red: #e01f26;
@@ -13,10 +30,10 @@
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
-body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; background: var(--canvas); color: var(--ink); font: 17px/1.48 "Times New Roman", Times, serif; }
+body { margin: 0; min-height: 100vh; display: flex; flex-direction: column; background: var(--canvas); color: var(--ink); font: 17px/1.48 var(--font-ui); font-optical-sizing: auto; }
 main { flex: 1; }
 a { color: inherit; }
-button, input { font: inherit; }
+button, input, select, textarea { font: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 3px solid var(--red); outline-offset: 3px; }
 .skip-link { position: fixed; z-index: 100; top: 10px; left: 20px; transform: translateY(calc(-100% - 20px)); background: var(--red); color: white; padding: 10px 16px; }
@@ -613,7 +630,7 @@ button:disabled { cursor: wait; opacity: .7; }
 .meetings-timezone { color: #718699; font-size: 12px; }
 .meetings-filters { display: grid; grid-template-columns: minmax(180px, 1.5fr) minmax(130px, 1fr) minmax(130px, 1fr) auto; gap: 14px; align-items: end; padding: 24px 0; }
 .meetings-filters label { display: block; font-size: 13px; margin-bottom: 8px; }
-.meetings-filters input, .meetings-filters select, .attendee-picker-input input { margin: 0; min-width: 0; width: 100%; padding: 11px 12px; min-height: 44px; border: 1px solid #cad9e6; border-radius: 7px; background: #fff; color: #294b68; font: 14px/1.4 "Times New Roman", Times, serif; }
+.meetings-filters input, .meetings-filters select, .attendee-picker-input input { margin: 0; min-width: 0; width: 100%; padding: 11px 12px; min-height: 44px; border: 1px solid #cad9e6; border-radius: 7px; background: #fff; color: #294b68; font: 14px/1.4 var(--font-ui); }
 .meetings-filters input::placeholder, .attendee-picker-input input::placeholder { color: #8293a2; }
 .meetings-filters input:focus, .meetings-filters select:focus, .attendee-picker-input input:focus { border-color: var(--navy); }
 .meetings-filter-actions { display: flex; gap: 8px; }

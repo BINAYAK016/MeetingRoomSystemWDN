@@ -7,7 +7,17 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from booking.forms import BookingForm
-from booking.models import BookingPolicy, CompanyHoliday, Reservation, Room, RoomFacility, User
+from booking.models import (
+    AuditEvent,
+    BookingPolicy,
+    CompanyHoliday,
+    EmailToken,
+    Notification,
+    Reservation,
+    Room,
+    RoomFacility,
+    User,
+)
 from booking.services.bookings import BookingError, create_booking, update_booking
 
 LOCAL_TZ = ZoneInfo("Asia/Kathmandu")
@@ -270,6 +280,11 @@ class BookingAvailabilityTests(TestCase):
         self.assertEqual(response.context["booking_ui"]["availability_url"], reverse("booking-availability"))
         self.assertIsNone(response.context["booking_ui"]["booking_id"])
         self.assertEqual(
+            list(response.context["form"].fields["meeting_type"].choices),
+            [("internal", "Internal"), ("external", "External")],
+        )
+        self.assertNotContains(response, 'data-meeting-type="mixed"')
+        self.assertEqual(
             {room.pk for room in response.context["booking_rooms"]}, {self.room.pk, self.free_room.pk}
         )
         item = self.reservation()
@@ -291,8 +306,8 @@ class BookingAvailabilityTests(TestCase):
         self.assertEqual(response.context["form"].initial["date"], "2026-10-12")
         self.assertEqual(response.context["form"].initial["start_time"], "09:00")
 
-    def test_mixed_meeting_type_requires_guest_company_in_form_service_and_database(self):
-        data = self.data(meeting_type="mixed")
+    def test_external_meeting_type_requires_guest_company_in_form_service_and_database(self):
+        data = self.data(meeting_type="external")
         form_values = {**data, "room": self.room.pk, "attendees": ""}
         form = BookingForm(form_values)
         self.assertFalse(form.is_valid())
@@ -300,12 +315,112 @@ class BookingAvailabilityTests(TestCase):
         with self.assertRaisesMessage(BookingError, "guest company"):
             create_booking(data, actor=self.user)
         with self.assertRaises(IntegrityError), transaction.atomic():
-            self.reservation(meeting_type="mixed", guest_company_name="")
+            self.reservation(meeting_type="external", guest_company_name="")
         item = create_booking({**data, "guest_company_name": "Partner company"}, actor=self.user)[0]
-        self.assertEqual(item.meeting_type, "mixed")
-        self.assertEqual(item.get_meeting_type_display(), "Internal + External")
+        self.assertEqual(item.meeting_type, "external")
+        self.assertEqual(item.get_meeting_type_display(), "External")
         with self.assertRaisesMessage(BookingError, "guest company"):
             update_booking(item.pk, {**data, "guest_company_name": "   "}, actor=self.user)
+
+    def test_mixed_meeting_type_is_rejected_by_form_and_create_and_update_services(self):
+        data = self.data(meeting_type="mixed", guest_company_name="Partner company")
+        form_values = {**data, "room": self.room.pk, "attendees": ""}
+        form = BookingForm(form_values)
+        self.assertFalse(form.is_valid())
+        self.assertIn("meeting_type", form.errors)
+        for actor, staff in ((self.user, False), (self.staff, True)):
+            with self.subTest(staff=staff), self.assertRaisesMessage(BookingError, "Internal or External"):
+                create_booking(data, actor=actor, staff=staff)
+        self.assertFalse(Reservation.objects.exists())
+        item = self.reservation(meeting_type="mixed", guest_company_name="Partner company")
+        with self.assertRaisesMessage(BookingError, "Internal or External"):
+            update_booking(item.pk, data, actor=self.user)
+        response = self.client.post(
+            reverse("booking-edit", args=[item.pk]), {**form_values, "until_date": ""}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("meeting_type", response.context["form"].errors)
+        item.refresh_from_db()
+        self.assertEqual(item.meeting_type, "mixed")
+
+    def test_legacy_mixed_edit_shows_external_and_unchanged_save_preserves_approval_and_checkin(self):
+        item = self.reservation(
+            title="Planning",
+            meeting_type="mixed",
+            guest_company_name="Partner company",
+            status="approved",
+            approved_by=self.staff,
+            approved_at=NOW,
+        )
+        token = EmailToken.objects.create(
+            user=self.user,
+            reservation=item,
+            email=self.user.email,
+            purpose="check_in",
+            token_hash="1" * 64,
+            expires_at=item.starts_at + timedelta(minutes=15),
+        )
+        notice = Notification.objects.create(
+            reservation=item,
+            reservation_revision=item.revision,
+            recipient_email=self.user.email,
+            event_type="reminder",
+            subject="Meeting reminder",
+            body="Existing reminder",
+            next_attempt_at=NOW,
+        )
+        response = self.client.get(reverse("booking-edit", args=[item.pk]))
+        self.assertEqual(response.context["form"].initial["meeting_type"], "external")
+        self.assertEqual(
+            list(response.context["form"].fields["meeting_type"].choices),
+            [("internal", "Internal"), ("external", "External")],
+        )
+        self.assertNotContains(response, 'data-meeting-type="mixed"')
+        values = {
+            **self.data(meeting_type="external", guest_company_name="Partner company"),
+            "room": self.room.pk,
+            "attendees": "",
+            "until_date": "",
+        }
+        response = self.client.post(reverse("booking-edit", args=[item.pk]), values)
+        self.assertEqual(response.status_code, 302)
+        item.refresh_from_db()
+        token.refresh_from_db()
+        notice.refresh_from_db()
+        self.assertEqual(item.meeting_type, "mixed")
+        self.assertEqual(item.get_meeting_type_display(), "Internal + External")
+        self.assertEqual(item.status, "approved")
+        self.assertEqual(item.revision, 1)
+        self.assertEqual(item.approved_by, self.staff)
+        self.assertEqual(item.approved_at, NOW)
+        self.assertIsNone(token.consumed_at)
+        self.assertEqual(notice.status, "pending")
+        self.assertFalse(AuditEvent.objects.filter(action="booking_modified").exists())
+
+    def test_substantive_legacy_edit_saves_supported_type_and_reapplies_approval(self):
+        for meeting_type, room in (("external", self.room), ("internal", self.free_room)):
+            with self.subTest(meeting_type=meeting_type):
+                item = self.reservation(
+                    room=room,
+                    title="Planning",
+                    meeting_type="mixed",
+                    guest_company_name="Partner company",
+                    status="approved",
+                    approved_by=self.staff,
+                    approved_at=NOW,
+                )
+                changes = self.data(
+                    room=room,
+                    meeting_type=meeting_type,
+                    guest_company_name="Partner company",
+                    title="Updated meeting" if meeting_type == "external" else "Planning",
+                )
+                updated = update_booking(item.pk, changes, actor=self.user)
+                self.assertEqual(updated.meeting_type, meeting_type)
+                self.assertEqual(updated.status, "pending")
+                self.assertEqual(updated.revision, 2)
+                self.assertIsNone(updated.approved_by)
+                self.assertIsNone(updated.approved_at)
 
     def test_server_submission_rechecks_conflict_after_available_preview(self):
         self.assertTrue(self.row(self.endpoint())["available"])

@@ -176,15 +176,17 @@ A 10:00–11:00 meeting holds the room until 11:15 under the default gap. The or
 
 A failed submission does not create a booking. On a failed edit, the previously saved booking remains. Refresh the calendar when correcting a conflict; do not create repeated duplicate requests for the same planned meeting.
 
-## 6. Request an external or mixed meeting
+## 6. Request an external meeting
 
-1. In Schedule & details, select **External** for a guest meeting, or **Internal + External** for a mixed meeting. Both require a guest company name.
+1. In Schedule & details, select **External** for a meeting with guests. The two booking choices are Internal and External; External requires a guest company name.
 2. Enter guest company name, for example **Example Partners**.
 3. In Attendees, enter the number of additional guests who are not individually listed by email.
 4. List colleague/guest email addresses that should receive approved meeting notifications.
 5. Select refreshments if needed and enter preparation needs in **Special requirements**, review, then submit.
 
 Example: organizer + two listed colleagues + three unlisted guests = **six people**. If a guest has already been counted as a listed email attendee, do not count them again as an unlisted external attendee. External addresses may receive attendee notifications, but cannot use account sign-in unless their domain is in the employee allowlist. Refreshments are a request for Front Desk to handle manually, not an automatically fulfilled order.
+
+Older Internal + External meetings remain visible in history and details. Editing one initially selects External. Saving it without other changes keeps its original classification and approval/check-in state; changing meeting details saves the selected Internal or External type through the usual approval workflow.
 
 ## 7. Create a recurring series
 

@@ -26,7 +26,7 @@ Use the [employee guide](user-guide.md) for employee workflows, the [staff guide
 
 ## Branded web interface
 
-The application includes the Transgate logo, navy/red brand colors and the requested Times New Roman font (with Times/serif fallbacks). It provides responsive form/cards/table layouts, keyboard focus styling, a Skip to content link, named table regions, accessible status/error messages and confirmation dialogs for consequential form actions. Core pages/forms work without JavaScript; JavaScript adds the three-step booking wizard, room availability previews, confirmations and repeated-click prevention during a submitted request. Wide calendar/report tables scroll horizontally on smaller screens. No external font installation, browser plug-in or webcam/location access is required.
+The application includes the Transgate logo, navy/red brand colors and self-hosted DM Sans (with Arial/sans-serif fallbacks). Font files ship with the application and load from its own static assets, without a CDN. It provides responsive form/cards/table layouts, keyboard focus styling, a Skip to content link, named table regions, accessible status/error messages and confirmation dialogs for consequential form actions. Core pages/forms work without JavaScript; JavaScript adds the three-step booking wizard, room availability previews, confirmations and repeated-click prevention during a submitted request. Wide calendar/report tables scroll horizontally on smaller screens. No external font installation, browser plug-in or webcam/location access is required.
 
 ## Accounts, sessions and permissions
 
@@ -202,8 +202,8 @@ If JavaScript is unavailable, the underlying native form displays room/date/star
 | Date, start time, end time | Same-day future meeting in Nepal time; end after start |
 | Title | Required, at most 200 characters |
 | Description | Optional, at most 10,000 characters |
-| Meeting type | Internal, External, or Internal + External (`mixed`) |
-| Guest company name | Required for External and Internal + External; at most 200 characters |
+| Meeting type | Internal or External |
+| Guest company name | Required for External; at most 200 characters |
 | Additional guests without email addresses | Stored as external attendee count; numeric value from 0 to 500; do not double-count email-listed people |
 | Department | Optional dropdown from the active staff-managed catalog; initially copied from profile. Saved labels remain snapshots rather than department foreign keys |
 | Attendees | Up to 50 distinct valid email addresses; newline, comma, semicolon or whitespace separated |
@@ -213,6 +213,8 @@ If JavaScript is unavailable, the underlying native form displays room/date/star
 | Until date | Required for recurring creation; cannot precede first date |
 | Organizer email | Verified staff only; blank means current staff user; otherwise eligible active employee |
 | Override reason | Verified staff only, at most 500 characters; a nonempty reason enables policy exceptions |
+
+Historical Internal + External (`mixed`) records remain readable. Their edit forms initially select External. Saving without other changes preserves the original record, approval, revision and check-in state; a substantive edit saves the selected Internal or External type through the normal workflow. New mixed submissions are rejected.
 
 ### Employee directory suggestions
 
@@ -457,7 +459,7 @@ Examples assume an illustrative eight-seat room and default policy. Adjust dates
 | UC-04 | Staff uses employee login | Staff email, employee session | Employee functions available; management redirects to staff sign-in until MFA completed |
 | UC-05 | Find projector room for six | Signed-in employee | Rooms → seats 6 → Projector → instructions → calendar; no match means change filters/contact staff |
 | UC-06 | Reserve reviewed team meeting | Employee, free room with Requires approval checked | Future working Thursday, 10:00–11:00, Internal, “Team planning”, colleagues listed → Pending hold → review |
-| UC-07 | External or mixed client visit | Employee, adequate seats | External or Internal + External, “Example Partners”, three unlisted guests + two listed colleagues → six seats; missing company rejected |
+| UC-07 | External client visit | Employee, adequate seats | External, “Example Partners”, three unlisted guests + two listed colleagues → six seats; missing company rejected |
 | UC-08 | Concurrent same-time requests | Concurrent signed-in users | One transaction holds interval; other create fails without duplicate; choose another time/room |
 | UC-09 | Approve request | Future Pending, active room/organizer | Pending queue → detail → Approve → Approved, actor/time and confirmation mail |
 | UC-10 | Reject request | Pending | Reason “Use larger room for visitor count” → Reject → Rejected, slot free, reason visible |
@@ -494,7 +496,7 @@ Examples assume an illustrative eight-seat room and default policy. Adjust dates
 
 ## Implemented scope and limitations
 
-- First launch includes own calendar, the three-step booking flow with real schedule/series availability, internal/external/mixed meetings, recurring creation, approval, email notifications/check-in and staff administration.
+- First launch includes own calendar, the three-step booking flow with real schedule/series availability, Internal and External meetings, recurring creation, approval, email notifications/check-in and staff administration.
 - Room photos are optional staff uploads. They persist in the `room_media` Docker volume; database dumps contain file references, not the photo files. IT backs up/restores both together.
 - HCL/Outlook/Exchange integration, calendar invitations/ICS and automatic sync are **deferred**. Email messages do not promise an entry in another calendar.
 - Employees use links; staff use password plus email code. SSO, SMS/TOTP and independent employee numeric-code entry are not implemented.

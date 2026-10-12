@@ -418,7 +418,11 @@ def booking_edit(request, booking_id):
         "end_time": local_end.time().replace(tzinfo=None),
         "title": booking.title,
         "description": booking.description,
-        "meeting_type": booking.meeting_type,
+        "meeting_type": (
+            Reservation.MeetingType.EXTERNAL
+            if booking.meeting_type == Reservation.MeetingType.MIXED
+            else booking.meeting_type
+        ),
         "guest_company_name": booking.guest_company_name,
         "external_attendee_count": booking.external_attendee_count,
         "department": booking.department,

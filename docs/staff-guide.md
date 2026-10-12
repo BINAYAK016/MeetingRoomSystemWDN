@@ -165,7 +165,7 @@ The worker normally reconciles every 30 seconds: Approved meetings missing the d
 ## 5. Book on behalf and manage exceptions
 
 1. From **Bookings**, select **Book for employee +**, or use **New booking** while in a verified staff session.
-2. Complete **Schedule & details** as in the employee guide: date/duration/start, an available room, title, type, department, purpose, refreshments and special requirements. External and Internal + External meetings require a guest company.
+2. Complete **Schedule & details** as in the employee guide: date/duration/start, an available room, title, type, department, purpose, refreshments and special requirements. Choose Internal or External; External meetings require a guest company.
 3. For a justified policy exception, open **Staff booking options** and enter **Booking rule override reason**. Use custom/manual times for an exceptional schedule; preview and saving still enforce non-bypassable rules.
 4. In **Attendees**, enter **Book on behalf of an employee** at `@wdn.com.np` or `@transgate.com.np`. Blank uses your own account. An eligible email not already registered creates an employee account; an inactive organizer is rejected.
 5. Add email attendees/additional guests, check the headcount, and continue to **Review & confirm**. For recurrence, review every actual occurrence and its availability.

@@ -122,10 +122,13 @@ def prepared_booking_intervals(data, policy, *, staff=False):
 
 
 def _validate_meeting_type(data):
-    if data.get("meeting_type") not in Reservation.MeetingType.values:
-        raise BookingError("Choose a supported meeting type")
+    if data.get("meeting_type") not in [
+        Reservation.MeetingType.INTERNAL,
+        Reservation.MeetingType.EXTERNAL,
+    ]:
+        raise BookingError("Choose Internal or External as the meeting type")
     if (
-        data["meeting_type"] in [Reservation.MeetingType.EXTERNAL, Reservation.MeetingType.MIXED]
+        data["meeting_type"] == Reservation.MeetingType.EXTERNAL
         and not data.get("guest_company_name", "").strip()
     ):
         raise BookingError("Enter the guest company name")
@@ -372,9 +375,17 @@ def _update_booking(booking_id, data, *, actor, staff):
         "occupied_until": occupied_until,
         **_common_fields(data),
     }
-    substantive_change = any(getattr(booking, field) != value for field, value in changes.items()) or set(
-        old_attendees
-    ) != set(data["attendees"])
+    # Older mixed meetings open as External in the simplified booking form.
+    # That display mapping alone must not revoke approval or check-in links.
+    comparable_fields = changes.copy()
+    if (
+        booking.meeting_type == Reservation.MeetingType.MIXED
+        and changes["meeting_type"] == Reservation.MeetingType.EXTERNAL
+    ):
+        comparable_fields["meeting_type"] = Reservation.MeetingType.MIXED
+    substantive_change = any(
+        getattr(booking, field) != value for field, value in comparable_fields.items()
+    ) or set(old_attendees) != set(data["attendees"])
     if not substantive_change:
         return booking
     previous_status = booking.status

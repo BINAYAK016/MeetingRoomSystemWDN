@@ -17,7 +17,7 @@
 .workspace-staff-tools > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 12px; border-radius: 6px; color: #5a7084; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; cursor: pointer; list-style: none; }
 .workspace-staff-tools > summary::-webkit-details-marker, .workspace-menu-toggle::-webkit-details-marker { display: none; }
 .workspace-staff-tools > summary:hover { background: #edf3f8; }
-.workspace-chevron { display: inline-block; font: 18px/1 "Times New Roman", Times, serif; transition: transform .15s ease; }
+.workspace-chevron { display: inline-block; font: 18px/1 var(--font-ui); transition: transform .15s ease; }
 .workspace-staff-tools[open] > summary .workspace-chevron, .workspace-menu[open] > summary .workspace-chevron { transform: rotate(180deg); }
 .workspace-staff-tools nav { display: grid; gap: 3px; padding-top: 7px; }
 .workspace-staff-tools nav a { padding: 9px 12px 9px 21px; border-radius: 6px; color: #52677a; font-size: 14px; line-height: 1.3; text-decoration: none; }
