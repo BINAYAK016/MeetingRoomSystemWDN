@@ -185,7 +185,16 @@ git pull --ff-only origin mbs-prod
 mbs config --quiet
 mbs build web
 mbs up -d --wait --wait-timeout 90 db
-mbs run --rm --no-deps -T --entrypoint sh web -c 'test -w /app/media/rooms/photos'
+mbs run --rm --no-deps -T --entrypoint sh web -c '
+  if [ ! -d /app/media/rooms/photos ]; then
+    echo "Stop: the room photo directory /app/media/rooms/photos is missing. Inspect the existing media volume before continuing." >&2
+    exit 1
+  fi
+  if [ ! -w /app/media/rooms/photos ]; then
+    echo "Stop: the application user cannot write to /app/media/rooms/photos. Inspect media volume ownership and permissions before continuing." >&2
+    exit 1
+  fi
+'
 
 mbs stop proxy web worker
 COMPOSE_FILE=compose.prod.http.yaml sh deploy/backup.sh
@@ -204,6 +213,8 @@ curl --fail --show-error --resolve mbs.wdn.com.np:80:192.168.50.222 http://mbs.w
 git log -1 --oneline
 )
 ```
+
+If the directory check fails before `mbs stop proxy web worker`, the existing web, worker and proxy containers continue serving the previous release. The error identifies whether the photo directory is missing or not writable; inspect the existing media volume before retrying. A successful Git pull and image build alone do not deploy the new release: the running application changes when the services are recreated. Preserve the volume and its contents while investigating.
 
 Keep the printed database dump, media archive and release commit together as one recovery point and copy them to approved separate storage. Archive listing validates structure, not a successful restore. If a command fails after services were stopped, leave the writers stopped, inspect the failure and use the recovery runbook before resuming; do not delete volumes or start old code against a newer schema.
 
