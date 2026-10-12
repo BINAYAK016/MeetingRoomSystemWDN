@@ -5,7 +5,16 @@ from django.core import mail
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
-from booking.models import BookingAttendee, BookingPolicy, Notification, Reservation, Room, User
+from booking.models import (
+    BookingAttendee,
+    BookingPolicy,
+    CalendarEvent,
+    CalendarInvitation,
+    Notification,
+    Reservation,
+    Room,
+    User,
+)
 from booking.services.notifications import queue_booking_event, queue_due_reminders, send_due_notifications
 
 
@@ -56,6 +65,10 @@ class FrontDeskNotificationTests(TestCase):
         for event, status in states.items():
             with self.subTest(event=event):
                 Notification.objects.all().delete()
+                # Each subtest is an independent event, not an approved meeting
+                # being rejected after invitations have already been delivered.
+                CalendarInvitation.objects.all().delete()
+                CalendarEvent.objects.all().delete()
                 mail.outbox.clear()
                 self.booking.status = status
                 self.booking.rejection_reason = "Choose another time"

@@ -19,17 +19,28 @@ def retry_failed_mail(notification_id=None):
     requeued = superseded = 0
     for pk in jobs.values_list("pk", flat=True):
         with transaction.atomic():
+            reservation_id = (
+                Notification.objects.filter(pk=pk).values_list("reservation_id", flat=True).first()
+            )
+            booking = (
+                Reservation.objects.select_for_update().filter(pk=reservation_id).first()
+                if reservation_id
+                else None
+            )
             job = (
                 Notification.objects.select_for_update(of=("self",))
-                .select_related("reservation")
                 .filter(pk=pk, status=Notification.Status.FAILED)
                 .first()
             )
             if job is None:
                 continue
-            booking = job.reservation
             eligible = True
-            if booking:
+            if job.calendar_invitation_id and booking:
+                from booking.services.calendar_delivery import current_calendar_invitation
+
+                invitation = current_calendar_invitation(job, booking)
+                eligible = invitation is not None and (invitation.method == "CANCEL" or now < booking.ends_at)
+            elif booking:
                 eligible = job.reservation_revision is None or job.reservation_revision == booking.revision
                 if job.event_type == "request":
                     eligible = (

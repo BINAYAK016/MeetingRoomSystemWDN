@@ -218,8 +218,13 @@ class BookingApprovalTests(TestCase):
         )
         self.assertEqual(queue_due_reminders(now=booking.starts_at - timedelta(minutes=45)), 0)
         mail.outbox.clear()
-        self.assertEqual(send_due_notifications(), 2)
-        self.assertTrue(all("awaiting administrator approval" in message.subject for message in mail.outbox))
+        # The former approved attendee also receives a calendar cancellation.
+        self.assertEqual(send_due_notifications(), 3)
+        requests = [
+            message for message in mail.outbox if "awaiting administrator approval" in message.subject
+        ]
+        self.assertEqual(len(requests), 2)
+        self.assertTrue(any("Calendar cancellation" in message.subject for message in mail.outbox))
         self.assertTrue(all("/check-in/link/" not in message.body for message in mail.outbox))
 
     def test_unchanged_edit_preserves_approval_and_staff_edit_preserves_reviewed_status(self):

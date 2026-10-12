@@ -1,3 +1,4 @@
+import uuid
 from datetime import time
 
 from django.contrib.auth.base_user import BaseUserManager
@@ -328,6 +329,42 @@ class AuthenticationThrottle(models.Model):
         indexes = [models.Index(fields=["window_started_at"], name="auth_throttle_window_idx")]
 
 
+class CalendarEvent(models.Model):
+    reservation = models.OneToOneField(Reservation, on_delete=models.PROTECT, related_name="calendar_event")
+    uid = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    organizer_email = models.EmailField()
+    sequence = models.PositiveIntegerField(default=0)
+    fingerprint = models.CharField(max_length=64, blank=True)
+
+    class Meta:
+        db_table = "calendar_events"
+
+
+class CalendarInvitation(models.Model):
+    class Method(models.TextChoices):
+        REQUEST = "REQUEST", "Invitation"
+        CANCEL = "CANCEL", "Cancellation"
+
+    event = models.ForeignKey(CalendarEvent, on_delete=models.PROTECT, related_name="invitations")
+    recipient_email = models.EmailField()
+    method = models.CharField(max_length=7, choices=Method.choices)
+    sequence = models.PositiveIntegerField()
+    snapshot = models.JSONField()
+    sent_sequence = models.PositiveIntegerField(null=True, blank=True)
+
+    class Meta:
+        db_table = "calendar_invitations"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event", "recipient_email"], name="calendar_event_recipient_unique"
+            ),
+            models.CheckConstraint(
+                condition=Q(method__in=["REQUEST", "CANCEL"]), name="calendar_method_valid"
+            ),
+            models.CheckConstraint(condition=Q(sequence__lte=2147483647), name="calendar_sequence_valid"),
+        ]
+
+
 class Notification(models.Model):
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
@@ -343,6 +380,10 @@ class Notification(models.Model):
 
     reservation = models.ForeignKey(Reservation, null=True, blank=True, on_delete=models.PROTECT)
     reservation_revision = models.PositiveIntegerField(null=True, blank=True)
+    calendar_invitation = models.ForeignKey(
+        CalendarInvitation, null=True, blank=True, on_delete=models.PROTECT
+    )
+    calendar_sequence = models.PositiveIntegerField(null=True, blank=True)
     recipient_email = models.EmailField()
     recipient_role = models.CharField(
         max_length=12, choices=RecipientRole.choices, default=RecipientRole.LEGACY
@@ -362,6 +403,22 @@ class Notification(models.Model):
     class Meta:
         db_table = "notifications"
         indexes = [models.Index(fields=["status", "next_attempt_at"], name="notification_due_idx")]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["calendar_invitation", "calendar_sequence"],
+                condition=Q(calendar_invitation__isnull=False, status__in=["pending", "sending", "failed"]),
+                name="calendar_active_notice_unique",
+            ),
+            models.CheckConstraint(
+                condition=Q(calendar_invitation__isnull=True, calendar_sequence__isnull=True)
+                | Q(
+                    calendar_invitation__isnull=False,
+                    calendar_sequence__isnull=False,
+                    reservation__isnull=False,
+                ),
+                name="notification_calendar_fields_valid",
+            ),
+        ]
 
 
 class AuditEvent(models.Model):

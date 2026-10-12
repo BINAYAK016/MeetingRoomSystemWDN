@@ -17,6 +17,8 @@ from PIL import Image
 from booking.models import (
     BookingAttendee,
     BookingPolicy,
+    CalendarEvent,
+    CalendarInvitation,
     Department,
     EmailToken,
     Notification,
@@ -355,6 +357,8 @@ class BookingEmailPresentationTests(TestCase):
             with self.subTest(event=event):
                 mail.outbox.clear()
                 Notification.objects.all().delete()
+                CalendarInvitation.objects.all().delete()
+                CalendarEvent.objects.all().delete()
                 self.booking.status = status
                 self.booking.rejection_reason = "No availability <unsafe>"
                 self.booking.rejected_at = NOW

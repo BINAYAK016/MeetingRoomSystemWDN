@@ -30,6 +30,8 @@ The main **Rooms** menu opens the employee directory. To find the room edit cont
 
 Company-wide booking/approval operational email goes only to designated Front Desk contact **Mijala Maharjan (`mijala.maharjan@wdn.com.np`)**, while her approved-domain account is active and staff-enabled. Other administrators retain identical management permissions and their normal organizer/attendee mail, but do not receive blanket operational copies. IT configures the contact with `BOOKING_FRONT_DESK_EMAIL`; that setting does not create an account or grant staff access.
 
+Calendar invitations go only to the confirmed organizer and actual listed attendees, including external addresses. Operational Front Desk copies carry no calendar invitation unless Mijala is also explicitly a participant. Employees accept the invitation in HCL/Outlook; an email reply does not change MBS approval, room occupancy, attendance or check-in.
+
 ## 1. First access and staff sign-in
 
 ### Initial account setup
@@ -400,7 +402,7 @@ Booking events are queued independently of saved reservation transactions. Login
 
 For queued booking mail, the worker attempts at most five deliveries, with backoff. Some Failed messages are awaiting automatic retry; exhausted failures need authorized IT retry after repairing the cause. Obsolete messages are superseded when bookings change. Relay acceptance is not proof of final mailbox delivery.
 
-Messages now provide branded HTML with a plain-text alternative. Organizer-approved mail includes a private Check in action; signed-in company attendees can read their meeting in My meetings but cannot use organizer check-in or manage it. External recipients and former participants with neither current participation nor active staff access are given Contact organizer. Intentional change notifications to former participants do not restore current meeting access. Email HTML/client display issues do not change saved booking status or extend the deadline.
+Messages now provide branded HTML with a plain-text alternative. Organizer-approved mail includes a private Check in action; signed-in company attendees can read their meeting in My meetings but cannot use organizer check-in or manage it. External recipients without eligible employee access are given Contact organizer. Removed participants with prior calendar invitation state receive old-approved-snapshot cancellation without replacement details; former participants without invitation state can still receive the existing Contact organizer change notice when they lack read access. Neither notice restores current meeting access. Email HTML/client display issues do not change saved booking status or extend the deadline.
 
 If users report missing mail:
 
@@ -410,7 +412,9 @@ If users report missing mail:
 4. If the meeting has started and attendance is verified, perform Manual check-in **before** its deadline when needed.
 5. Do not promise the system will extend the deadline during an email outage.
 
-Record ordinary page/action, approximate Nepal time, booking ID and visible error/request reference if present. Keep passwords, email codes, token-bearing links and `.env` contents private. Direct HCL/Outlook calendar sync is deferred; missing entries in those calendars are not evidence of failed MBS confirmation delivery.
+Calendar invitations are attached to existing participant confirmation/change/cancellation messages, without duplicate confirmation mail. New REQUEST invitations follow approval/automatic confirmation, including staff-created bookings. Approved changes update the same event; removed attendees or replaced organizers receive cancellation using their previous approved event details. A standalone cancellation is used when no ordinary recipient copy exists. An employee edit returning to Pending withdraws the old confirmed invitation, and reapproval sends a newer request. The current organizer's pending request email and Mijala's eligible operational copy retain new request details and View meeting; any attached calendar CANCEL withdraws the old approved snapshot. Other removed recipients receive old-event cancellation only. Cancel/no-show withdraws invitations. Reminder/check-in/completion does not create another invitation, and recurring occurrences are separate calendar events inside the booking window. Existing bookings receive invitations on a later confirmation/substantive approved change; the upgrade itself broadcasts nothing.
+
+Record ordinary page/action, approximate Nepal time, booking ID and visible error/request reference if present. Keep passwords, email codes, token-bearing links and `.env` contents private. Direct calendar API writes and two-way RSVP synchronization remain deferred. Missing personal-calendar entries can mean the invitation has not been accepted, relay filtering or client handling; check the MBS state and ask IT to inspect sanitized calendar queue metadata. Live HCL/Outlook compatibility is still a pilot check.
 
 ## 15. Handover and retention
 

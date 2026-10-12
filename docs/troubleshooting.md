@@ -325,13 +325,31 @@ Booking events/reminders are worker-delivered outbox records. Inspect metadata w
 docker compose -f compose.prod.http.yaml exec -T web python manage.py shell <<'PY'
 from django.db.models import Count
 from booking.models import Notification
-print('counts=', list(Notification.objects.values('status').annotate(total=Count('id')).order_by('status')))
+print('counts=', list(Notification.objects.values('event_type', 'status').annotate(total=Count('id')).order_by('event_type', 'status')))
 rows = Notification.objects.filter(status__in=['pending', 'sending', 'failed']).order_by('next_attempt_at').values('id', 'reservation_id', 'reservation_revision', 'recipient_role', 'event_type', 'status', 'attempts', 'next_attempt_at', 'last_error')[:50]
 print('queue_metadata=', list(rows))
 PY
 ```
 
 `pending` awaits delivery; `sending` holds a five-minute lease; `sent` means backend acceptance; `failed` retains error class; `skipped` displays **Superseded** for obsolete events or no-longer-eligible recipients. Failed attempts retry after approximately 2, 4, 8 and 16 minutes. The fifth failure is terminal until requeued. Its timestamp may be 32 minutes ahead, but there is no automatic sixth attempt. Interrupted leases recover after expiry; an interrupted final attempt becomes `WorkerInterrupted`. Ambiguous SMTP outcomes may cause duplicate delivery.
+
+### Email calendar invitations in HCL and Outlook
+
+Calendar parts are attached to the existing participant confirmation/change/cancellation emails, so a normal confirmation is not duplicated as another invitation email. Only Approved confirmation or an approved substantive change sends REQUEST to organizer and actual attendees, including external addresses. Removed/former participants or approval withdrawal can require a standalone cancellation when no ordinary recipient copy exists. Pending/rejected requests, reminder/check-in/completion, and Front Desk operational copies do not create new REQUEST invitations; Mijala receives one only if explicitly a participant. Employees must use the mail client's **Accept** or equivalent action. Email calendar acceptance/decline is not synchronized into MBS approval, RSVP/attendance, cancellation or check-in.
+
+| Symptom | Check/action |
+| --- | --- |
+| Confirmation arrives but no personal-calendar entry | Check whether the confirmation exposes its calendar invitation/Accept action and whether it was accepted. Inspect current booking state and sanitized event/status counts above. Ask IT whether the relay/client preserved `text/calendar` MIME. SMTP acceptance does not prove calendar insertion. |
+| Old approved booking receives no invitation after upgrade | Intended: migration 0014 broadcasts/backfills nothing. A later confirmation or substantive approved change creates invitation state. Do not bulk resend old bookings from SQL. |
+| Invitation missing for an unlisted guest | Headcount alone has no recipient address. Save the guest's actual email as an attendee through the normal booking edit; that edit follows room approval rules. |
+| Meeting disappears after an edit | An employee edit in a reviewed room can return it to Pending; this withdraws the old confirmed invitation. Reapproval sends a newer request with the same event identity. |
+| Removed attendee receives a cancellation | Intended. The cancellation uses their old approved event details and does not reveal newly changed content or restore MBS access. |
+| Updates/cancellations appear as new meetings | Check same UID/increasing sequence and MIME handling with IT using an authorized pilot mailbox. Do not paste message payloads, snapshots or private links into support tickets. Actual HCL/Outlook compatibility still requires the live pilot. |
+| Invitation retry repeats a message | SMTP accepted-then-timeout/crash is ambiguous. Retries preserve UID, sequence and Message-ID to help client deduplication; exactly-once delivery is not guaranteed. Check the current calendar event before creating a duplicate booking. |
+| Sender changed and old event updates fail | Existing events retain the service organizer/sender pinned from `DJANGO_FROM_EMAIL`. Ask IT to retain relay authorization for that sender; changing configuration does not rewrite existing organizer identities. |
+| Missing calendar table/reference or permission denied | Use the supported stopped-writers maintenance procedure to apply committed migrations through 0014, then run `db_setup` for new table/sequence grants and recreate web/worker. Do not generate migrations or rewrite invitation rows on production. |
+
+The worker serializes final calendar validation and bounded SMTP sending with the reservation lock; a concurrent edit can briefly wait for a current send. Current desired-version recovery skips obsolete jobs and preserves required withdrawals. REQUEST delivery, including automatic and manual retry, requires a current confirmed participant/version and time before meeting end. After SMTP repair, use the existing `retry_failed_mail --id NUMBER` / `--all` workflow below. A current-version CANCEL remains useful after the original end or a later reservation revision, so it can still be retried. Retry cannot restore personal-calendar acceptance or provide direct calendar API/RSVP sync. Local file-mail records a demonstration message only, with the demo service sender. It proves no company mailbox delivery.
 
 ### Front Desk operational email
 
@@ -395,7 +413,7 @@ Replace 123 with the diagnosed notification ID. Output is `requeued=N superseded
 | New email still looks plain | A recipient may have selected plain text or blocked HTML; the fallback is expected. Confirm current image/worker and that this is a newly delivered message; an already received email is not redesigned retroactively. |
 | Check in button absent in attendee email | Intended: organizer recipient only, Approved revision and valid window. Use latest organizer email or authorized staff manual check-in. |
 | Email logo not displayed | The wordmark is an inline CID attachment. Check mail-client image preferences and gateway rewriting with IT; the text/details and action link should remain usable. No external logo download is required. |
-| Recipient sees Contact organizer | Intended for external guests or former participants with neither current participation nor active staff access. Change notices may still be sent to former participants, but do not restore meeting access. Current eligible participants/active staff have View meeting. |
+| Recipient sees Contact organizer | Intended for external guests or former participants without prior calendar invitation state who have neither current participation nor active staff access. Removed recipients with prior invitation state instead receive an old-snapshot cancellation, without replacement meeting details. Current eligible participants/active staff have View meeting. |
 | Email button cannot reach MBS | Email links use the configured internal public origin. Connect to the office/approved network, verify DNS and hostname, and inspect the ordinary page path without sharing its private token. |
 | Only one room listed | Staff must configure actual active rooms; production never seeds demo data. |
 | Wizard shows unavailable for a free first date | All eligible recurring occurrences must be free, including gaps; inspect later dates in the preview/review. |

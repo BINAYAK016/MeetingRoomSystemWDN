@@ -17,6 +17,20 @@ from booking.services.mail_delivery import deliver_mail, safe_subject
 
 MAX_ATTEMPTS = 5
 logger = logging.getLogger(__name__)
+BOOKING_EVENT_STATES = {
+    "request": {Reservation.Status.PENDING},
+    "confirmation": {
+        Reservation.Status.APPROVED,
+        Reservation.Status.CHECKED_IN,
+        Reservation.Status.COMPLETED,
+    },
+    "change": {Reservation.Status.APPROVED, Reservation.Status.CHECKED_IN, Reservation.Status.COMPLETED},
+    "rejection": {Reservation.Status.REJECTED},
+    "cancellation": {Reservation.Status.CANCELLED},
+    "no_show": {Reservation.Status.NO_SHOW},
+    "check_in": {Reservation.Status.CHECKED_IN, Reservation.Status.COMPLETED},
+    "reminder": {Reservation.Status.APPROVED},
+}
 
 
 def _front_desk_email():
@@ -40,7 +54,23 @@ def _booking_recipients(booking, *, include_attendees=True, extra_recipients=())
     return recipients
 
 
+def _current_participant_or_front_desk(booking, email):
+    email = email.casefold()
+    return (
+        email == booking.organizer.email.casefold()
+        or booking.attendees.filter(email__iexact=email).exists()
+        or email == _front_desk_email()
+    )
+
+
+@transaction.atomic
 def queue_booking_event(booking, event, *, extra_recipients=()):
+    from booking.services.calendar_delivery import (
+        project_calendar_invitations,
+        queue_unmatched_calendar_notifications,
+    )
+
+    invitations = project_calendar_invitations(booking, event)
     labels = {
         "request": "submitted and awaiting administrator approval",
         "confirmation": "approved",
@@ -79,16 +109,23 @@ def queue_booking_event(booking, event, *, extra_recipients=()):
             Notification(
                 reservation=booking,
                 reservation_revision=booking.revision,
+                calendar_invitation=invitations.get(email),
+                calendar_sequence=invitations[email].sequence if email in invitations else None,
                 recipient_email=email,
                 recipient_role=role,
                 event_type=event,
-                subject=subject,
+                subject=safe_subject(f"Calendar cancellation: {invitations[email].snapshot['title']}")
+                if email in invitations
+                and invitations[email].method == "CANCEL"
+                and not _current_participant_or_front_desk(booking, email)
+                else subject,
                 body=body,
                 next_attempt_at=timezone.now(),
             )
             for email, role in sorted(recipients.items())
         ]
     )
+    queue_unmatched_calendar_notifications(booking, invitations)
 
 
 def queue_conflict_notice(email, room_name, meeting_date, start_time):
@@ -209,7 +246,9 @@ def _recipient_can_receive_notification(notification, booking):
     return email == _front_desk_email()
 
 
-def _booking_email_html(notification, booking, checkin_url, *, can_view_meeting=None):
+def _booking_email_html(
+    notification, booking, checkin_url, *, can_view_meeting=None, calendar_withdrawn=False
+):
     if can_view_meeting is None:
         can_view_meeting = _recipient_can_view_meeting(booking, notification.recipient_email)
     events = {
@@ -300,6 +339,14 @@ def _booking_email_html(notification, booking, checkin_url, *, can_view_meeting=
             {"label": "Approval", "value": "Staff approved" if booking.approved_by_id else "Automatic"}
         )
     paragraphs = []
+    if notification.calendar_invitation_id:
+        paragraphs.append(
+            "The previous confirmed calendar invitation has been withdrawn. Process the attached cancellation in your calendar. "
+            "A new invitation will follow if a revised booking is approved."
+            if calendar_withdrawn
+            else "Accept the calendar invitation in HCL or Outlook to add this meeting to your calendar. "
+            "Calendar acceptance does not replace the organizer's MBS check-in."
+        )
     if booking.description:
         paragraphs.append(f"Purpose: {booking.description}")
     if notification.event_type == "rejection" and booking.rejection_reason:
@@ -343,6 +390,8 @@ def _booking_email_html(notification, booking, checkin_url, *, can_view_meeting=
 
 @transaction.atomic
 def _delivery_content(notification):
+    from booking.services.calendar_delivery import calendar_cancellation_content, current_calendar_invitation
+
     if not Notification.objects.filter(
         pk=notification.pk, lease_token=notification.lease_token, status=Notification.Status.SENDING
     ).exists():
@@ -363,6 +412,27 @@ def _delivery_content(notification):
         .select_related("room", "organizer")
         .get(pk=notification.reservation_id)
     )
+    calendar_withdrawn = False
+    if notification.calendar_invitation_id:
+        invitation = current_calendar_invitation(notification, booking)
+        if invitation is None:
+            return None
+        if invitation.method == "CANCEL":
+            current_message = (
+                notification.reservation_revision in {None, booking.revision}
+                and booking.status in BOOKING_EVENT_STATES.get(notification.event_type, set())
+                and _current_participant_or_front_desk(booking, notification.recipient_email)
+            )
+            if not current_message:
+                return calendar_cancellation_content(invitation, booking)
+            calendar_withdrawn = True
+        if notification.event_type == "calendar":
+            body = (
+                f"Calendar invitation: {booking.title}\n\n"
+                f"View meeting: {public_url('booking-detail', booking.pk)}\n\n"
+                "Accept this invitation in your calendar. The organizer must still check in through MBS."
+            )
+            return body, _booking_email_html(notification, booking, "")
     if not _recipient_can_receive_notification(notification, booking):
         return None
     if (
@@ -370,21 +440,10 @@ def _delivery_content(notification):
         and notification.reservation_revision != booking.revision
     ):
         return None
-    allowed = {
-        "request": {Reservation.Status.PENDING},
-        "confirmation": {
-            Reservation.Status.APPROVED,
-            Reservation.Status.CHECKED_IN,
-            Reservation.Status.COMPLETED,
-        },
-        "change": {Reservation.Status.APPROVED, Reservation.Status.CHECKED_IN, Reservation.Status.COMPLETED},
-        "rejection": {Reservation.Status.REJECTED},
-        "cancellation": {Reservation.Status.CANCELLED},
-        "no_show": {Reservation.Status.NO_SHOW},
-        "check_in": {Reservation.Status.CHECKED_IN, Reservation.Status.COMPLETED},
-        "reminder": {Reservation.Status.APPROVED},
-    }
-    if notification.event_type in allowed and booking.status not in allowed[notification.event_type]:
+    if (
+        notification.event_type in BOOKING_EVENT_STATES
+        and booking.status not in BOOKING_EVENT_STATES[notification.event_type]
+    ):
         return None
     if (
         notification.event_type in {"reminder", "confirmation", "change"}
@@ -393,6 +452,8 @@ def _delivery_content(notification):
     ):
         return None
     body = notification.body
+    if calendar_withdrawn:
+        body += "\n\nThe previous confirmed calendar invitation has been withdrawn. Process the attached cancellation in your calendar. A new invitation will follow if a revised booking is approved."
     if notification.event_type == "reminder":
         policy = BookingPolicy.objects.get(pk=1)
         if (
@@ -419,13 +480,46 @@ def _delivery_content(notification):
             f"Contact organizer: {booking.organizer.email}",
         )
         body += "\n\nThe organizer manages booking changes and check-in. Contact the organizer for meeting details or updates."
-    return body, _booking_email_html(notification, booking, checkin_url, can_view_meeting=can_view_meeting)
+    return body, _booking_email_html(
+        notification,
+        booking,
+        checkin_url,
+        can_view_meeting=can_view_meeting,
+        calendar_withdrawn=calendar_withdrawn,
+    )
 
 
 def _delivery_body(notification):
     """Keep the plain-text helper available without issuing a second check-in link."""
     content = _delivery_content(notification)
     return content[0] if content is not None else None
+
+
+@transaction.atomic
+def _deliver_claimed_notification(notification):
+    from booking.services.calendar_delivery import calendar_mail_options, current_calendar_invitation
+
+    booking = None
+    if notification.calendar_invitation_id:
+        # Serialize calendar SMTP with edits/cancellations, including removed
+        # attendees. EMAIL_TIMEOUT bounds this lock to a single relay attempt.
+        booking = Reservation.objects.select_for_update().get(pk=notification.reservation_id)
+    content = _delivery_content(notification)
+    if content is None:
+        return False
+    body, html = content
+    options = {}
+    invitation = None
+    if notification.calendar_invitation_id:
+        invitation = current_calendar_invitation(notification, booking)
+        if invitation is None:
+            return False
+        options = calendar_mail_options(invitation)
+    deliver_mail(notification.subject, body, [notification.recipient_email], html_body=html, **options)
+    if invitation is not None:
+        invitation.sent_sequence = invitation.sequence
+        invitation.save(update_fields=["sent_sequence"])
+    return True
 
 
 def send_due_notifications(now=None, limit=30):
@@ -474,10 +568,7 @@ def send_due_notifications(now=None, limit=30):
             )
 
         try:
-            content = _delivery_content(notification)
-            if content is not None:
-                body, html = content
-                deliver_mail(notification.subject, body, [notification.recipient_email], html_body=html)
+            if _deliver_claimed_notification(notification):
                 notification.status = Notification.Status.SENT
                 notification.sent_at = timezone.now()
                 sent += 1

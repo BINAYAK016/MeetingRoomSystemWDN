@@ -9,7 +9,7 @@ This is the documentation entry point for the existing Meeting Booking System: e
 
 | Document | Audience | What it contains |
 | --- | --- | --- |
-| [Employee guide](user-guide.md) | Employees and organizers | Sign-in, rooms/calendar, My meetings as organizer/attendee, attendee directory suggestions, three-step requests, recurrence, edits, cancellation, email check-in, profile and common questions. |
+| [Employee guide](user-guide.md) | Employees and organizers | Sign-in, rooms/calendar, My meetings as organizer/attendee, attendee directory suggestions, three-step requests, recurrence, edits, cancellation, email calendar invitation acceptance, email check-in, profile and common questions. |
 | [Staff guide](staff-guide.md) | Front Desk and Administrators | Password/email-code sign-in, dashboard, approval/rejection, rooms/photos, closures, on-behalf bookings, overrides, people, policy/holidays, reports and audit. |
 | [Feature catalogue and use cases](features-and-use-cases.md) | Product owner, staff, testers and developers | Permissions, rules, lifecycle, notifications, detailed success/failure examples and supported limits. |
 | [HTTP installation](deployment-http.md) | Linux operator | Selected Oracle Linux private-network installation, domain/IP/SMTP setup, build, migrations, initial staff and pilot. |
@@ -118,7 +118,7 @@ Followed logs can be left with Ctrl+C without stopping services. If attached to 
 
 ## Support boundaries and remaining operational decisions
 
-The application includes configurable room records, finite recurrence, manual priority, approval, notifications, reports and audit; it does not include automatic monthly renewal, attendee personal-calendar conflict checks, ICS/HCL/Outlook integration, separate Front Desk permissions, attachments, a public REST API, high availability or automatic data-retention purging.
+The application includes configurable room records, finite recurrence, manual priority, approval, notifications, SMTP calendar invitations for employees to accept in HCL/Outlook, reports and audit. Migration 0014 adds calendar delivery state without broadcasting old bookings; apply it and production `db_setup` through the normal update procedure. Actual company-client invitation/update/cancel compatibility remains a pilot check. It does not include automatic monthly renewal, attendee personal-calendar conflict checks, direct calendar API writes, two-way RSVP synchronization, separate Front Desk permissions, user-uploaded meeting attachments, a public REST API, high availability or automatic data-retention purging.
 
 IT/company owners still choose backup destination/retention and acceptable recovery objectives, monitoring/log retention, actual room/holiday/policy records, priority procedures and pilot acceptance. Tests/rehearsals validate implementation; they cannot establish employee-device DNS, this server's relay authorization or company-wide readiness by themselves. No passwords, SMTP credentials or raw authentication links are included in these guides.
 

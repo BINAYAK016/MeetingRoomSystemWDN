@@ -24,11 +24,12 @@ Start with the [documentation index](docs/index.md). Detailed guides cover all f
 - Verified staff can upload a company holiday `.xlsx` schedule, review new/updated/unchanged dates and existing meeting counts, then confirm an atomic import. A downloadable Date/Occasion template is available under Holidays; omitted dates and saved meetings remain intact.
 - Request, approval, rejection, modification, cancellation, reminder, check-in, and no-show notifications for the organizer, attendees, and staff.
 - Branded HTML and plain-text emails for authentication and meeting events, with clear schedule/details and relevant action buttons. Organizer-only **Check in** opens a secure browser confirmation; check-in opens at start and the worker releases missed check-ins after 15 minutes.
+- Calendar invitations for approved meetings, delivered through the existing SMTP relay to the organizer and listed attendees, including external addresses. Employees accept the invitation in HCL/Outlook; updates reuse the event identity and cancellations withdraw it. Calendar acceptance does not replace MBS approval or check-in.
 - **My meetings** includes organized and invited meetings with role/status/search filters and read-only attendee detail access. Attendee visibility also applies to dashboard/calendar; management remains organizer or verified staff only.
 - Attendee autocomplete suggests up to eight active approved-domain employee accounts after two typed characters; external/manual addresses remain supported.
 - Staff room management, closures, employee/access management, booking on behalf of employees, reasoned rule overrides, audit history, statistics, and Excel export.
 
-Direct HCL/Outlook calendar integration remains a later phase. WDN third-floor senior-management priority is handled by Front Desk manually.
+Direct calendar API writes, two-way calendar/RSVP synchronization and personal-calendar conflict checks remain a later phase. WDN third-floor senior-management priority is handled by Front Desk manually.
 
 ## Stack and requirements
 
@@ -62,7 +63,7 @@ docker compose run --rm migrate
 docker compose up -d web worker
 ```
 
-Protect the dump; backup archives are Git-ignored. Preserve `.env`, its database password, Django secret, database volume and optional `room_media` volume. A database dump does not contain uploaded photos: back up/restore that volume alongside the matching database snapshot. Existing confirmed meetings become approved. Current upgrades apply the complete committed migration chain through `0013_notification_recipient_role`; they preserve existing rooms/bookings and do not seed rooms. Migration 0011 sets Requires approval to checked for existing rooms, preserving their review requirement. Migration 0012 adds the department dropdown catalog while preserving saved department strings. See [photo backup/recovery](docs/operations-runbook.md#room-photo-backup-and-recovery) before updating an installation with uploads.
+Protect the dump; backup archives are Git-ignored. Preserve `.env`, its database password, Django secret, database volume and optional `room_media` volume. A database dump does not contain uploaded photos: back up/restore that volume alongside the matching database snapshot. Existing confirmed meetings become approved. Current upgrades apply the complete committed migration chain through **0014**; they preserve existing rooms/bookings and do not seed rooms. Migration 0011 sets Requires approval to checked for existing rooms, preserving their review requirement. Migration 0012 adds the department dropdown catalog while preserving saved department strings. Migration 0014 adds durable calendar invitation state and outbox references; rerun production `db_setup` to grant access to the new tables/sequences. See [photo backup/recovery](docs/operations-runbook.md#room-photo-backup-and-recovery) before updating an installation with uploads.
 
 Open <http://127.0.0.1:8000/>. Local `.env.example` explicitly selects `DJANGO_EMAIL_BACKEND=file`; messages are written to a Docker volume and appear in the development inbox at <http://127.0.0.1:8000/dev/mail/>. This local convenience does not verify mailbox ownership. It is unavailable in either production profile and must never be used for company rollout.
 
@@ -82,6 +83,8 @@ The department catalog requires migration `0012_department`. It creates the cata
 The current workspace update adds migration `0013_notification_recipient_role`. Apply it before restarting web/worker, then rerun production `db_setup`. Operational booking and reminder copies go only to the active staff account `mijala.maharjan@wdn.com.np`; `BOOKING_FRONT_DESK_EMAIL` overrides that default. Normal organizer/attendee mail remains. Already queued legacy messages to unknown former participants are skipped to prevent obsolete staff broadcasts; new jobs preserve former-participant change notices. The setting does not grant staff access. Rooms directory/detail pages show uploaded photos; rooms without an upload show a placeholder. Employees see **Booked** for unrelated calendar meetings; verified staff/admin retain details.
 
 The holiday Excel upload adds no migration beyond `0012_department`, dependency, service or environment variable. Rebuild and recreate the application using the [HTTP update procedure](docs/deployment-http.md#backups-and-updates). Staff sign in with password plus email code, then use **Holidays → Download template / Upload Excel → Preview holidays → Confirm import**. See the [staff holiday workflow](docs/staff-guide.md#9-manage-company-holidays) for format rules and conflict review.
+
+Calendar invitations require migration **0014** and production `db_setup`, followed by recreation of web and worker. The upgrade sends no invitation broadcast and does not backfill saved bookings: an existing booking first receives invitations on its next confirmation or substantive approved change. Each event pins its service organizer/sender from `DJANGO_FROM_EMAIL`; local file-mail uses the demo sender. No new service, mailbox password or calendar API permission is required. IT must permit `text/calendar` MIME through the relay and pilot invitation acceptance, changes and cancellations in the actual HCL and Outlook clients before rollout; that live compatibility has not yet been verified.
 
 ## Environment and email
 
