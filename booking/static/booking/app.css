@@ -163,6 +163,7 @@ button { cursor: pointer; }
 .live-dot { width: 8px; height: 8px; border-radius: 50%; background: #69d4a4; box-shadow: 0 0 0 4px rgb(105 212 164 / 13%); }
 .dashboard-hero h2 { font-size: clamp(31px, 3.4vw, 46px); margin: 0 0 12px; line-height: 1.1; }
 .dashboard-hero .hero-copy > p:not(.hero-kicker) { color: #c9deeb; max-width: 520px; margin: 0; }
+.dashboard-hero .form-actions { margin-top: 24px; }
 .hero-identity { display: inline-block; margin-top: 20px; padding: 7px 12px; border: 1px solid rgb(255 255 255 / 26%); border-radius: 100px; color: white; font-size: 14px; }
 .hero-decoration { position: absolute; inset: 0 0 0 auto; width: 37%; pointer-events: none; }
 .hero-ring { position: absolute; border: 1px solid rgb(255 255 255 / 12%); border-radius: 50%; }
