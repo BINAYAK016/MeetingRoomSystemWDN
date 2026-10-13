@@ -2,7 +2,7 @@
 
 **Meeting Booking System (MBS)**
 **Transgate Tech | Binayak Bhandari**
-Checked against application source on **12 October 2026**.
+Checked against application source on **13 October 2026**.
 
 This guide explains employee use of **http://mbs.wdn.com.np** on the office network. Use a company email ending in **@wdn.com.np** or **@transgate.com.np**. All displayed meeting times are **Nepal time (NPT)**. For the complete behavior reference see [Features and use cases](features-and-use-cases.md); staff workflows are in the [staff guide](staff-guide.md).
 
@@ -25,7 +25,7 @@ The overview and room pages use **Company workspace** for the shared WDN/Transga
 | Menu / page | What to do there |
 | --- | --- |
 | [Overview](http://mbs.wdn.com.np/) | Room count, upcoming meetings, pending count and current booking window |
-| [Rooms](http://mbs.wdn.com.np/rooms/) | Search room, seat count, location and facilities; read instructions |
+| [Rooms](http://mbs.wdn.com.np/rooms/) | Search room, seat count, floor and facilities; read instructions |
 | [Calendar view](http://mbs.wdn.com.np/calendar/) | Month/week/day meetings, room filters and available starts |
 | [My meetings](http://mbs.wdn.com.np/bookings/mine/) | Upcoming or History for meetings you organize or attend; filter by role, status or search |
 | [Book a room](http://mbs.wdn.com.np/bookings/new/) | Schedule & details → Attendees → Review & confirm for one meeting or recurring occurrences |
@@ -76,7 +76,7 @@ An existing profile or booking can retain its previously saved nonblank departme
 1. Open **Rooms**.
 2. Enter a search such as “3” for floor or a room name/description term.
 3. Set **Minimum seats**, for example `6`.
-4. Select a location or facility, for example “Projector”, when offered.
+4. Select a **Floor** or facility, for example “Projector”, when offered. **All floors** shows rooms across floors. Floor options use the saved values from active rooms.
 5. Press **Find rooms**. Use **Reset** to clear filters; use pagination for additional results.
 6. View each room's uploaded photo on its directory card, then open **Room details** for a larger image, capacity, facilities, description and instructions. A room with no uploaded image shows a clearly labelled placeholder; ask staff to upload its real photo.
 7. Use **Book this room** to preselect it, or **View availability** to compare times.

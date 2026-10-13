@@ -100,14 +100,24 @@ class UserInterfaceTests(TestCase):
     def test_room_filters_combine_and_exclude_inactive(self):
         RoomFacility.objects.create(room=self.room, name="Projector")
         Room.objects.create(name="Small room", location="WDN", floor="1", capacity=4)
-        Room.objects.create(name="Inactive Board", location="WDN", floor="2", capacity=20, is_active=False)
+        other_floor = Room.objects.create(name="Board annex", location="WDN", floor="2", capacity=12)
+        RoomFacility.objects.create(room=other_floor, name="Projector")
+        same_floor = Room.objects.create(name="Board side room", location="Transgate", floor="3", capacity=12)
+        RoomFacility.objects.create(room=same_floor, name="Projector")
+        Room.objects.create(name="Inactive Board", location="WDN", floor="99", capacity=20, is_active=False)
         self.client.force_login(self.employee)
         response = self.client.get(
-            reverse("rooms"), {"q": "board", "capacity": 8, "location": "WDN", "facility": "Projector"}
+            reverse("rooms"), {"q": "board", "capacity": 8, "floor": "3", "facility": "Projector"}
         )
-        self.assertEqual([item.pk for item in response.context["rooms"]], [self.room.pk])
+        self.assertCountEqual([item.pk for item in response.context["rooms"]], [self.room.pk, same_floor.pk])
+        self.assertEqual(list(response.context["floors"]), ["1", "2", "3"])
+        self.assertContains(response, '<option value="3" selected>3</option>')
         self.assertContains(response, "Projector")
         self.assertNotContains(response, "Inactive Board")
+        other_response = self.client.get(
+            reverse("rooms"), {"q": "board", "capacity": 8, "floor": "2", "facility": "Projector"}
+        )
+        self.assertEqual([item.pk for item in other_response.context["rooms"]], [other_floor.pk])
         self.assertEqual(self.client.get(reverse("room-detail", args=[9999])).status_code, 404)
 
     def test_lists_keep_all_results_and_filters_while_paginating(self):

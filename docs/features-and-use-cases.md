@@ -155,7 +155,7 @@ The employee room directory supports:
 
 - Search by room name, floor or description.
 - Minimum seat count.
-- Exact location and facility filters selected from active room values.
+- Exact floor and facility filters selected from active room values. Floors are unique saved labels across locations; inactive-only floors are omitted.
 - Resetting filters and pagination, with **12 rooms per page**.
 - Room cards with uploaded real photos, name, location, floor, capacity, facilities and **Staff approval required** or **Automatic approval**. A labelled placeholder appears when no photo is uploaded.
 - Detail pages with a larger uploaded photo or labelled placeholder, descriptions, instructions, equipment labels and **Book this room**. Booking-wizard thumbnails use the same staff-managed image.

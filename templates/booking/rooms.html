@@ -6,7 +6,7 @@
   <form method="get" class="filter-bar">
     <label>Search rooms<input name="q" value="{{ search }}" maxlength="100" placeholder="Name, floor or description"></label>
     <label>Minimum seats<input name="capacity" type="number" min="1" max="65535" value="{{ capacity }}" placeholder="Any capacity"></label>
-    <label>Location<select name="location"><option value="">All locations</option>{% for value in locations %}<option {% if location == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
+    <label>Floor<select name="floor"><option value="">All floors</option>{% for value in floors %}<option value="{{ value }}" {% if floor == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
     <label>Facility<select name="facility"><option value="">Any facility</option>{% for value in facilities %}<option {% if facility == value %}selected{% endif %}>{{ value }}</option>{% endfor %}</select></label>
     <button class="button button-primary">Find rooms</button><a class="button button-quiet" href="{% url 'rooms' %}">Reset</a>
   </form>

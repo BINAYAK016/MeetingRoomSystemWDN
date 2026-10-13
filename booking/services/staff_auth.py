@@ -60,7 +60,7 @@ def start_staff_login(email, password, request):
         token.save(update_fields=["token_hash"])
     try:
         deliver_mail(
-            "Your WDN staff sign-in code",
+            "Your Transgate staff sign-in code",
             f"Your one-time staff sign-in code is {code}. It expires in 10 minutes. If you did not request it, contact IT.",
             [user.email],
             html_body=staff_code_email_html(code),

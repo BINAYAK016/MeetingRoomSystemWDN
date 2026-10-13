@@ -273,7 +273,7 @@ def room_list(request):
     )
     capacity = request.GET.get("capacity", "")[:5]
     search = request.GET.get("q", "").strip()[:100]
-    location = request.GET.get("location", "")[:120]
+    floor = request.GET.get("floor", "")[:40]
     facility = request.GET.get("facility", "")[:120]
     if capacity.isascii() and capacity.isdigit():
         rooms = rooms.filter(capacity__gte=int(capacity))
@@ -281,8 +281,8 @@ def room_list(request):
         rooms = rooms.filter(
             Q(name__icontains=search) | Q(description__icontains=search) | Q(floor__icontains=search)
         )
-    if location:
-        rooms = rooms.filter(location=location)
+    if floor:
+        rooms = rooms.filter(floor=floor)
     if facility:
         rooms = rooms.filter(facilities__name=facility).distinct()
     context = paginate(request, rooms, 12)
@@ -291,11 +291,12 @@ def room_list(request):
             "rooms": context["page_obj"],
             "capacity": capacity,
             "search": search,
-            "location": location,
+            "floor": floor,
             "facility": facility,
-            "locations": Room.objects.filter(is_active=True)
-            .order_by("location")
-            .values_list("location", flat=True)
+            "floors": Room.objects.filter(is_active=True)
+            .exclude(floor="")
+            .order_by("floor")
+            .values_list("floor", flat=True)
             .distinct(),
             "facilities": Room.objects.filter(is_active=True, facilities__isnull=False)
             .order_by("facilities__name")
