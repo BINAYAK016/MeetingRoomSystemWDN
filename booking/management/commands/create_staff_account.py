@@ -32,7 +32,7 @@ class Command(BaseCommand):
         link = settings.PUBLIC_BASE_URL.rstrip("/") + reverse("staff-set-password", args=[uid, token])
         try:
             deliver_mail(
-                "Set your WDN staff password",
+                "Set your Transgate staff password",
                 f"Set your staff password using this link: {link}\nIf you did not expect this, contact IT.",
                 [email],
                 html_body=staff_setup_email_html(link),

@@ -132,10 +132,10 @@ def queue_conflict_notice(email, room_name, meeting_date, start_time):
     Notification.objects.create(
         recipient_email=email,
         event_type="conflict",
-        subject="WDN meeting room time unavailable",
+        subject="Transgate meeting room time unavailable",
         body=(
             f"Your attempted booking for {room_name} on {meeting_date} at {start_time} could not be saved "
-            "because the room was unavailable. Please select another room or time in WDN Meeting Rooms."
+            "because the room was unavailable. Please select another room or time in Transgate Meeting Rooms."
         ),
         next_attempt_at=timezone.now(),
     )

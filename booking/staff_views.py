@@ -695,7 +695,7 @@ def send_staff_setup(request, user_id):
     link = settings.PUBLIC_BASE_URL.rstrip("/") + f"/staff/set-password/{uid}/{token}/"
     try:
         deliver_mail(
-            "Set your WDN staff password",
+            "Set your Transgate staff password",
             f"Use this link to set your staff password: {link}\nIf you did not expect this, contact IT.",
             [user.email],
             html_body=staff_setup_email_html(link),

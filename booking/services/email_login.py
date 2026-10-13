@@ -72,8 +72,8 @@ def request_login_link(email, request):
     link = settings.PUBLIC_BASE_URL.rstrip("/") + reverse("login-link", args=[raw_token])
     try:
         deliver_mail(
-            "Your WDN meeting room sign-in link",
-            f"Use this link to sign in to the WDN meeting room system:\n\n{link}\n\n"
+            "Your Transgate meeting room sign-in link",
+            f"Use this link to sign in to the Transgate meeting room system:\n\n{link}\n\n"
             "This link expires in 15 minutes and works once. If you did not request it, ignore this message.",
             [email],
             html_body=login_email_html(link),
